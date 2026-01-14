@@ -1,0 +1,131 @@
+import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { auth } from '../lib/firebase';
+
+const ScheduleItem = ({ time, subject, topic, room }: any) => (
+    <div className="flex items-center group p-4 rounded-2xl bg-dark-card border border-white/5 hover:bg-white/5 transition-colors">
+        <div className="flex flex-col items-center mr-6 min-w-[3rem]">
+            <span className="text-teal-400 font-bold">{time.split(" ")[0]}</span>
+            <span className="text-xs text-gray-500 font-bold">{time.split(" ")[1]}</span>
+        </div>
+        <div className="flex-1 border-l border-white/10 pl-6 h-10 flex flex-col justify-center">
+            <h4 className="text-white font-bold">{subject}</h4>
+            <p className="text-sm text-gray-400">{topic}</p>
+        </div>
+        <div className="text-right">
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Room</span>
+            <span className="text-gray-300 font-medium">{room}</span>
+        </div>
+    </div>
+);
+
+export const Dashboard = () => {
+    const user = auth.currentUser;
+    const displayName = user?.displayName || 'Teacher';
+
+    return (
+        <div className="space-y-8 pb-20">
+            {/* Header */}
+            <header className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-teal-500 to-emerald-400 p-[2px]">
+                        <img src={`https://ui-avatars.com/api/?name=${displayName}&background=random`} alt="User" className="w-full h-full rounded-full bg-dark-bg" />
+                    </div>
+                    <div>
+                        <div className="text-teal-500 text-xs font-bold uppercase tracking-wider mb-0.5">Dashboard</div>
+                        <h1 className="text-2xl font-bold text-white">Welcome, {displayName}</h1>
+                    </div>
+                </div>
+
+                <div className="px-4 py-2 rounded-full border border-teal-500/30 bg-teal-500/10 flex items-center gap-2">
+                    <Cloud className="w-4 h-4 text-teal-400" />
+                    <span className="text-teal-400 text-sm font-bold">OFFLINE SYNCED</span>
+                </div>
+            </header>
+
+            {/* AI Toolkit Section */}
+            <div>
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-white">AI Toolkit</h2>
+                    <span className="text-teal-500 text-sm font-bold">3 tools available</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Big Main Card */}
+                    <div className="md:col-span-2">
+                        <NavLink to="/lessons" className="relative h-64 rounded-[32px] bg-gradient-to-br from-teal-600 to-teal-800 p-8 flex flex-col justify-between overflow-hidden group transition-transform hover:scale-[1.01]">
+                            <div>
+                                <Sparkles className="w-10 h-10 text-white mb-4" />
+                                <h3 className="text-3xl font-bold text-white mb-2">Generate Lesson Note</h3>
+                                <p className="text-teal-100 font-medium text-lg">Automate your SS1-SS3 content</p>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-white font-bold bg-white/20 w-fit px-6 py-3 rounded-xl backdrop-blur-sm self-start group-hover:bg-white/30 transition-colors">
+                                <span>Start Generating</span>
+                                <ArrowRight className="w-5 h-5" />
+                            </div>
+
+                            {/* Decorative */}
+                            <div className="absolute right-0 top-0 w-96 h-96 bg-white/10 blur-[100px] rounded-full translate-x-1/3 -translate-y-1/3" />
+                        </NavLink>
+                    </div>
+
+                    {/* Smaller Cards */}
+                    <NavLink to="/exams" className="bg-dark-card border border-white/5 p-6 rounded-[24px] h-48 flex flex-col justify-between hover:bg-white/5 transition-colors group">
+                        <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center group-hover:bg-teal-500/20 transition-colors">
+                            <HelpCircle className="w-6 h-6 text-teal-400" />
+                        </div>
+                        <span className="text-xl font-bold text-white">Create Quiz</span>
+                    </NavLink>
+
+                    <NavLink to="/marking" className="bg-dark-card border border-white/5 p-6 rounded-[24px] h-48 flex flex-col justify-between hover:bg-white/5 transition-colors group">
+                        <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center group-hover:bg-teal-500/20 transition-colors">
+                            <Scan className="w-6 h-6 text-teal-400" />
+                        </div>
+                        <span className="text-xl font-bold text-white">Scan Scripts</span>
+                    </NavLink>
+                </div>
+            </div>
+
+            {/* Today's Schedule */}
+            <div>
+                <div className="flex items-center justify-between mb-6 pt-4">
+                    <h2 className="text-xl font-bold text-white">Today's Schedule</h2>
+                    <span className="text-gray-500 text-sm font-bold">Monday, Oct 24</span>
+                </div>
+
+                <div className="space-y-3">
+                    <ScheduleItem time="09:00 AM" subject="SS1 Physics" topic="Kinematics & Dynamics" room="Hall A" />
+                    <ScheduleItem time="11:30 AM" subject="SS3 Mathematics" topic="Calculus II: Integration" room="Lab 2" />
+                </div>
+            </div>
+
+            {/* Pending Grading */}
+            <div className="relative overflow-hidden bg-dark-card border border-white/5 rounded-[32px] p-8">
+                <div className="flex items-start justify-between relative z-10">
+                    <div>
+                        <h2 className="text-xl font-bold text-white mb-1">Pending Grading</h2>
+                        <p className="text-gray-400">Automated scoring ready</p>
+                    </div>
+                    <div className="px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-bold uppercase">
+                        Urgent
+                    </div>
+                </div>
+
+                <div className="mt-8 relative z-10 flex items-end justify-between">
+                    <div>
+                        <span className="text-6xl font-bold text-white tracking-tighter">45</span>
+                        <span className="ml-3 text-gray-500 font-bold tracking-widest text-sm uppercase">Scripts to mark</span>
+                    </div>
+                    <NavLink to="/marking" className="bg-teal-500 text-dark-bg px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-teal-400 transition-colors">
+                        <ScrollText className="w-5 h-5" />
+                        Start AI Marking
+                    </NavLink>
+                </div>
+
+                {/* Background Decor */}
+                <div className="absolute right-0 bottom-0 w-64 h-64 bg-teal-500/5 blur-[80px] rounded-full translate-x-1/3 translate-y-1/3" />
+            </div>
+        </div>
+    );
+};
