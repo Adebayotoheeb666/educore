@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { BulkStudentImport } from '../components/BulkStudentImport';
 import { StaffAssignmentModal } from '../components/StaffAssignmentModal';
+import { ParentStudentLinkModal } from '../components/ParentStudentLinkModal';
 import { db } from '../lib/firebase';
 import {
     collection,
