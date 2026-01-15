@@ -8,9 +8,11 @@ import {
     MoreVertical,
     DollarSign,
     TrendingUp,
-    Download
+    Download,
+    X
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { BulkStudentImport } from '../components/BulkStudentImport';
 import { db } from '../lib/firebase';
 import {
     collection,
@@ -18,6 +20,7 @@ import {
     where,
     getDocs
 } from 'firebase/firestore';
+import type { ImportResult } from '../lib/bulkImportService';
 
 export const AdminDashboard = () => {
     const { schoolId, role } = useAuth();
