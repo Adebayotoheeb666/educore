@@ -265,19 +265,19 @@ export const Analytics = () => {
 
                         {/* Table Header */}
                         <div className="bg-dark-card rounded-t-2xl border border-white/5 border-b-0 flex-1 overflow-hidden">
-                            <div className="grid grid-cols-5 gap-4 px-4 py-4 bg-white/5 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                <div className="col-span-1">Student</div>
-                                <div className="text-center">Latest</div>
-                                <div className="text-center">Test 2</div>
-                                <div className="text-center">Test 1</div>
-                                <div className="text-center">Avg</div>
+                            <div className="grid grid-cols-6 gap-4 px-4 py-4 bg-white/5 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                <div className="col-span-2">Student</div>
+                                <div className="text-center">Subject</div>
+                                <div className="text-center">Grade</div>
+                                <div className="text-center">Score</div>
+                                <div className="text-center">Source</div>
                             </div>
                             <div className="overflow-y-auto max-h-[500px]">
                                 {loading && <div className="p-4 text-center text-gray-500">Loading data...</div>}
-                                {!loading && results.length === 0 && <div className="p-4 text-center text-gray-500">No results found via Paper Scanner.</div>}
+                                {!loading && results.length === 0 && <div className="p-4 text-center text-gray-500">No results recorded yet.</div>}
 
                                 {results.map((res) => (
-                                    <StudentRow key={res.id} name={res.studentName} score={res.score} />
+                                    <StudentRow key={res.id} result={res} />
                                 ))}
                             </div>
                         </div>
