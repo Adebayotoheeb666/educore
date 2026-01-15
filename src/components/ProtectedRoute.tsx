@@ -10,24 +10,6 @@ export const ProtectedRoute = ({ children, allowedRoles }: { children: React.Rea
     const [authorized, setAuthorized] = useState(false);
 
     useEffect(() => {
-        // MOCK AUTH BYPASS
-        // Debug Log
-        console.log("Auth Check - Env: ", import.meta.env.VITE_USE_MOCK_AUTH);
-
-        if (import.meta.env.VITE_USE_MOCK_AUTH === 'true') {
-            const isAuth = localStorage.getItem('isAuthenticated');
-            console.log("Mock Auth State: ", isAuth);
-            if (isAuth) {
-                const mockUser = JSON.parse(localStorage.getItem('user') || '{}');
-                setUser(mockUser);
-                setAuthorized(true); // Mock users are always authorized for now
-            } else {
-                setUser(null);
-            }
-            setLoading(false);
-            return;
-        }
-
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
                 setUser(currentUser);
