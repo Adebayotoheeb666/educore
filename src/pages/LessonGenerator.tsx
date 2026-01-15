@@ -16,12 +16,22 @@ export const LessonGenerator = () => {
     const [result, setResult] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // AI Polish States
+    const [personalization, setPersonalization] = useState('standard');
+    const [includeTranslation, setIncludeTranslation] = useState(false);
+    const [waecFocus, setWaecFocus] = useState(false);
+    const [labExperiments, setLabExperiments] = useState(true);
+
     const handleGenerate = async () => {
         if (!topic) return;
         setLoading(true);
         setError(null);
         try {
-            const note = await geminiService.generateLessonNote(topic, subject, level);
+            const note = await geminiService.generateLessonNote(topic, subject, level, {
+                personalization,
+                translation: includeTranslation,
+                waecFocus
+            });
             setResult(note);
 
             if (auth.currentUser) {
@@ -31,6 +41,7 @@ export const LessonGenerator = () => {
                     subject,
                     level,
                     content: note,
+                    options: { personalization, translation: includeTranslation, waecFocus },
                     createdAt: serverTimestamp()
                 });
             }
@@ -116,16 +127,58 @@ export const LessonGenerator = () => {
                 </button>
             </div>
 
-            {/* Enhance Toggles (Visual Only) */}
-            <div className="space-y-3">
-                {['Lab Experiments', 'Local Translation', 'WAEC/NECO Focus'].map((label) => (
-                    <div key={label} className="bg-dark-card/50 border border-white/5 p-4 rounded-xl flex items-center justify-between">
-                        <span className="font-medium text-gray-300">{label}</span>
-                        <div className={`w-12 h-6 rounded-full relative transition-colors ${label === 'Lab Experiments' ? 'bg-teal-500' : 'bg-gray-700'}`}>
-                            <div className={`absolute w-4 h-4 rounded-full bg-white top-1 transition-all ${label === 'Lab Experiments' ? 'left-7' : 'left-1'}`} />
-                        </div>
+            {/* AI Enhancement Controls */}
+            <div className="space-y-4">
+                <div className="bg-dark-card border border-white/5 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <span className="font-bold text-white text-sm block">Personalization Level</span>
+                        <p className="text-xs text-gray-500">Tailor note depth to student needs</p>
                     </div>
-                ))}
+                    <select
+                        className="bg-dark-bg border border-white/10 text-white rounded-lg px-3 py-1 text-sm outline-none focus:border-teal-500/50"
+                        value={personalization}
+                        onChange={(e) => setPersonalization(e.target.value)}
+                    >
+                        <option value="standard">Standard (NERDC)</option>
+                        <option value="advanced">Advanced (Extension)</option>
+                        <option value="support">Support Needed</option>
+                    </select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <button
+                        onClick={() => setLabExperiments(!labExperiments)}
+                        className={cn(
+                            "p-4 rounded-xl border flex flex-col gap-1 transition-all",
+                            labExperiments ? "bg-teal-500/10 border-teal-500/30 text-teal-400" : "bg-dark-card border-white/5 text-gray-500"
+                        )}
+                    >
+                        <span className="text-xs font-bold uppercase tracking-widest">Lab Experiments</span>
+                        <span className="text-[10px] opacity-70">Include practicals</span>
+                    </button>
+
+                    <button
+                        onClick={() => setIncludeTranslation(!includeTranslation)}
+                        className={cn(
+                            "p-4 rounded-xl border flex flex-col gap-1 transition-all",
+                            includeTranslation ? "bg-teal-500/10 border-teal-500/30 text-teal-400" : "bg-dark-card border-white/5 text-gray-500"
+                        )}
+                    >
+                        <span className="text-xs font-bold uppercase tracking-widest">Local Context</span>
+                        <span className="text-[10px] opacity-70">Translate to Yoruba/Hausa/Igbo</span>
+                    </button>
+
+                    <button
+                        onClick={() => setWaecFocus(!waecFocus)}
+                        className={cn(
+                            "p-4 rounded-xl border flex flex-col gap-1 transition-all",
+                            waecFocus ? "bg-teal-500/10 border-teal-500/30 text-teal-400" : "bg-dark-card border-white/5 text-gray-500"
+                        )}
+                    >
+                        <span className="text-xs font-bold uppercase tracking-widest">WAEC/NECO Focus</span>
+                        <span className="text-[10px] opacity-70">Exam priority topics</span>
+                    </button>
+                </div>
             </div>
 
             {/* Result Preview */}

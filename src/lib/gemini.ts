@@ -26,16 +26,35 @@ interface GradingResult {
 }
 
 export const geminiService = {
-  async generateLessonNote(topic: string, subject: string, level: string) {
+  async generateLessonNote(topic: string, subject: string, level: string, options?: { personalization?: string, translation?: boolean, waecFocus?: boolean }) {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const prompt = `Generate a comprehensive lesson note for ${level} ${subject} on the topic "${topic}" following the Nigerian NERDC curriculum.
-    Include:
-    1. Objectives
-    2. Introduction
-    3. Main Content (with subsections)
-    4. Practical/Local Examples
-    5. Evaluation/Quiz.
-    Format in Markdown.`;
+
+    let prompt = `Generate a comprehensive lesson note for ${level} ${subject} on the topic "${topic}" following the Nigerian NERDC curriculum.`;
+
+    if (options?.personalization === 'advanced') {
+      prompt += `\n- TARGET AUDIENCE: Advanced learners. Use more complex terminology and include challenging extension activities.`;
+    } else if (options?.personalization === 'support') {
+      prompt += `\n- TARGET AUDIENCE: Students needing extra support. Use simpler language, break down complex concepts further, and include foundational drills.`;
+    }
+
+    if (options?.translation) {
+      prompt += `\n- LANGUAGE SUPPORT: Include a final section titled "Local Context Keywords" that translates 5-7 key technical terms from this lesson into Yoruba, Hausa, and Igbo with brief explanations.`;
+    }
+
+    if (options?.waecFocus) {
+      prompt += `\n- EXAM FOCUS: Highlight concepts that frequently appear in WAEC/NECO/JAMB examinations.`;
+    }
+
+    prompt += `\n\nStructure the note exactly like a standard Nigerian lesson plan:
+    1. Prerequisite Knowledge (Entry Behavior)
+    2. Performance Objectives (SMART)
+    3. Content (Detailed notes breaking down themes)
+    4. Instructional Materials (Suggested local resources)
+    5. Presentation (Teacher and Student Activities)
+    6. Local Context/Nigerian Examples
+    7. Evaluation (Short quiz/questions).
+    
+    Format in professional Markdown.`;
 
     const result = await model.generateContent(prompt);
     return result.response.text();
@@ -83,17 +102,17 @@ Important: Return ONLY the JSON array, no other text.`;
       return questionsData.map((q: any, idx: number) =>
         q.type === 'mcq'
           ? {
-              id: idx + 1,
-              type: 'mcq' as const,
-              text: q.question || q.text,
-              options: q.options || [],
-              answer: q.answer || '',
-            }
+            id: idx + 1,
+            type: 'mcq' as const,
+            text: q.question || q.text,
+            options: q.options || [],
+            answer: q.answer || '',
+          }
           : {
-              id: idx + 1,
-              type: 'essay' as const,
-              text: q.question || q.text,
-            }
+            id: idx + 1,
+            type: 'essay' as const,
+            text: q.question || q.text,
+          }
       );
     } catch (error) {
       console.error('Error parsing questions:', error);
