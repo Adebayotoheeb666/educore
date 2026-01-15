@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const ScheduleItem = ({ time, subject, topic, room }: any) => (
     <div className="flex items-center group p-4 rounded-2xl bg-dark-card border border-white/5 hover:bg-white/5 transition-colors">
