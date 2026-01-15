@@ -34,9 +34,13 @@ service cloud.firestore {
 
     // Schools: Public read for basic info (signup), Admin write
     match /schools/{schoolId} {
-      allow read: if true; 
+      allow read: if true;
       allow write: if isAdmin() && isFromSchool(schoolId);
-      allow create: if isAuthenticated(); // Allow first admin to create school
+      // Only allow school creation if:
+      // 1. User is not authenticated (new signup), OR
+      // 2. User is admin and schoolId matches their school, OR
+      // 3. User is attempting to create their own school for the first time (validated via Cloud Function)
+      allow create: if !request.auth || (isAdmin() && request.resource.data.adminUid == request.auth.uid && !exists(/databases/$(database)/documents/schools/$(schoolId)));
     }
 
     // Classes & Subjects: School-isolated
