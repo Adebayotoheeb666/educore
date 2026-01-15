@@ -135,7 +135,13 @@ export const AdminDashboard = () => {
                         {showAddMenu && (
                             <div className="absolute right-0 mt-2 w-48 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
                                 <button className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors border-b border-white/5">Single Registration</button>
-                                <button className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors flex items-center justify-between">
+                                <button
+                                    onClick={() => {
+                                        setShowBulkImport(true);
+                                        setShowAddMenu(false);
+                                    }}
+                                    className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors flex items-center justify-between"
+                                >
                                     <span>Bulk Upload</span>
                                     <Download className="w-4 h-4 text-teal-500" />
                                 </button>
