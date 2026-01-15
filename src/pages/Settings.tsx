@@ -213,7 +213,7 @@ export const Settings = () => {
                             <div className="text-white font-bold mb-1">Data Saver Mode</div>
                             <p className="text-gray-500 text-xs w-48">Disables images and heavy media to reduce bandwidth costs.</p>
                         </div>
-                        <Toggle checked={dataSaver} onChange={() => setDataSaver(!dataSaver)} />
+                        <Toggle checked={dataSaver} onChange={handleToggleDataSaver} />
                     </div>
 
                     <div className="bg-dark-card border border-white/5 p-4 rounded-2xl flex justify-between items-center">
@@ -224,7 +224,7 @@ export const Settings = () => {
                             </div>
                             <p className="text-gray-500 text-xs w-48">Generate lesson notes without internet using on-device processing.</p>
                         </div>
-                        <Toggle checked={geminiNano} onChange={() => setGeminiNano(!geminiNano)} />
+                        <Toggle checked={geminiNano} onChange={handleToggleGeminiNano} />
                     </div>
 
                     <div className="bg-dark-card border border-white/5 p-4 rounded-2xl flex justify-between items-center">
@@ -232,7 +232,7 @@ export const Settings = () => {
                             <div className="text-white font-bold mb-1">Auto-sync on Wi-Fi</div>
                             <p className="text-gray-500 text-xs w-48">Background data upload only when connected to unlimited networks.</p>
                         </div>
-                        <Toggle checked={autoSync} onChange={() => setAutoSync(!autoSync)} />
+                        <Toggle checked={autoSync} onChange={handleToggleAutoSync} />
                     </div>
                 </div>
             </section>
