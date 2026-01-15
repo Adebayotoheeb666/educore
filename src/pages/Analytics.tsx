@@ -171,18 +171,22 @@ export const Analytics = () => {
         try {
             const data = results.map(r => ({
                 'Student Name': r.studentName,
+                'Subject': r.subject || '-',
                 'Score': r.score,
                 'Total': r.total,
                 'Percentage': ((r.score / r.total) * 100).toFixed(1) + '%',
-                'Feedback': r.feedback,
+                'Type': r.type === 'exam' ? 'Exam' : 'AI Scan',
+                'Feedback': r.feedback || '-',
                 'Date': r.createdAt?.toDate?.()?.toLocaleDateString('en-NG') || 'N/A'
             }));
 
             exportService.exportAsCSV('class-grades', data, [
                 'Student Name',
+                'Subject',
                 'Score',
                 'Total',
                 'Percentage',
+                'Type',
                 'Feedback',
                 'Date'
             ]);
