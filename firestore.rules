@@ -26,6 +26,11 @@ service cloud.firestore {
       return hasRole('admin');
     }
 
+    // Check if parent is linked to a specific student
+    function isParentOf(studentId) {
+      return hasRole('parent') && exists(/databases/$(database)/documents/parent_student_links/$(request.auth.uid)_$(studentId));
+    }
+
     // Users: Can read/write their own profile. Admin can manage school users.
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isFromSchool(resource.data.schoolId));
