@@ -16,6 +16,7 @@ interface GradingData {
 }
 
 export const PaperScanner = () => {
+    const { schoolId, user } = useAuth();
     const [scanned, setScanned] = useState(false);
     const [imagePreview, setImagePreview] = useState<string>('');
     const [loading, setLoading] = useState(false);
