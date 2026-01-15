@@ -33,20 +33,6 @@ export const AdminDashboard = () => {
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showBulkImport, setShowBulkImport] = useState(false);
 
-    // State for fetching
-    useEffect(() => {
-        if (schoolId) {
-            fetchData();
-        }
-    }, [schoolId]);
-
-    const handleBulkImportSuccess = (result: ImportResult) => {
-        // Refresh student list
-        if (result.imported > 0) {
-            fetchData();
-        }
-    };
-
     const fetchData = async () => {
         if (!schoolId) return;
 
