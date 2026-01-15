@@ -35,7 +35,9 @@ export const AdminDashboard = () => {
 
     // State for fetching
     useEffect(() => {
-        fetchData();
+        if (schoolId) {
+            fetchData();
+        }
     }, [schoolId]);
 
     const handleBulkImportSuccess = (result: ImportResult) => {
