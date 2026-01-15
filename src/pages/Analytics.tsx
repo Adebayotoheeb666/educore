@@ -131,10 +131,18 @@ export const Analytics = () => {
     };
 
     return (
-        <div className="flex gap-6 h-[calc(100vh-100px)]">
+        <div className="flex gap-6 h-auto">
             {/* Main Table Section */}
-            <div className="flex-1 flex flex-col">
-                <header className="mb-8">
+            <div className="flex-1 flex flex-col space-y-6">
+                {/* Error Alert */}
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-red-300 text-sm">{error}</p>
+                    </div>
+                )}
+
+                <header className="mb-0">
                     <div className="flex justify-between items-start">
                         <div>
                             <h1 className="text-3xl font-bold text-white mb-2">Class Performance</h1>
