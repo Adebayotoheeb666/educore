@@ -223,42 +223,51 @@ export const ExamBuilder = () => {
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                         <span className="text-teal-500 text-xs font-bold uppercase tracking-wider">LIVE PREVIEW</span>
-                        <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div>
+                        {loading && <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div>}
                     </div>
                     <button
                         onClick={handleGenerate}
-                        disabled={loading}
-                        className="bg-dark-card border border-white/10 px-4 py-1 rounded text-xs text-white font-bold uppercase"
+                        disabled={loading || !sourceText.trim()}
+                        className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded text-xs text-white font-bold uppercase transition-colors"
                     >
-                        {loading ? "Drafting..." : "Drafting 12 Questions..."}
+                        {loading ? "Generating..." : `Generate ${questionCount} Questions`}
                     </button>
                 </div>
 
                 <div className="space-y-4">
                     {generatedQuestions.length === 0 && !loading && (
-                        <div className="text-center py-10 text-gray-500">Click to generate preview</div>
+                        <div className="text-center py-10 text-gray-500">
+                            {sourceText.trim() ? 'Click "Generate" button to create questions' : 'Upload source material to start'}
+                        </div>
                     )}
 
-                    {generatedQuestions.map((q) => (
+                    {generatedQuestions.map((q, idx) => (
                         <div key={q.id} className="bg-dark-card border border-white/5 rounded-xl p-5 hover:border-teal-500/20 transition-colors relative group">
                             <div className="flex justify-between items-start mb-3">
                                 <span className="bg-teal-900/30 text-teal-400 text-[10px] font-bold px-2 py-1 rounded uppercase">
                                     {q.type === 'mcq' ? 'MCQ • 2 Marks' : 'Essay • 10 Marks'}
                                 </span>
                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <RefreshCw className="w-4 h-4 text-gray-400 cursor-pointer hover:text-white" />
-                                    <Trash2 className="w-4 h-4 text-gray-400 cursor-pointer hover:text-red-400" />
+                                    <button
+                                        onClick={() => {
+                                            const updated = generatedQuestions.filter((_, i) => i !== idx);
+                                            setQuestions(updated);
+                                        }}
+                                        className="text-gray-400 hover:text-red-400 transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
                                 </div>
                             </div>
 
                             <p className="text-white font-medium text-lg leading-relaxed mb-4">{q.text}</p>
 
-                            {q.type === 'mcq' && (
+                            {q.type === 'mcq' && q.options && (
                                 <div className="space-y-2">
-                                    {q.options?.map((opt, i) => (
+                                    {q.options.map((opt, i) => (
                                         <div key={i} className={cn(
                                             "p-3 rounded-lg border text-sm font-medium",
-                                            opt.includes("(Correct)") // Simulating knowing the answer
+                                            q.answer === opt.substring(0, 1)
                                                 ? "bg-teal-500/10 border-teal-500/50 text-teal-100"
                                                 : "bg-transparent border-white/5 text-gray-400"
                                         )}>
@@ -269,29 +278,27 @@ export const ExamBuilder = () => {
                             )}
                         </div>
                     ))}
-                </div>
 
-                {/* Add Manual Button */}
-                <button className="w-full py-4 border border-dashed border-white/10 rounded-xl flex items-center justify-center gap-2 text-gray-400 hover:text-white hover:border-white/20 transition-colors mt-6">
-                    <span className="text-lg font-bold">+</span>
-                    <span className="text-sm font-bold uppercase">Add Question Manually</span>
-                </button>
+                    {loading && (
+                        <div className="flex items-center justify-center py-8">
+                            <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    )}
+                </div>
             </section>
 
             {/* Footer Actions */}
-            <div className="flex gap-4 pt-4 border-t border-white/5">
-                <button className="bg-dark-card p-4 rounded-xl text-gray-400 hover:text-white transition-colors">
-                    <Save className="w-6 h-6" />
-                    <span className="sr-only">Save</span>
-                </button>
-                <button
-                    onClick={handleSaveExam}
-                    className="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
-                >
-                    <CheckSquare className="w-5 h-5" />
-                    <span>FINALIZE EXAM</span>
-                </button>
-            </div>
+            {generatedQuestions.length > 0 && (
+                <div className="flex gap-4 pt-4 border-t border-white/5">
+                    <button
+                        onClick={handleSaveExam}
+                        className="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors py-3"
+                    >
+                        <CheckSquare className="w-5 h-5" />
+                        <span>FINALIZE EXAM ({generatedQuestions.length} questions)</span>
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
