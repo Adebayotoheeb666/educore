@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { BulkStudentImport } from '../components/BulkStudentImport';
+import { StaffAssignmentModal } from '../components/StaffAssignmentModal';
 import { db } from '../lib/firebase';
 import {
     collection,
