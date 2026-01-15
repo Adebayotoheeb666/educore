@@ -35,6 +35,7 @@ export const AdminDashboard = () => {
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showBulkImport, setShowBulkImport] = useState(false);
     const [selectedStaffForAssignment, setSelectedStaffForAssignment] = useState<{ id: string; name: string } | null>(null);
+    const [selectedStudentForLinking, setSelectedStudentForLinking] = useState<{ id: string; name: string } | null>(null);
 
     const fetchData = async () => {
         if (!schoolId) return;
