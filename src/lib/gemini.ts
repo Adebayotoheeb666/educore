@@ -210,5 +210,62 @@ Important: Return ONLY the JSON object, no other text.`;
         ocrAccuracy: 0,
       };
     }
+  },
+
+  async generateStudentPerformanceInsight(results: any[], attendanceRate: number) {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `You are an AI educational counselor. Analyze the following student performance data and provide a concise, encouraging, and professional progress report for the student and their parents.
+    
+    DATA:
+    - Results: ${JSON.stringify(results)}
+    - Attendance Rate: ${attendanceRate}%
+    
+    REQUIREMENTS:
+    1. Summarize overall performance (Distinction, Credit, or Needs Improvement).
+    2. Identify the strongest and weakest subjects.
+    3. Note the impact of attendance on their performance.
+    4. Provide 3 specific, actionable "Next Steps" for improvement.
+    5. Output in professional Markdown format, keeping it under 250 words.
+    
+    Tone: Encouraging, Nigerian educational context.`;
+
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (err) {
+      console.error("AI Insight Error:", err);
+      return "Unable to generate insights at this time. Please try again later.";
+    }
+  },
+
+  async chatWithStudyAssistant(message: string, history: { role: 'user' | 'model', parts: string }[], studentContext: string) {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const chat = model.startChat({
+      history: [
+        {
+          role: "user",
+          parts: [{
+            text: `You are the EduCore AI Study Assistant. Your goal is to help Nigerian students succeed in their exams (WAEC/NECO/JAMB).
+          
+          STUDENT CONTEXT:
+          ${studentContext}
+          
+          INSTRUCTIONS:
+          - Be encouraging and helpful.
+          - Suggest relevant study topics based on their context.
+          - Answer academic questions clearly.
+          - Use Nigerian examples where possible.` }]
+        },
+        {
+          role: "model",
+          parts: [{ text: "Hello! I am your EduCore AI Study Assistant. I've analyzed your academic records and I'm ready to help you excel. What would you like to study today?" }]
+        },
+        ...history.map(h => ({ role: h.role, parts: [{ text: h.parts }] }))
+      ]
+    });
+
+    const result = await chat.sendMessage(message);
+    return result.response.text();
   }
 };

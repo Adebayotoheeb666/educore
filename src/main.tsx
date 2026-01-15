@@ -16,6 +16,12 @@ const Settings = lazy(() => import('./pages/Settings').then(module => ({ default
 const FullAccountExplore = lazy(() => import('./pages/financial/FullAccountExplore').then(module => ({ default: module.FullAccountExplore })));
 const FundParentWallet = lazy(() => import('./pages/financial/FundParentWallet').then(module => ({ default: module.FundParentWallet })));
 const PayForStudents = lazy(() => import('./pages/financial/PayForStudents').then(module => ({ default: module.PayForStudents })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
+const AttendanceTracking = lazy(() => import('./pages/AttendanceTracking').then(module => ({ default: module.AttendanceTracking })));
+const GradeEntry = lazy(() => import('./pages/GradeEntry').then(module => ({ default: module.GradeEntry })));
+const StudentPortal = lazy(() => import('./pages/StudentPortal').then(module => ({ default: module.StudentPortal })));
+const StudentAttendance = lazy(() => import('./pages/StudentAttendance.tsx').then(module => ({ default: module.StudentAttendance })));
+const StudentResults = lazy(() => import('./pages/StudentResults.tsx').then(module => ({ default: module.StudentResults })));
 
 const LoadingSpinner = () => (
   <div className="min-h-screen bg-dark-bg flex items-center justify-center">
@@ -64,6 +70,30 @@ const router = createBrowserRouter([
   {
     path: "/financial/pay-fees",
     element: <ProtectedRoute allowedRoles={['admin', 'bursar']}><Layout><Suspense fallback={<LoadingSpinner />}><PayForStudents /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/admin",
+    element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><AdminDashboard /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/attendance",
+    element: <ProtectedRoute allowedRoles={['admin', 'staff']}><Layout><Suspense fallback={<LoadingSpinner />}><AttendanceTracking /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/grades",
+    element: <ProtectedRoute allowedRoles={['admin', 'staff']}><Layout><Suspense fallback={<LoadingSpinner />}><GradeEntry /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/portal",
+    element: <ProtectedRoute allowedRoles={['student', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentPortal /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/portal/attendance",
+    element: <ProtectedRoute allowedRoles={['student', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentAttendance /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/portal/results",
+    element: <ProtectedRoute allowedRoles={['student', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentResults /></Suspense></Layout></ProtectedRoute>,
   },
 ]);
 

@@ -1,13 +1,15 @@
 
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, FileText, Camera, BarChart2, Settings, LogOut, DollarSign } from 'lucide-react';
+import { LayoutDashboard, BookOpen, FileText, Camera, BarChart2, Settings, LogOut, DollarSign, CheckCircle2, Calculator } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
+import { useAuth } from '../hooks/useAuth';
+import { ShieldCheck } from 'lucide-react';
 
 // Helper for Tailwind classes
 export function cn(...inputs: (string | undefined | null | false)[]) {
@@ -37,6 +39,7 @@ const SidebarItem = ({ to, icon: Icon, label }: { to: string; icon: any; label: 
 
 export const Layout = ({ children }: LayoutProps) => {
     const navigate = useNavigate();
+    const { profile } = useAuth();
     return (
         <div className="flex min-h-screen bg-dark-bg text-dark-text font-sans selection:bg-teal-500/30">
             {/* Sidebar */}
@@ -52,11 +55,36 @@ export const Layout = ({ children }: LayoutProps) => {
 
                 <nav className="flex-1 space-y-2">
                     <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" />
-                    <SidebarItem to="/lessons" icon={BookOpen} label="Lesson Generator" />
-                    <SidebarItem to="/exams" icon={FileText} label="Exam Builder" />
-                    <SidebarItem to="/marking" icon={Camera} label="Paper Scanner" />
-                    <SidebarItem to="/financial" icon={DollarSign} label="Financials" />
-                    <SidebarItem to="/analytics" icon={BarChart2} label="Analytics" />
+
+                    {/* Admin Specific Links */}
+                    {profile?.role === 'admin' && (
+                        <>
+                            <SidebarItem to="/admin" icon={ShieldCheck} label="School Admin" />
+                        </>
+                    )}
+
+                    {/* Staff Links */}
+                    {(profile?.role === 'admin' || profile?.role === 'staff') && (
+                        <>
+                            <SidebarItem to="/lessons" icon={BookOpen} label="Lesson Generator" />
+                            <SidebarItem to="/exams" icon={FileText} label="Exam Builder" />
+                            <SidebarItem to="/marking" icon={Camera} label="Paper Scanner" />
+                            <SidebarItem to="/attendance" icon={CheckCircle2} label="Attendance" />
+                            <SidebarItem to="/grades" icon={Calculator} label="Grades" />
+                            <SidebarItem to="/financial" icon={DollarSign} label="Financials" />
+                            <SidebarItem to="/analytics" icon={BarChart2} label="Analytics" />
+                        </>
+                    )}
+
+                    {/* Student/Parent Links */}
+                    {(profile?.role === 'student' || profile?.role === 'parent') && (
+                        <>
+                            <SidebarItem to="/portal" icon={LayoutDashboard} label="My Portal" />
+                            <SidebarItem to="/portal/attendance" icon={CheckCircle2} label="My Attendance" />
+                            <SidebarItem to="/portal/results" icon={Calculator} label="My Results" />
+                        </>
+                    )}
+
                     <div className="my-6 border-b border-white/5" />
                     <SidebarItem to="/settings" icon={Settings} label="Settings" />
                 </nav>

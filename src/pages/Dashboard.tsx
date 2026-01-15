@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Navigate } from 'react-router-dom';
 import { auth, db } from '../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
 
 
+import { useAuth } from '../hooks/useAuth';
+
 export const Dashboard = () => {
+    const { profile, role } = useAuth();
     const user = auth.currentUser;
-    const displayName = user?.displayName || 'Teacher';
+    const displayName = profile?.fullName || user?.displayName || 'Teacher';
     const [pendingCount, setPendingCount] = useState(0);
     const [loading, setLoading] = useState(true);
+
+    if (role === 'student' || role === 'parent') {
+        return <Navigate to="/portal" replace />;
+    }
 
     useEffect(() => {
         const fetchPendingGrades = async () => {
