@@ -64,10 +64,15 @@ export const LessonGenerator = () => {
                     </div>
                     <h1 className="text-2xl font-bold text-white">Lesson Generator</h1>
                 </div>
-                <button className="p-2 hover:bg-white/5 rounded-lg text-gray-400">
-                    <SettingsIcon className="w-5 h-5" />
-                </button>
             </header>
+
+            {/* Error Alert */}
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-red-300 text-sm">{error}</p>
+                </div>
+            )}
 
             {/* Controls */}
             <div className="grid grid-cols-2 gap-4">
