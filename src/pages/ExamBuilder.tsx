@@ -1,10 +1,10 @@
-
 import { useState } from 'react';
-import { Upload, CheckSquare, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { Upload, CheckSquare, RefreshCw, Save, Trash2, AlertCircle } from 'lucide-react';
 import { cn } from '../components/Layout';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
+import { geminiService } from '../lib/gemini';
 
 interface Question {
     id: number;
@@ -16,30 +16,74 @@ interface Question {
 
 export const ExamBuilder = () => {
     const [loading, setLoading] = useState(false);
-    const [difficulty, setDifficulty] = useState(50); // Slider value
+    const [difficulty, setDifficulty] = useState(50);
     const [generatedQuestions, setQuestions] = useState<Question[]>([]);
+    const [sourceText, setSourceText] = useState<string>('');
+    const [error, setError] = useState<string>('');
+    const [fileName, setFileName] = useState<string>('');
+    const [questionCount, setQuestionCount] = useState(10);
+    const [mcqRatio, setMcqRatio] = useState(0.6);
 
     const navigate = useNavigate();
 
-    const handleGenerate = async () => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setError('');
         setLoading(true);
-        setTimeout(() => {
-            setQuestions([
-                {
-                    id: 1,
-                    type: 'mcq',
-                    text: "Based on the provided notes on photosynthesis, which wavelength of light is most efficiently absorbed by Chlorophyll A?",
-                    options: ["A) Green light (500-570nm)", "B) Red light (640-680nm)", "C) Ultra-violet light (< 400nm)"],
-                    answer: "B"
-                },
-                {
-                    id: 2,
-                    type: 'essay',
-                    text: "Discuss the socio-economic impacts of the 1914 Amalgamation of Northern and Southern Nigeria on contemporary trade relations.",
-                }
-            ]);
+
+        try {
+            // Check if it's a PDF
+            if (file.type === 'application/pdf') {
+                const arrayBuffer = await file.arrayBuffer();
+                const text = await geminiService.extractTextFromPDF(arrayBuffer);
+                setSourceText(text);
+                setFileName(file.name);
+            } else if (file.type.startsWith('text/') || file.name.endsWith('.txt')) {
+                // Handle plain text files
+                const text = await file.text();
+                setSourceText(text);
+                setFileName(file.name);
+            } else {
+                setError('Please upload a PDF or text file.');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to process file');
+        } finally {
             setLoading(false);
-        }, 2000);
+        }
+    };
+
+    const handleGenerate = async () => {
+        if (!sourceText.trim()) {
+            setError('Please upload a source material first.');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        try {
+            // Truncate source text if too long to avoid token limits
+            const truncatedText = sourceText.substring(0, 8000);
+            const questions = await geminiService.generateQuestions(
+                truncatedText,
+                questionCount,
+                mcqRatio,
+                difficulty
+            );
+
+            if (questions.length === 0) {
+                setError('Failed to generate questions. Please try again.');
+            } else {
+                setQuestions(questions as Question[]);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to generate questions');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSaveExam = async () => {
