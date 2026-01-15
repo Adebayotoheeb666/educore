@@ -116,12 +116,18 @@ export const ExamBuilder = () => {
                     <span className="text-teal-500 text-xl font-bold">‹</span>
                     AI Exam Builder
                 </h1>
-                <button className="bg-white/10 p-2 rounded-lg hover:bg-white/20">
-                    <div className="w-6 h-4 border-2 border-white rounded-sm relative flex items-center justify-center">
-                        <div className="w-2 h-2 bg-white rounded-full"></div>
-                    </div>
-                </button>
             </header>
+
+            {/* Error Alert */}
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                        <h3 className="text-red-400 font-bold">Error</h3>
+                        <p className="text-red-300 text-sm">{error}</p>
+                    </div>
+                </div>
+            )}
 
             {/* Source Material Upload */}
             <section>
@@ -130,11 +136,21 @@ export const ExamBuilder = () => {
                     <div className="w-16 h-16 bg-teal-900/50 rounded-full flex items-center justify-center mb-4 text-teal-400 group-hover:scale-110 transition-transform">
                         <Upload className="w-8 h-8" />
                     </div>
-                    <h3 className="text-white font-bold text-lg mb-1">Upload PDF Source</h3>
+                    <h3 className="text-white font-bold text-lg mb-1">Upload PDF or Text Source</h3>
                     <p className="text-gray-500 text-sm">WAEC / NECO / LESSON NOTES (MAX 20MB)</p>
-                    <button className="mt-6 bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 px-8 rounded-xl transition-all">
-                        Select File
-                    </button>
+                    {fileName && (
+                        <p className="text-teal-400 text-sm mt-3">✓ Loaded: {fileName}</p>
+                    )}
+                    <label className="mt-6 bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 px-8 rounded-xl transition-all cursor-pointer">
+                        {loading ? 'Processing...' : 'Select File'}
+                        <input
+                            type="file"
+                            accept=".pdf,.txt,.text"
+                            onChange={handleFileUpload}
+                            disabled={loading}
+                            className="hidden"
+                        />
+                    </label>
                 </div>
             </section>
 
