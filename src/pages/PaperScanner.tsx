@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Check, Zap, Upload, AlertCircle } from 'lucide-react';
+import { X, Check, Upload, AlertCircle } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';

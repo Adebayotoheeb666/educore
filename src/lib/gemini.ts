@@ -31,6 +31,13 @@ export const geminiService = {
 
     let prompt = `Generate a comprehensive lesson note for ${level} ${subject} on the topic "${topic}" following the Nigerian NERDC curriculum.`;
 
+    // Developmental adjustments for younger years
+    if (level === 'Creche' || level.includes('Nursery')) {
+      prompt += `\n- DEVELOPMENTAL FOCUS: Early Years Foundation. Use very simple language, focus on sensory play, rhymes, and visual aids. Keep sections extremely short and engaging.`;
+    } else if (level.includes('Primary')) {
+      prompt += `\n- DEVELOPMENTAL FOCUS: Primary level. Use clear, concrete examples and include interactive classroom activities.`;
+    }
+
     if (options?.personalization === 'advanced') {
       prompt += `\n- TARGET AUDIENCE: Advanced learners. Use more complex terminology and include challenging extension activities.`;
     } else if (options?.personalization === 'support') {

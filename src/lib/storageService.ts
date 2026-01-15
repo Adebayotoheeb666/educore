@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, getDocs, where, query, writeBatch, doc } from 'firebase/firestore';
+import { writeBatch } from 'firebase/firestore';
 
 export interface StorageStats {
   totalSpace: number;
@@ -24,7 +24,7 @@ export const storageService = {
     try {
       // Estimate storage from localStorage
       let totalStorageUsed = 0;
-      
+
       if (typeof localStorage !== 'undefined') {
         for (let key in localStorage) {
           if (localStorage.hasOwnProperty(key)) {
@@ -76,7 +76,7 @@ export const storageService = {
     try {
       // Clear localStorage
       const keysToPreserve = ['isAuthenticated', 'user', 'theme'];
-      
+
       if (typeof localStorage !== 'undefined') {
         const keysToDelete = [];
         for (let key in localStorage) {
@@ -111,7 +111,7 @@ export const storageService = {
     const isOnline = navigator.onLine;
     const lastSync = localStorage.getItem('lastSyncTime');
     const lastSyncTime = lastSync ? new Date(JSON.parse(lastSync)) : null;
-    
+
     // Get pending items from localStorage
     const pendingItems = JSON.parse(localStorage.getItem('pendingSync') || '[]').length;
 
@@ -126,7 +126,7 @@ export const storageService = {
   /**
    * Manually trigger sync
    */
-  async triggerSync(userId: string): Promise<boolean> {
+  async triggerSync(): Promise<boolean> {
     try {
       if (!navigator.onLine) {
         throw new Error('No internet connection. Please check your connection and try again.');
@@ -147,8 +147,7 @@ export const storageService = {
       for (const item of pendingSync) {
         if (item.type === 'grade') {
           try {
-            const resultsRef = collection(db, 'results');
-            // Items would be synced here
+            // Placeholder: await addDoc(collection(db, 'results'), item.data);
             itemsProcessed++;
           } catch (e) {
             console.error('Error syncing item:', e);
@@ -237,7 +236,7 @@ export const storageService = {
       for (let key in localStorage) {
         if (localStorage.hasOwnProperty(key)) {
           const size = localStorage[key].length + key.length;
-          
+
           if (key.includes('lesson')) breakdown.lessons += size;
           else if (key.includes('exam')) breakdown.exams += size;
           else if (key.includes('result')) breakdown.results += size;

@@ -1,5 +1,4 @@
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 
 export const exportService = {
   /**
@@ -44,9 +43,9 @@ export const exportService = {
       // Content
       pdf.setFontSize(11);
       pdf.setTextColor(0, 0, 0);
-      
+
       const lines = pdf.splitTextToSize(content.replace(/[#*_`]/g, ''), contentWidth);
-      
+
       lines.forEach((line: string) => {
         if (currentY > pageHeight - margin) {
           pdf.addPage();
@@ -125,7 +124,7 @@ export const exportService = {
         if (q.type === 'mcq' && q.options) {
           q.options.forEach((opt: string) => {
             const optLines = pdf.splitTextToSize(opt, contentWidth - 5);
-            optLines.forEach((line: string, idx: number) => {
+            optLines.forEach((line: string) => {
               pdf.text(line, margin + 5, currentY);
               currentY += 4;
             });
@@ -163,7 +162,6 @@ export const exportService = {
 
       const pageWidth = pdf.internal.pageSize.getWidth();
       const margin = 15;
-      const contentWidth = pageWidth - 2 * margin;
       let currentY = margin;
 
       // Header
@@ -194,7 +192,7 @@ export const exportService = {
       pdf.setFont('', 'bold');
       pdf.setTextColor(255, 255, 255);
       pdf.setFillColor(0, 150, 136);
-      
+
       const col1 = margin;
       const col2 = margin + 80;
       const col3 = margin + 130;
@@ -212,12 +210,12 @@ export const exportService = {
       // Results
       pdf.setFont('', 'normal');
       pdf.setTextColor(0, 0, 0);
-      
-      const avgScore = results.length > 0 
-        ? results.reduce((sum, r) => sum + r.score, 0) / results.length 
+
+      const avgScore = results.length > 0
+        ? results.reduce((sum, r) => sum + r.score, 0) / results.length
         : 0;
 
-      results.slice(0, 10).forEach((result, idx) => {
+      results.slice(0, 10).forEach((result) => {
         const dateStr = result.createdAt?.toDate?.()?.toLocaleDateString('en-NG') || 'Unknown';
         const gradeLabel = this._getGradeLabel((result.score / 20) * 100);
 
@@ -253,7 +251,7 @@ export const exportService = {
   exportAsCSV(filename: string, data: any[], headers: string[]) {
     try {
       let csv = headers.join(',') + '\n';
-      
+
       data.forEach(row => {
         const values = headers.map(header => {
           const value = row[header];
@@ -267,15 +265,15 @@ export const exportService = {
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
-      
+
       link.setAttribute('href', url);
       link.setAttribute('download', `${filename}-${Date.now()}.csv`);
       link.style.visibility = 'hidden';
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       return true;
     } catch (error) {
       console.error('Error exporting CSV:', error);

@@ -19,7 +19,7 @@ export const Settings = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    const [classes, setClasses] = useState(['JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']);
+    const [classes, setClasses] = useState(['Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6', 'JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']);
     const [newClass, setNewClass] = useState('');
     const [subjects, setSubjects] = useState(['Mathematics', 'English', 'Basic Science', 'Physics', 'Chemistry']);
     const [newSubject, setNewSubject] = useState('');
@@ -120,7 +120,7 @@ export const Settings = () => {
         setError('');
         setSuccess('');
         try {
-            await storageService.triggerSync(auth.currentUser.uid);
+            await storageService.triggerSync();
             setSuccess('Sync completed successfully!');
             setTimeout(() => loadSettings(), 1000);
             setTimeout(() => setSuccess(''), 3000);
@@ -154,11 +154,10 @@ export const Settings = () => {
             )}
 
             {/* Sync Status Card */}
-            <div className={`rounded-3xl p-8 relative overflow-hidden border ${
-                syncStatus?.isOnline
-                    ? 'bg-gradient-to-br from-teal-600/20 to-dark-card border-teal-500/30'
-                    : 'bg-gradient-to-br from-orange-600/20 to-dark-card border-orange-500/30'
-            }`}>
+            <div className={`rounded-3xl p-8 relative overflow-hidden border ${syncStatus?.isOnline
+                ? 'bg-gradient-to-br from-teal-600/20 to-dark-card border-teal-500/30'
+                : 'bg-gradient-to-br from-orange-600/20 to-dark-card border-orange-500/30'
+                }`}>
                 <div className="absolute inset-0 flex items-center justify-center opacity-10">
                     <Wifi className="w-24 h-24 text-white" />
                 </div>

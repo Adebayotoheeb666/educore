@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Send, Download, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
+import { Send, Download, AlertCircle } from 'lucide-react';
 import { geminiService } from '../lib/gemini';
 import { exportService } from '../lib/exportService';
 import { cn } from '../components/Layout';
@@ -10,7 +10,7 @@ import { db, auth } from '../lib/firebase';
 export const LessonGenerator = () => {
     const [topic, setTopic] = useState('');
     const [subject, setSubject] = useState('Basic Science');
-    const [level, setLevel] = useState('JSS 3');
+    const [level, setLevel] = useState('Primary 1');
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [result, setResult] = useState<string | null>(null);
@@ -93,6 +93,10 @@ export const LessonGenerator = () => {
                         className="w-full bg-transparent text-white outline-none font-medium"
                         value={level} onChange={e => setLevel(e.target.value)}
                     >
+                        <option>Creche</option>
+                        <option>Nursery 1</option> <option>Nursery 2</option>
+                        <option>Primary 1</option> <option>Primary 2</option> <option>Primary 3</option>
+                        <option>Primary 4</option> <option>Primary 5</option> <option>Primary 6</option>
                         <option>JSS 1</option> <option>JSS 2</option> <option>JSS 3</option>
                         <option>SS 1</option> <option>SS 2</option> <option>SS 3</option>
                     </select>

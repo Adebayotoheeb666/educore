@@ -14,3 +14,13 @@ body {
   color: var(--color-dark-text);
   font-family: var(--font-sans);
 }
+
+/* Fix for dropdown readability in dark mode */
+select option {
+  background-color: var(--color-dark-card);
+  color: var(--color-dark-text);
+}
+
+select:focus {
+  outline: none;
+}

@@ -4,22 +4,7 @@ import { NavLink } from 'react-router-dom';
 import { auth, db } from '../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
-const ScheduleItem = ({ time, subject, topic, room }: any) => (
-    <div className="flex items-center group p-4 rounded-2xl bg-dark-card border border-white/5 hover:bg-white/5 transition-colors">
-        <div className="flex flex-col items-center mr-6 min-w-[3rem]">
-            <span className="text-teal-400 font-bold">{time.split(" ")[0]}</span>
-            <span className="text-xs text-gray-500 font-bold">{time.split(" ")[1]}</span>
-        </div>
-        <div className="flex-1 border-l border-white/10 pl-6 h-10 flex flex-col justify-center">
-            <h4 className="text-white font-bold">{subject}</h4>
-            <p className="text-sm text-gray-400">{topic}</p>
-        </div>
-        <div className="text-right">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Room</span>
-            <span className="text-gray-300 font-medium">{room}</span>
-        </div>
-    </div>
-);
+
 
 export const Dashboard = () => {
     const user = auth.currentUser;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, CheckSquare, RefreshCw, Save, Trash2, AlertCircle, Download } from 'lucide-react';
+import { Upload, CheckSquare, Trash2, AlertCircle, Download } from 'lucide-react';
 import { cn } from '../components/Layout';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
