@@ -35,42 +35,6 @@ export const AdminDashboard = () => {
 
     // State for fetching
     useEffect(() => {
-        if (!schoolId) return;
-
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // Fetch All School Users
-                const usersQ = query(collection(db, 'users'), where('schoolId', '==', schoolId));
-                const usersSnap = await getDocs(usersQ);
-                const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                setStaff(allUsers.filter((u: any) => u.role === 'staff' || u.role === 'admin'));
-                setStudents(allUsers.filter((u: any) => u.role === 'student'));
-
-                // Fetch Classes
-                const classQ = query(collection(db, 'classes'), where('schoolId', '==', schoolId));
-                const classSnap = await getDocs(classQ);
-                setClasses(classSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-                // Fetch Financials
-                const transQ = query(collection(db, 'financial_transactions'), where('schoolId', '==', schoolId));
-                const transSnap = await getDocs(transQ);
-                const total = transSnap.docs.reduce((acc, doc) => acc + (doc.data().amount || 0), 0);
-
-                // Assuming default fee of 150k per student for now
-                const totalExpected = allUsers.filter((u: any) => u.role === 'student').length * 150000;
-                setFinancials({
-                    totalRevenue: total,
-                    outstanding: totalExpected - total
-                });
-            } catch (err) {
-                console.error("Error fetching school data:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchData();
     }, [schoolId]);
 
