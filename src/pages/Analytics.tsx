@@ -48,6 +48,8 @@ const StudentRow = ({ name, score }: { name: string, score: number }) => {
 export const Analytics = () => {
     const [results, setResults] = useState<Result[]>([]);
     const [loading, setLoading] = useState(true);
+    const [exporting, setExporting] = useState(false);
+    const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('Gradebook');
 
     useEffect(() => {
