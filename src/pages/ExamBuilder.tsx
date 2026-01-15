@@ -157,23 +157,51 @@ export const ExamBuilder = () => {
             {/* Configuration */}
             <section>
                 <div className="text-teal-500 text-xs font-bold uppercase tracking-wider mb-4">EXAM CONFIGURATION</div>
-                <div className="space-y-3">
-                    {[
-                        { label: 'Multiple Choice (MCQ)', checked: true },
-                        { label: 'Short Answer', checked: false },
-                        { label: 'Essay Questions', checked: true }
-                    ].map((opt, i) => (
-                        <div key={i} className="bg-dark-card border border-white/5 p-4 rounded-xl flex items-center justify-between cursor-pointer hover:border-teal-500/30 transition-colors">
-                            <span className="text-white font-bold">{opt.label}</span>
-                            <div className={cn("w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors", opt.checked ? "bg-teal-500 border-teal-500" : "border-gray-600 bg-transparent")}>
-                                {opt.checked && <CheckSquare className="w-4 h-4 text-white" />}
-                            </div>
-                        </div>
-                    ))}
+
+                {/* Question Count */}
+                <div className="bg-dark-card border border-white/5 p-4 rounded-xl mb-4">
+                    <label className="text-white font-bold block mb-2">Number of Questions: {questionCount}</label>
+                    <input
+                        type="range"
+                        min="5"
+                        max="30"
+                        value={questionCount}
+                        onChange={(e) => setQuestionCount(Number(e.target.value))}
+                        className="w-full accent-teal-500"
+                    />
+                    <div className="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>5</span>
+                        <span>30</span>
+                    </div>
                 </div>
 
-                {/* Slider */}
-                <div className="mt-8 px-2">
+                {/* MCQ Ratio */}
+                <div className="bg-dark-card border border-white/5 p-4 rounded-xl mb-4">
+                    <label className="text-white font-bold block mb-2">MCQ vs Essay Mix</label>
+                    <div className="flex gap-4 text-sm">
+                        <div className="flex-1">
+                            <div className="text-teal-400 font-bold">{Math.round(mcqRatio * questionCount)} MCQ</div>
+                            <div className="text-gray-500 text-xs">{Math.round(mcqRatio * 100)}%</div>
+                        </div>
+                        <div className="flex-1">
+                            <div className="text-yellow-400 font-bold">{Math.round((1 - mcqRatio) * questionCount)} Essay</div>
+                            <div className="text-gray-500 text-xs">{Math.round((1 - mcqRatio) * 100)}%</div>
+                        </div>
+                    </div>
+                    <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={mcqRatio}
+                        onChange={(e) => setMcqRatio(Number(e.target.value))}
+                        className="w-full accent-teal-500 mt-3"
+                    />
+                </div>
+
+                {/* Difficulty Slider */}
+                <div className="bg-dark-card border border-white/5 p-4 rounded-xl">
+                    <label className="text-white font-bold block mb-2">Question Difficulty</label>
                     <div className="flex justify-between text-xs font-bold text-green-500 mb-2">
                         <span>EASY</span>
                         <span className="text-teal-500">INTERMEDIATE</span>
@@ -181,9 +209,11 @@ export const ExamBuilder = () => {
                     </div>
                     <input
                         type="range"
-                        className="w-full text-teal-500 accent-teal-500 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        min="0"
+                        max="100"
                         value={difficulty}
                         onChange={(e) => setDifficulty(Number(e.target.value))}
+                        className="w-full accent-teal-500"
                     />
                 </div>
             </section>
