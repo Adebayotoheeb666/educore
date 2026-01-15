@@ -17,6 +17,7 @@ interface Question {
 
 export const ExamBuilder = () => {
     const [loading, setLoading] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [difficulty, setDifficulty] = useState(50);
     const [generatedQuestions, setQuestions] = useState<Question[]>([]);
     const [sourceText, setSourceText] = useState<string>('');
@@ -24,6 +25,7 @@ export const ExamBuilder = () => {
     const [fileName, setFileName] = useState<string>('');
     const [questionCount, setQuestionCount] = useState(10);
     const [mcqRatio, setMcqRatio] = useState(0.6);
+    const [examTitle, setExamTitle] = useState('');
 
     const navigate = useNavigate();
 
