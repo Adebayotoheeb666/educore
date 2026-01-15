@@ -33,6 +33,7 @@ export const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showBulkImport, setShowBulkImport] = useState(false);
+    const [selectedStaffForAssignment, setSelectedStaffForAssignment] = useState<{ id: string; name: string } | null>(null);
 
     const fetchData = async () => {
         if (!schoolId) return;
