@@ -12,11 +12,14 @@ export const LessonGenerator = () => {
     const [subject, setSubject] = useState('Basic Science');
     const [level, setLevel] = useState('JSS 3');
     const [loading, setLoading] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [result, setResult] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const handleGenerate = async () => {
         if (!topic) return;
         setLoading(true);
+        setError(null);
         try {
             const note = await geminiService.generateLessonNote(topic, subject, level);
             setResult(note);
@@ -33,9 +36,21 @@ export const LessonGenerator = () => {
             }
         } catch (e) {
             console.error(e);
-            alert("Failed to generate note. Check console.");
+            setError("Failed to generate note. Please try again.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleExportPDF = async () => {
+        if (!result) return;
+        setExporting(true);
+        try {
+            await exportService.exportLessonAsPDF(topic, subject, level, result);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to export PDF');
+        } finally {
+            setExporting(false);
         }
     };
 
