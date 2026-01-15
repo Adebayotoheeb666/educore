@@ -24,6 +24,36 @@ export const Settings = () => {
     const [subjects, setSubjects] = useState(['Mathematics', 'English', 'Basic Science', 'Physics', 'Chemistry']);
     const [newSubject, setNewSubject] = useState('');
 
+    useEffect(() => {
+        loadSettings();
+        const interval = setInterval(loadSettings, 5000); // Refresh every 5 seconds
+
+        window.addEventListener('online', loadSettings);
+        window.addEventListener('offline', loadSettings);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('online', loadSettings);
+            window.removeEventListener('offline', loadSettings);
+        };
+    }, []);
+
+    const loadSettings = async () => {
+        try {
+            const stats = await storageService.getStorageStats();
+            const sync = storageService.getSyncStatus();
+            setStorageStats(stats);
+            setSyncStatus(sync);
+
+            // Load persisted settings
+            setDataSaver(storageService.isDataSaverEnabled());
+            setGeminiNano(storageService.isGeminiNanoEnabled());
+            setAutoSync(storageService.isAutoSyncOnWifiEnabled());
+        } catch (err) {
+            console.error('Error loading settings:', err);
+        }
+    };
+
     const handleAddClass = () => {
         if (newClass.trim()) {
             setClasses([...classes, newClass.trim()]);
@@ -44,6 +74,61 @@ export const Settings = () => {
 
     const handleRemoveSubject = (s: string) => {
         setSubjects(subjects.filter(item => item !== s));
+    };
+
+    const handleToggleDataSaver = () => {
+        const newValue = !dataSaver;
+        setDataSaver(newValue);
+        storageService.setDataSaverMode(newValue);
+    };
+
+    const handleToggleGeminiNano = () => {
+        const newValue = !geminiNano;
+        setGeminiNano(newValue);
+        storageService.setGeminiNanoMode(newValue);
+    };
+
+    const handleToggleAutoSync = () => {
+        const newValue = !autoSync;
+        setAutoSync(newValue);
+        storageService.setAutoSyncOnWifi(newValue);
+    };
+
+    const handleClearCache = async () => {
+        setLoading(true);
+        setError('');
+        setSuccess('');
+        try {
+            await storageService.clearCache();
+            setSuccess('Cache cleared successfully! Freeing up space...');
+            setTimeout(() => loadSettings(), 1000);
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to clear cache');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleManualSync = async () => {
+        if (!auth.currentUser) {
+            setError('Please sign in to sync data.');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+        setSuccess('');
+        try {
+            await storageService.triggerSync(auth.currentUser.uid);
+            setSuccess('Sync completed successfully!');
+            setTimeout(() => loadSettings(), 1000);
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Sync failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
