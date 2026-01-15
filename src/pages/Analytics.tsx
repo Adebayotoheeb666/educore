@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, Zap, Maximize2, Download, AlertCircle } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { useAuth } from '../hooks/useAuth';
 import { exportService } from '../lib/exportService';
+import type { ExamResult, AIScanResult } from '../lib/types';
 
-interface Result {
+interface UnifiedResult {
     id: string;
     studentName: string;
     score: number;
     total: number;
-    feedback: string;
+    feedback?: string;
+    type: 'exam' | 'ai_scan';
     createdAt: any;
+    subject?: string;
 }
 
 const StudentRow = ({ name, score }: { name: string, score: number }) => {
