@@ -89,6 +89,21 @@ export const ExamBuilder = () => {
         }
     };
 
+    const handleExportExam = async () => {
+        if (generatedQuestions.length === 0) return;
+        setExporting(true);
+        try {
+            await exportService.exportExamAsPDF(
+                examTitle || `Exam-${new Date().toLocaleDateString('en-NG')}`,
+                generatedQuestions
+            );
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to export exam');
+        } finally {
+            setExporting(false);
+        }
+    };
+
     const handleSaveExam = async () => {
         if (!auth.currentUser) {
             alert("Please sign in to save exams.");
@@ -99,7 +114,7 @@ export const ExamBuilder = () => {
         try {
             await addDoc(collection(db, "exams"), {
                 userId: auth.currentUser.uid,
-                title: "Generated Exam", // Ideally customizable
+                title: examTitle || "Generated Exam",
                 questions: generatedQuestions,
                 difficulty,
                 createdAt: serverTimestamp()
