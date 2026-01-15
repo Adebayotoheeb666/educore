@@ -54,7 +54,8 @@ const StudentRow = ({ result }: { result: UnifiedResult }) => {
 };
 
 export const Analytics = () => {
-    const [results, setResults] = useState<Result[]>([]);
+    const { schoolId, user } = useAuth();
+    const [results, setResults] = useState<UnifiedResult[]>([]);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
     const [error, setError] = useState('');
@@ -62,29 +63,81 @@ export const Analytics = () => {
 
     useEffect(() => {
         const fetchResults = async () => {
-            if (!auth.currentUser) return;
+            if (!user || !schoolId) return;
             try {
-                const q = query(
-                    collection(db, "results"),
-                    where("userId", "==", auth.currentUser.uid),
-                    orderBy("createdAt", "desc"),
-                    limit(20)
-                );
-                const querySnapshot = await getDocs(q);
-                const fetchedResults: Result[] = [];
-                querySnapshot.forEach((doc) => {
-                    fetchedResults.push({ id: doc.id, ...doc.data() } as Result);
+                const unifiedResults: UnifiedResult[] = [];
+
+                // Fetch exam results from results collection
+                try {
+                    const examQ = query(
+                        collection(db, "results"),
+                        where("schoolId", "==", schoolId),
+                        where("teacherId", "==", user.uid),
+                        orderBy("updatedAt", "desc"),
+                        limit(50)
+                    );
+                    const examSnapshot = await getDocs(examQ);
+                    examSnapshot.forEach((doc) => {
+                        const data = doc.data() as ExamResult;
+                        unifiedResults.push({
+                            id: doc.id,
+                            studentName: `Student ${data.studentId.substring(0, 8)}`,
+                            score: data.totalScore,
+                            total: 100,
+                            feedback: data.remarks,
+                            type: 'exam',
+                            createdAt: data.updatedAt,
+                            subject: data.subjectId
+                        });
+                    });
+                } catch (err) {
+                    console.warn("Error fetching exam results:", err);
+                }
+
+                // Fetch AI scan results from ai_scan_results collection
+                try {
+                    const aiQ = query(
+                        collection(db, "ai_scan_results"),
+                        where("schoolId", "==", schoolId),
+                        where("teacherId", "==", user.uid),
+                        orderBy("createdAt", "desc"),
+                        limit(50)
+                    );
+                    const aiSnapshot = await getDocs(aiQ);
+                    aiSnapshot.forEach((doc) => {
+                        const data = doc.data() as AIScanResult;
+                        unifiedResults.push({
+                            id: doc.id,
+                            studentName: data.studentName,
+                            score: data.score,
+                            total: data.total,
+                            feedback: data.feedback,
+                            type: 'ai_scan',
+                            createdAt: data.createdAt
+                        });
+                    });
+                } catch (err) {
+                    console.warn("Error fetching AI scan results:", err);
+                }
+
+                // Sort by creation date
+                unifiedResults.sort((a, b) => {
+                    const aDate = a.createdAt?.toDate?.() || new Date(0);
+                    const bDate = b.createdAt?.toDate?.() || new Date(0);
+                    return bDate.getTime() - aDate.getTime();
                 });
-                setResults(fetchedResults);
+
+                setResults(unifiedResults);
             } catch (error) {
                 console.error("Error fetching analytics:", error);
+                setError("Failed to fetch results. Please try again.");
             } finally {
                 setLoading(false);
             }
         };
 
         fetchResults();
-    }, []);
+    }, [schoolId, user]);
 
     // Calculate Class Metrics
     const avgScore = results.length > 0
