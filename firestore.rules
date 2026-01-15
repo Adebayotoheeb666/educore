@@ -31,9 +31,9 @@ service cloud.firestore {
       return hasRole('parent') && exists(/databases/$(database)/documents/parent_student_links/$(request.auth.uid)_$(studentId));
     }
 
-    // Users: Can read/write their own profile. Admin can manage school users.
+    // Users: Can read/write their own profile. Admin can manage school users. Parents can see their child's profile.
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isFromSchool(resource.data.schoolId));
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isFromSchool(resource.data.schoolId) || isParentOf(userId));
       allow write: if isAuthenticated() && (request.auth.uid == userId || (isAdmin() && request.resource.data.schoolId == getUserData().schoolId));
     }
 
