@@ -56,12 +56,22 @@ service cloud.firestore {
       allow read, write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId);
     }
 
-    // Attendance & Results: School-isolated
+    // Parent-Student Links: School-isolated, admin-managed
+    match /parent_student_links/{linkId} {
+      allow read: if isAuthenticated() && (request.auth.uid in resource.data.parentIds || (isAdmin() && isFromSchool(resource.data.schoolId)));
+      allow write: if isAdmin() && isFromSchool(request.resource.data.schoolId);
+      allow create: if isAdmin() && isFromSchool(request.resource.data.schoolId);
+      allow delete: if isAdmin() && isFromSchool(resource.data.schoolId);
+    }
+
+    // Attendance & Results: School-isolated, with parent-student validation
     match /attendance/{id} {
-      allow read, write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId);
+      allow read: if isFromSchool(resource.data.schoolId) && (resource.data.studentId == request.auth.uid || isAdmin() || isParentOf(resource.data.studentId));
+      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && (isAdmin() || hasRole('staff'));
     }
     match /results/{id} {
-      allow read, write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId);
+      allow read: if isFromSchool(resource.data.schoolId) && (resource.data.studentId == request.auth.uid || isAdmin() || isParentOf(resource.data.studentId));
+      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && (isAdmin() || hasRole('staff'));
     }
 
     // Financial Module (Legacy support with multi-tenancy)
