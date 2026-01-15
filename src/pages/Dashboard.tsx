@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const ScheduleItem = ({ time, subject, topic, room }: any) => (
     <div className="flex items-center group p-4 rounded-2xl bg-dark-card border border-white/5 hover:bg-white/5 transition-colors">
@@ -22,6 +24,26 @@ const ScheduleItem = ({ time, subject, topic, room }: any) => (
 export const Dashboard = () => {
     const user = auth.currentUser;
     const displayName = user?.displayName || 'Teacher';
+    const [pendingCount, setPendingCount] = useState(0);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchPendingGrades = async () => {
+            if (!user) return;
+            try {
+                const q = query(collection(db, 'results'), where('userId', '==', user.uid));
+                const snapshot = await getDocs(q);
+                setPendingCount(snapshot.size);
+            } catch (err) {
+                console.error('Error fetching pending grades:', err);
+                setPendingCount(0);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPendingGrades();
+    }, [user]);
 
     return (
         <div className="space-y-8 pb-20">
@@ -91,12 +113,13 @@ export const Dashboard = () => {
             <div>
                 <div className="flex items-center justify-between mb-6 pt-4">
                     <h2 className="text-xl font-bold text-white">Today's Schedule</h2>
-                    <span className="text-gray-500 text-sm font-bold">Monday, Oct 24</span>
+                    <span className="text-gray-500 text-sm font-bold">{new Date().toLocaleDateString('en-NG', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
                 </div>
 
                 <div className="space-y-3">
-                    <ScheduleItem time="09:00 AM" subject="SS1 Physics" topic="Kinematics & Dynamics" room="Hall A" />
-                    <ScheduleItem time="11:30 AM" subject="SS3 Mathematics" topic="Calculus II: Integration" room="Lab 2" />
+                    <div className="text-center py-8 text-gray-500">
+                        <p>No schedule added yet. Add your classes to track your daily timetable.</p>
+                    </div>
                 </div>
             </div>
 
@@ -104,22 +127,24 @@ export const Dashboard = () => {
             <div className="relative overflow-hidden bg-dark-card border border-white/5 rounded-[32px] p-8">
                 <div className="flex items-start justify-between relative z-10">
                     <div>
-                        <h2 className="text-xl font-bold text-white mb-1">Pending Grading</h2>
-                        <p className="text-gray-400">Automated scoring ready</p>
+                        <h2 className="text-xl font-bold text-white mb-1">Graded Scripts</h2>
+                        <p className="text-gray-400">{pendingCount === 0 ? 'No grades recorded yet' : 'Scores recorded from Paper Scanner'}</p>
                     </div>
-                    <div className="px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-bold uppercase">
-                        Urgent
-                    </div>
+                    {pendingCount > 0 && (
+                        <div className="px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-bold uppercase">
+                            {pendingCount} {pendingCount === 1 ? 'Grade' : 'Grades'}
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-8 relative z-10 flex items-end justify-between">
                     <div>
-                        <span className="text-6xl font-bold text-white tracking-tighter">45</span>
-                        <span className="ml-3 text-gray-500 font-bold tracking-widest text-sm uppercase">Scripts to mark</span>
+                        <span className="text-6xl font-bold text-white tracking-tighter">{loading ? '...' : pendingCount}</span>
+                        <span className="ml-3 text-gray-500 font-bold tracking-widest text-sm uppercase">Scripts graded</span>
                     </div>
                     <NavLink to="/marking" className="bg-teal-500 text-dark-bg px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-teal-400 transition-colors">
                         <ScrollText className="w-5 h-5" />
-                        Start AI Marking
+                        {pendingCount === 0 ? 'Start Grading' : 'View Analytics'}
                     </NavLink>
                 </div>
 

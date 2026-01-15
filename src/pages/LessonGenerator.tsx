@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Send, Download, Settings as SettingsIcon } from 'lucide-react';
+import { Send, Download, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
 import { geminiService } from '../lib/gemini';
+import { exportService } from '../lib/exportService';
 import { cn } from '../components/Layout';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
@@ -11,11 +12,14 @@ export const LessonGenerator = () => {
     const [subject, setSubject] = useState('Basic Science');
     const [level, setLevel] = useState('JSS 3');
     const [loading, setLoading] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [result, setResult] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const handleGenerate = async () => {
         if (!topic) return;
         setLoading(true);
+        setError(null);
         try {
             const note = await geminiService.generateLessonNote(topic, subject, level);
             setResult(note);
@@ -32,9 +36,21 @@ export const LessonGenerator = () => {
             }
         } catch (e) {
             console.error(e);
-            alert("Failed to generate note. Check console.");
+            setError("Failed to generate note. Please try again.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleExportPDF = async () => {
+        if (!result) return;
+        setExporting(true);
+        try {
+            await exportService.exportLessonAsPDF(topic, subject, level, result);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to export PDF');
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -48,10 +64,15 @@ export const LessonGenerator = () => {
                     </div>
                     <h1 className="text-2xl font-bold text-white">Lesson Generator</h1>
                 </div>
-                <button className="p-2 hover:bg-white/5 rounded-lg text-gray-400">
-                    <SettingsIcon className="w-5 h-5" />
-                </button>
             </header>
+
+            {/* Error Alert */}
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-red-300 text-sm">{error}</p>
+                </div>
+            )}
 
             {/* Controls */}
             <div className="grid grid-cols-2 gap-4">
@@ -112,8 +133,13 @@ export const LessonGenerator = () => {
                 <div className="border border-white/10 rounded-2xl bg-dark-card overflow-hidden">
                     <div className="bg-white/5 p-3 flex justify-between items-center border-b border-white/5">
                         <span className="text-teal-400 text-sm font-bold">DRAFT 01</span>
-                        <button className="text-teal-400 hover:text-teal-300 flex items-center gap-1 text-sm bg-teal-500/10 px-3 py-1 rounded-lg">
-                            <Download className="w-4 h-4" /> Export
+                        <button
+                            onClick={handleExportPDF}
+                            disabled={exporting}
+                            className="text-teal-400 hover:text-teal-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 text-sm bg-teal-500/10 px-3 py-1 rounded-lg transition-colors"
+                        >
+                            <Download className={cn("w-4 h-4", exporting && "animate-spin")} />
+                            {exporting ? 'Exporting...' : 'Export PDF'}
                         </button>
                     </div>
                     <div className="p-6 prose prose-invert prose-teal max-w-none text-gray-300">

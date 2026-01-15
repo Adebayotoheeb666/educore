@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Zap, Maximize2 } from 'lucide-react';
+import { RefreshCw, Zap, Maximize2, Download, AlertCircle } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+import { exportService } from '../lib/exportService';
 
 interface Result {
     id: string;
@@ -47,6 +48,8 @@ const StudentRow = ({ name, score }: { name: string, score: number }) => {
 export const Analytics = () => {
     const [results, setResults] = useState<Result[]>([]);
     const [loading, setLoading] = useState(true);
+    const [exporting, setExporting] = useState(false);
+    const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('Gradebook');
 
     useEffect(() => {
@@ -80,11 +83,66 @@ export const Analytics = () => {
         ? (results.reduce((acc, curr) => acc + curr.score, 0) / (results.length * 20)) * 100
         : 0;
 
+    const handleExportGradeReport = async () => {
+        if (results.length === 0) {
+            setError('No grades to export');
+            return;
+        }
+
+        setExporting(true);
+        setError('');
+        try {
+            // Export a combined report for all students
+            await exportService.exportGradeReportAsPDF('Class Report', results);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to export report');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleExportAsCSV = () => {
+        if (results.length === 0) {
+            setError('No grades to export');
+            return;
+        }
+
+        try {
+            const data = results.map(r => ({
+                'Student Name': r.studentName,
+                'Score': r.score,
+                'Total': r.total,
+                'Percentage': ((r.score / r.total) * 100).toFixed(1) + '%',
+                'Feedback': r.feedback,
+                'Date': r.createdAt?.toDate?.()?.toLocaleDateString('en-NG') || 'N/A'
+            }));
+
+            exportService.exportAsCSV('class-grades', data, [
+                'Student Name',
+                'Score',
+                'Total',
+                'Percentage',
+                'Feedback',
+                'Date'
+            ]);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to export CSV');
+        }
+    };
+
     return (
-        <div className="flex gap-6 h-[calc(100vh-100px)]">
+        <div className="flex gap-6 h-auto">
             {/* Main Table Section */}
-            <div className="flex-1 flex flex-col">
-                <header className="mb-8">
+            <div className="flex-1 flex flex-col space-y-6">
+                {/* Error Alert */}
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-red-300 text-sm">{error}</p>
+                    </div>
+                )}
+
+                <header className="mb-0">
                     <div className="flex justify-between items-start">
                         <div>
                             <h1 className="text-3xl font-bold text-white mb-2">Class Performance</h1>
@@ -97,16 +155,39 @@ export const Analytics = () => {
                     </div>
 
                     {/* Sub Nav */}
-                    <div className="flex gap-4 mt-6 border-b border-white/10 pb-4">
-                        {['Gradebook', 'Heatmap', 'Attendance'].map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`text-sm font-bold pb-4 -mb-4 border-b-2 transition-colors ${activeTab === tab ? 'text-teal-400 border-teal-400' : 'text-gray-500 border-transparent hover:text-white'}`}
-                            >
-                                {tab}
-                            </button>
-                        ))}
+                    <div className="flex gap-4 mt-6 border-b border-white/10 pb-4 justify-between items-center">
+                        <div className="flex gap-4">
+                            {['Gradebook', 'Heatmap', 'Attendance'].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`text-sm font-bold pb-4 -mb-4 border-b-2 transition-colors ${activeTab === tab ? 'text-teal-400 border-teal-400' : 'text-gray-500 border-transparent hover:text-white'}`}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Export Buttons */}
+                        {activeTab === 'Gradebook' && results.length > 0 && (
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleExportGradeReport}
+                                    disabled={exporting}
+                                    className="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+                                >
+                                    <Download className={`w-4 h-4 ${exporting ? 'animate-spin' : ''}`} />
+                                    {exporting ? 'Exporting...' : 'PDF Report'}
+                                </button>
+                                <button
+                                    onClick={handleExportAsCSV}
+                                    className="flex items-center gap-2 bg-dark-card border border-white/10 hover:bg-white/5 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    CSV Export
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </header>
 
