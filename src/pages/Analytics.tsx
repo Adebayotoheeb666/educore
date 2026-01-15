@@ -155,16 +155,39 @@ export const Analytics = () => {
                     </div>
 
                     {/* Sub Nav */}
-                    <div className="flex gap-4 mt-6 border-b border-white/10 pb-4">
-                        {['Gradebook', 'Heatmap', 'Attendance'].map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`text-sm font-bold pb-4 -mb-4 border-b-2 transition-colors ${activeTab === tab ? 'text-teal-400 border-teal-400' : 'text-gray-500 border-transparent hover:text-white'}`}
-                            >
-                                {tab}
-                            </button>
-                        ))}
+                    <div className="flex gap-4 mt-6 border-b border-white/10 pb-4 justify-between items-center">
+                        <div className="flex gap-4">
+                            {['Gradebook', 'Heatmap', 'Attendance'].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`text-sm font-bold pb-4 -mb-4 border-b-2 transition-colors ${activeTab === tab ? 'text-teal-400 border-teal-400' : 'text-gray-500 border-transparent hover:text-white'}`}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Export Buttons */}
+                        {activeTab === 'Gradebook' && results.length > 0 && (
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleExportGradeReport}
+                                    disabled={exporting}
+                                    className="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+                                >
+                                    <Download className={`w-4 h-4 ${exporting ? 'animate-spin' : ''}`} />
+                                    {exporting ? 'Exporting...' : 'PDF Report'}
+                                </button>
+                                <button
+                                    onClick={handleExportAsCSV}
+                                    className="flex items-center gap-2 bg-dark-card border border-white/10 hover:bg-white/5 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    CSV Export
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </header>
 
