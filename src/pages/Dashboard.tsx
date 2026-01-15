@@ -127,22 +127,24 @@ export const Dashboard = () => {
             <div className="relative overflow-hidden bg-dark-card border border-white/5 rounded-[32px] p-8">
                 <div className="flex items-start justify-between relative z-10">
                     <div>
-                        <h2 className="text-xl font-bold text-white mb-1">Pending Grading</h2>
-                        <p className="text-gray-400">Automated scoring ready</p>
+                        <h2 className="text-xl font-bold text-white mb-1">Graded Scripts</h2>
+                        <p className="text-gray-400">{pendingCount === 0 ? 'No grades recorded yet' : 'Scores recorded from Paper Scanner'}</p>
                     </div>
-                    <div className="px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-bold uppercase">
-                        Urgent
-                    </div>
+                    {pendingCount > 0 && (
+                        <div className="px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-bold uppercase">
+                            {pendingCount} {pendingCount === 1 ? 'Grade' : 'Grades'}
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-8 relative z-10 flex items-end justify-between">
                     <div>
-                        <span className="text-6xl font-bold text-white tracking-tighter">45</span>
-                        <span className="ml-3 text-gray-500 font-bold tracking-widest text-sm uppercase">Scripts to mark</span>
+                        <span className="text-6xl font-bold text-white tracking-tighter">{loading ? '...' : pendingCount}</span>
+                        <span className="ml-3 text-gray-500 font-bold tracking-widest text-sm uppercase">Scripts graded</span>
                     </div>
                     <NavLink to="/marking" className="bg-teal-500 text-dark-bg px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-teal-400 transition-colors">
                         <ScrollText className="w-5 h-5" />
-                        Start AI Marking
+                        {pendingCount === 0 ? 'Start Grading' : 'View Analytics'}
                     </NavLink>
                 </div>
 
