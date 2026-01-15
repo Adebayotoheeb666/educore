@@ -69,6 +69,20 @@ export const AdminDashboard = () => {
         }
     };
 
+    const handleBulkImportSuccess = (result: ImportResult) => {
+        // Refresh student list
+        if (result.imported > 0) {
+            fetchData();
+        }
+    };
+
+    // State for fetching
+    useEffect(() => {
+        if (schoolId) {
+            fetchData();
+        }
+    }, [schoolId]);
+
     // Placeholder for data fetching logic
 
     if (role !== 'admin') {
