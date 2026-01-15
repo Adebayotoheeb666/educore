@@ -4,6 +4,8 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { geminiService } from '../lib/gemini';
+import { useAuth } from '../hooks/useAuth';
+import type { AIScanResult } from '../lib/types';
 
 interface GradingData {
     score: number;
