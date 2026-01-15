@@ -83,6 +83,53 @@ export const Analytics = () => {
         ? (results.reduce((acc, curr) => acc + curr.score, 0) / (results.length * 20)) * 100
         : 0;
 
+    const handleExportGradeReport = async () => {
+        if (results.length === 0) {
+            setError('No grades to export');
+            return;
+        }
+
+        setExporting(true);
+        setError('');
+        try {
+            // Export a combined report for all students
+            await exportService.exportGradeReportAsPDF('Class Report', results);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to export report');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleExportAsCSV = () => {
+        if (results.length === 0) {
+            setError('No grades to export');
+            return;
+        }
+
+        try {
+            const data = results.map(r => ({
+                'Student Name': r.studentName,
+                'Score': r.score,
+                'Total': r.total,
+                'Percentage': ((r.score / r.total) * 100).toFixed(1) + '%',
+                'Feedback': r.feedback,
+                'Date': r.createdAt?.toDate?.()?.toLocaleDateString('en-NG') || 'N/A'
+            }));
+
+            exportService.exportAsCSV('class-grades', data, [
+                'Student Name',
+                'Score',
+                'Total',
+                'Percentage',
+                'Feedback',
+                'Date'
+            ]);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to export CSV');
+        }
+    };
+
     return (
         <div className="flex gap-6 h-[calc(100vh-100px)]">
             {/* Main Table Section */}
