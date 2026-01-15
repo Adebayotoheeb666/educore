@@ -134,27 +134,74 @@ export const Settings = () => {
     return (
         <div className="max-w-xl mx-auto space-y-8">
             <header className="flex items-center gap-4 mb-8">
-                <button className="text-white text-2xl">‹</button>
                 <h1 className="text-xl font-bold text-white">Connectivity & Storage</h1>
             </header>
 
-            {/* Network Viz (Static placeholder for the cool graph) */}
-            <div className="bg-gradient-to-br from-orange-400/20 to-dark-card rounded-3xl p-6 h-48 relative overflow-hidden border border-white/5">
-                <div className="absolute inset-0 flex items-center justify-center opacity-30">
-                    {/* Simplified network text rep */}
+            {/* Success Alert */}
+            {success && (
+                <div className="bg-teal-500/10 border border-teal-500/30 rounded-2xl p-4 flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-teal-300 text-sm">{success}</p>
+                </div>
+            )}
+
+            {/* Error Alert */}
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-red-300 text-sm">{error}</p>
+                </div>
+            )}
+
+            {/* Sync Status Card */}
+            <div className={`rounded-3xl p-8 relative overflow-hidden border ${
+                syncStatus?.isOnline
+                    ? 'bg-gradient-to-br from-teal-600/20 to-dark-card border-teal-500/30'
+                    : 'bg-gradient-to-br from-orange-600/20 to-dark-card border-orange-500/30'
+            }`}>
+                <div className="absolute inset-0 flex items-center justify-center opacity-10">
                     <Wifi className="w-24 h-24 text-white" />
                 </div>
-                <div className="absolute bottom-6 left-6">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 rounded-full bg-teal-500 shadow-[0_0_10px_teal]"></div>
-                        <span className="text-white text-xs font-bold uppercase tracking-widest">SYSTEM OPTIMIZED</span>
+                <div className="absolute top-6 left-6 right-6 relative z-10">
+                    <div className="flex items-center gap-2 mb-4">
+                        {syncStatus?.isOnline ? (
+                            <>
+                                <div className="w-3 h-3 rounded-full bg-teal-500 shadow-[0_0_10px_rgba(0,150,136,1)]"></div>
+                                <span className="text-teal-400 text-xs font-bold uppercase tracking-wider">ONLINE</span>
+                            </>
+                        ) : (
+                            <>
+                                <div className="w-3 h-3 rounded-full bg-orange-500 animate-pulse"></div>
+                                <span className="text-orange-400 text-xs font-bold uppercase tracking-wider">OFFLINE MODE</span>
+                            </>
+                        )}
                     </div>
-                    <h2 className="text-white font-bold text-lg">Sync Status</h2>
-                    <p className="text-gray-400 text-sm">Last synced: 2 minutes ago</p>
+
+                    <h2 className="text-white font-bold text-xl mb-1">Sync Status</h2>
+                    <div className="space-y-2 mb-6">
+                        {syncStatus?.isSynced ? (
+                            <p className="text-teal-300 text-sm flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4" />
+                                Everything is synced
+                            </p>
+                        ) : (
+                            <p className="text-orange-300 text-sm">{syncStatus?.pendingItems} items waiting to sync</p>
+                        )}
+                        {syncStatus?.lastSyncTime && (
+                            <p className="text-gray-400 text-xs">
+                                Last synced: {new Date(syncStatus.lastSyncTime).toLocaleString('en-NG')}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
-                <button className="absolute bottom-6 right-6 bg-teal-600 hover:bg-teal-500 text-white font-bold px-6 py-2 rounded-xl text-sm transition-colors shadow-lg shadow-teal-900/50">
-                    SYNC NOW
+                <button
+                    onClick={handleManualSync}
+                    disabled={loading || syncStatus?.isSynced}
+                    className="absolute bottom-6 right-6 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold px-6 py-2 rounded-xl text-sm transition-colors shadow-lg shadow-teal-900/50 flex items-center gap-2 relative z-10"
+                >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    {loading ? 'Syncing...' : 'SYNC NOW'}
                 </button>
             </div>
 
