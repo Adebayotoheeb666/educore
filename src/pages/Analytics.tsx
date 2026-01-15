@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Zap, Maximize2 } from 'lucide-react';
+import { RefreshCw, Zap, Maximize2, Download, AlertCircle } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+import { exportService } from '../lib/exportService';
 
 interface Result {
     id: string;
