@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Send, Download, Settings as SettingsIcon } from 'lucide-react';
+import { Send, Download, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
 import { geminiService } from '../lib/gemini';
+import { exportService } from '../lib/exportService';
 import { cn } from '../components/Layout';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
