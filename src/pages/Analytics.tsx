@@ -1,52 +1,61 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, Zap, Maximize2, Download, AlertCircle } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { useAuth } from '../hooks/useAuth';
 import { exportService } from '../lib/exportService';
+import type { ExamResult, AIScanResult } from '../lib/types';
 
-interface Result {
+interface UnifiedResult {
     id: string;
     studentName: string;
     score: number;
     total: number;
-    feedback: string;
+    feedback?: string;
+    type: 'exam' | 'ai_scan';
     createdAt: any;
+    subject?: string;
 }
 
-const StudentRow = ({ name, score }: { name: string, score: number }) => {
+const StudentRow = ({ result }: { result: UnifiedResult }) => {
     let grade = 'F';
     let color = "bg-red-500 text-white";
 
-    const percentage = (score / 20) * 100;
+    const percentage = (result.score / result.total) * 100;
 
     if (percentage >= 70) { grade = 'A'; color = "bg-teal-500 text-white"; }
     else if (percentage >= 60) { grade = 'B'; color = "bg-yellow-500 text-black"; }
     else if (percentage >= 50) { grade = 'C'; color = "bg-yellow-600 text-white"; }
     else if (percentage >= 45) { grade = 'D'; color = "bg-orange-500 text-white"; }
 
+    const typeLabel = result.type === 'exam' ? 'Exam' : 'AI Scan';
+    const dateStr = result.createdAt?.toDate?.()?.toLocaleDateString('en-NG') || 'N/A';
+
     return (
-        <div className="grid grid-cols-5 gap-4 items-center py-4 border-b border-white/5 hover:bg-white/5 px-4 transition-colors">
-            <div className="col-span-1 flex items-center gap-3">
+        <div className="grid grid-cols-6 gap-4 items-center py-4 border-b border-white/5 hover:bg-white/5 px-4 transition-colors">
+            <div className="col-span-2 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden">
-                    <img src={`https://ui-avatars.com/api/?name=${name}&background=random`} alt={name} />
+                    <img src={`https://ui-avatars.com/api/?name=${result.studentName}&background=random`} alt={result.studentName} />
                 </div>
-                <span className="font-bold text-white">{name}</span>
+                <span className="font-bold text-white text-sm">{result.studentName}</span>
             </div>
-            {/* Mock columns for now, just showing the latest score in Alg 1 */}
+            <div className="text-center text-sm text-gray-400">{result.subject || '-'}</div>
             <div className="flex justify-center">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${color}`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${color}`}>
                     {grade}
                 </div>
             </div>
-            <div className="text-center text-gray-600">-</div>
-            <div className="text-center text-gray-600">-</div>
-            <div className="text-center text-gray-600">-</div>
+            <div className="text-center text-sm text-gray-400">{result.score}/{result.total}</div>
+            <div className="text-center text-sm text-gray-400">
+                <span className="bg-teal-500/20 text-teal-300 px-2 py-1 rounded text-xs">{typeLabel}</span>
+            </div>
         </div>
     );
 };
 
 export const Analytics = () => {
-    const [results, setResults] = useState<Result[]>([]);
+    const { schoolId, user } = useAuth();
+    const [results, setResults] = useState<UnifiedResult[]>([]);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
     const [error, setError] = useState('');
@@ -54,29 +63,81 @@ export const Analytics = () => {
 
     useEffect(() => {
         const fetchResults = async () => {
-            if (!auth.currentUser) return;
+            if (!user || !schoolId) return;
             try {
-                const q = query(
-                    collection(db, "results"),
-                    where("userId", "==", auth.currentUser.uid),
-                    orderBy("createdAt", "desc"),
-                    limit(20)
-                );
-                const querySnapshot = await getDocs(q);
-                const fetchedResults: Result[] = [];
-                querySnapshot.forEach((doc) => {
-                    fetchedResults.push({ id: doc.id, ...doc.data() } as Result);
+                const unifiedResults: UnifiedResult[] = [];
+
+                // Fetch exam results from results collection
+                try {
+                    const examQ = query(
+                        collection(db, "results"),
+                        where("schoolId", "==", schoolId),
+                        where("teacherId", "==", user.uid),
+                        orderBy("updatedAt", "desc"),
+                        limit(50)
+                    );
+                    const examSnapshot = await getDocs(examQ);
+                    examSnapshot.forEach((doc) => {
+                        const data = doc.data() as ExamResult;
+                        unifiedResults.push({
+                            id: doc.id,
+                            studentName: `Student ${data.studentId.substring(0, 8)}`,
+                            score: data.totalScore,
+                            total: 100,
+                            feedback: data.remarks,
+                            type: 'exam',
+                            createdAt: data.updatedAt,
+                            subject: data.subjectId
+                        });
+                    });
+                } catch (err) {
+                    console.warn("Error fetching exam results:", err);
+                }
+
+                // Fetch AI scan results from ai_scan_results collection
+                try {
+                    const aiQ = query(
+                        collection(db, "ai_scan_results"),
+                        where("schoolId", "==", schoolId),
+                        where("teacherId", "==", user.uid),
+                        orderBy("createdAt", "desc"),
+                        limit(50)
+                    );
+                    const aiSnapshot = await getDocs(aiQ);
+                    aiSnapshot.forEach((doc) => {
+                        const data = doc.data() as AIScanResult;
+                        unifiedResults.push({
+                            id: doc.id,
+                            studentName: data.studentName,
+                            score: data.score,
+                            total: data.total,
+                            feedback: data.feedback,
+                            type: 'ai_scan',
+                            createdAt: data.createdAt
+                        });
+                    });
+                } catch (err) {
+                    console.warn("Error fetching AI scan results:", err);
+                }
+
+                // Sort by creation date
+                unifiedResults.sort((a, b) => {
+                    const aDate = a.createdAt?.toDate?.() || new Date(0);
+                    const bDate = b.createdAt?.toDate?.() || new Date(0);
+                    return bDate.getTime() - aDate.getTime();
                 });
-                setResults(fetchedResults);
+
+                setResults(unifiedResults);
             } catch (error) {
                 console.error("Error fetching analytics:", error);
+                setError("Failed to fetch results. Please try again.");
             } finally {
                 setLoading(false);
             }
         };
 
         fetchResults();
-    }, []);
+    }, [schoolId, user]);
 
     // Calculate Class Metrics
     const avgScore = results.length > 0
@@ -110,18 +171,22 @@ export const Analytics = () => {
         try {
             const data = results.map(r => ({
                 'Student Name': r.studentName,
+                'Subject': r.subject || '-',
                 'Score': r.score,
                 'Total': r.total,
                 'Percentage': ((r.score / r.total) * 100).toFixed(1) + '%',
-                'Feedback': r.feedback,
+                'Type': r.type === 'exam' ? 'Exam' : 'AI Scan',
+                'Feedback': r.feedback || '-',
                 'Date': r.createdAt?.toDate?.()?.toLocaleDateString('en-NG') || 'N/A'
             }));
 
             exportService.exportAsCSV('class-grades', data, [
                 'Student Name',
+                'Subject',
                 'Score',
                 'Total',
                 'Percentage',
+                'Type',
                 'Feedback',
                 'Date'
             ]);
@@ -204,19 +269,19 @@ export const Analytics = () => {
 
                         {/* Table Header */}
                         <div className="bg-dark-card rounded-t-2xl border border-white/5 border-b-0 flex-1 overflow-hidden">
-                            <div className="grid grid-cols-5 gap-4 px-4 py-4 bg-white/5 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                <div className="col-span-1">Student</div>
-                                <div className="text-center">Latest</div>
-                                <div className="text-center">Test 2</div>
-                                <div className="text-center">Test 1</div>
-                                <div className="text-center">Avg</div>
+                            <div className="grid grid-cols-6 gap-4 px-4 py-4 bg-white/5 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                <div className="col-span-2">Student</div>
+                                <div className="text-center">Subject</div>
+                                <div className="text-center">Grade</div>
+                                <div className="text-center">Score</div>
+                                <div className="text-center">Source</div>
                             </div>
                             <div className="overflow-y-auto max-h-[500px]">
                                 {loading && <div className="p-4 text-center text-gray-500">Loading data...</div>}
-                                {!loading && results.length === 0 && <div className="p-4 text-center text-gray-500">No results found via Paper Scanner.</div>}
+                                {!loading && results.length === 0 && <div className="p-4 text-center text-gray-500">No results recorded yet.</div>}
 
                                 {results.map((res) => (
-                                    <StudentRow key={res.id} name={res.studentName} score={res.score} />
+                                    <StudentRow key={res.id} result={res} />
                                 ))}
                             </div>
                         </div>

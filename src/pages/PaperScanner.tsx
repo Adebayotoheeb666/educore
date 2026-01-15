@@ -4,6 +4,8 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { geminiService } from '../lib/gemini';
+import { useAuth } from '../hooks/useAuth';
+import type { AIScanResult } from '../lib/types';
 
 interface GradingData {
     score: number;
@@ -14,6 +16,7 @@ interface GradingData {
 }
 
 export const PaperScanner = () => {
+    const { schoolId, user } = useAuth();
     const [scanned, setScanned] = useState(false);
     const [imagePreview, setImagePreview] = useState<string>('');
     const [loading, setLoading] = useState(false);
@@ -61,7 +64,7 @@ export const PaperScanner = () => {
     };
 
     const handleSaveResult = async () => {
-        if (!auth.currentUser) {
+        if (!auth.currentUser || !schoolId) {
             alert("Please sign in to save results.");
             return;
         }
@@ -72,16 +75,19 @@ export const PaperScanner = () => {
         }
 
         try {
-            await addDoc(collection(db, "results"), {
-                userId: auth.currentUser.uid,
-                studentName: studentName,
+            const aiScanData: AIScanResult = {
+                schoolId,
+                studentName: studentName.trim(),
+                teacherId: auth.currentUser.uid,
                 score: grading.score,
                 total: grading.total,
                 feedback: grading.feedback,
                 missingKeywords: grading.missingKeywords,
                 ocrAccuracy: grading.ocrAccuracy,
                 createdAt: serverTimestamp()
-            });
+            };
+
+            await addDoc(collection(db, "ai_scan_results"), aiScanData);
             alert("Result Recorded!");
             navigate('/analytics');
         } catch (e) {

@@ -8,9 +8,13 @@ import {
     MoreVertical,
     DollarSign,
     TrendingUp,
-    Download
+    Download,
+    X
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { BulkStudentImport } from '../components/BulkStudentImport';
+import { StaffAssignmentModal } from '../components/StaffAssignmentModal';
+import { ParentStudentLinkModal } from '../components/ParentStudentLinkModal';
 import { db } from '../lib/firebase';
 import {
     collection,
@@ -18,6 +22,7 @@ import {
     where,
     getDocs
 } from 'firebase/firestore';
+import type { ImportResult } from '../lib/bulkImportService';
 
 export const AdminDashboard = () => {
     const { schoolId, role } = useAuth();
@@ -28,52 +33,149 @@ export const AdminDashboard = () => {
     const [financials, setFinancials] = useState({ totalRevenue: 0, outstanding: 0 });
     const [loading, setLoading] = useState(true);
     const [showAddMenu, setShowAddMenu] = useState(false);
+    const [showBulkImport, setShowBulkImport] = useState(false);
+    const [selectedStaffForAssignment, setSelectedStaffForAssignment] = useState<{ id: string; name: string } | null>(null);
+    const [selectedStudentForLinking, setSelectedStudentForLinking] = useState<{ id: string; name: string } | null>(null);
+
+    const fetchData = async () => {
+        if (!schoolId) return;
+
+        setLoading(true);
+        try {
+            // Fetch All School Users
+            const usersQ = query(collection(db, 'users'), where('schoolId', '==', schoolId));
+            const usersSnap = await getDocs(usersQ);
+            const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            setStaff(allUsers.filter((u: any) => u.role === 'staff' || u.role === 'admin'));
+            setStudents(allUsers.filter((u: any) => u.role === 'student'));
+
+            // Fetch Classes
+            const classQ = query(collection(db, 'classes'), where('schoolId', '==', schoolId));
+            const classSnap = await getDocs(classQ);
+            setClasses(classSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+            // Fetch Financials
+            const transQ = query(collection(db, 'financial_transactions'), where('schoolId', '==', schoolId));
+            const transSnap = await getDocs(transQ);
+            const total = transSnap.docs.reduce((acc, doc) => acc + (doc.data().amount || 0), 0);
+
+            // Assuming default fee of 150k per student for now
+            const totalExpected = allUsers.filter((u: any) => u.role === 'student').length * 150000;
+            setFinancials({
+                totalRevenue: total,
+                outstanding: totalExpected - total
+            });
+        } catch (err) {
+            console.error("Error fetching school data:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBulkImportSuccess = (result: ImportResult) => {
+        // Refresh student list
+        if (result.imported > 0) {
+            fetchData();
+        }
+    };
 
     // State for fetching
     useEffect(() => {
-        if (!schoolId) return;
-
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // Fetch All School Users
-                const usersQ = query(collection(db, 'users'), where('schoolId', '==', schoolId));
-                const usersSnap = await getDocs(usersQ);
-                const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                setStaff(allUsers.filter((u: any) => u.role === 'staff' || u.role === 'admin'));
-                setStudents(allUsers.filter((u: any) => u.role === 'student'));
-
-                // Fetch Classes
-                const classQ = query(collection(db, 'classes'), where('schoolId', '==', schoolId));
-                const classSnap = await getDocs(classQ);
-                setClasses(classSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-                // Fetch Financials
-                const transQ = query(collection(db, 'financial_transactions'), where('schoolId', '==', schoolId));
-                const transSnap = await getDocs(transQ);
-                const total = transSnap.docs.reduce((acc, doc) => acc + (doc.data().amount || 0), 0);
-
-                // Assuming default fee of 150k per student for now
-                const totalExpected = allUsers.filter((u: any) => u.role === 'student').length * 150000;
-                setFinancials({
-                    totalRevenue: total,
-                    outstanding: totalExpected - total
-                });
-            } catch (err) {
-                console.error("Error fetching school data:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
+        if (schoolId) {
+            fetchData();
+        }
     }, [schoolId]);
 
     // Placeholder for data fetching logic
 
     if (role !== 'admin') {
         return <div className="p-8 text-white">Access Denied: Admins Only</div>;
+    }
+
+    // Staff Assignment Modal
+    if (selectedStaffForAssignment) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <div className="bg-dark-card border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="sticky top-0 bg-dark-card border-b border-white/10 p-6 flex items-center justify-between">
+                        <h1 className="text-2xl font-bold text-white">Assign Classes & Subjects</h1>
+                        <button
+                            onClick={() => setSelectedStaffForAssignment(null)}
+                            className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        <StaffAssignmentModal
+                            staffId={selectedStaffForAssignment.id}
+                            staffName={selectedStaffForAssignment.name}
+                            onSuccess={() => {
+                                setSelectedStaffForAssignment(null);
+                                fetchData();
+                            }}
+                            onClose={() => setSelectedStaffForAssignment(null)}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Parent-Student Linking Modal
+    if (selectedStudentForLinking) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <div className="bg-dark-card border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="sticky top-0 bg-dark-card border-b border-white/10 p-6 flex items-center justify-between">
+                        <h1 className="text-2xl font-bold text-white">Link Parents</h1>
+                        <button
+                            onClick={() => setSelectedStudentForLinking(null)}
+                            className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        <ParentStudentLinkModal
+                            studentId={selectedStudentForLinking.id}
+                            studentName={selectedStudentForLinking.name}
+                            onSuccess={() => {
+                                setSelectedStudentForLinking(null);
+                                fetchData();
+                            }}
+                            onClose={() => setSelectedStudentForLinking(null)}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Bulk Import Modal
+    if (showBulkImport) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <div className="bg-dark-card border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="sticky top-0 bg-dark-card border-b border-white/10 p-6 flex items-center justify-between">
+                        <h1 className="text-2xl font-bold text-white">Bulk Import Students</h1>
+                        <button
+                            onClick={() => setShowBulkImport(false)}
+                            className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        <BulkStudentImport
+                            onSuccess={handleBulkImportSuccess}
+                            onClose={() => setShowBulkImport(false)}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -99,7 +201,13 @@ export const AdminDashboard = () => {
                         {showAddMenu && (
                             <div className="absolute right-0 mt-2 w-48 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
                                 <button className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors border-b border-white/5">Single Registration</button>
-                                <button className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors flex items-center justify-between">
+                                <button
+                                    onClick={() => {
+                                        setShowBulkImport(true);
+                                        setShowAddMenu(false);
+                                    }}
+                                    className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors flex items-center justify-between"
+                                >
                                     <span>Bulk Upload</span>
                                     <Download className="w-4 h-4 text-teal-500" />
                                 </button>
@@ -156,8 +264,11 @@ export const AdminDashboard = () => {
                                             <td className="py-4 px-4 text-gray-400 font-mono text-sm">{u.staffId || 'N/A'}</td>
                                             <td className="py-4 px-4 text-gray-400 text-sm">{u.email}</td>
                                             <td className="py-4 px-4">
-                                                <button className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition-colors">
-                                                    <MoreVertical className="w-4 h-4" />
+                                                <button
+                                                    onClick={() => setSelectedStaffForAssignment({ id: u.id, name: u.fullName })}
+                                                    className="px-4 py-2 bg-teal-600/20 hover:bg-teal-600/40 text-teal-400 rounded-lg transition-colors text-sm font-bold"
+                                                >
+                                                    Assign
                                                 </button>
                                             </td>
                                         </tr>
@@ -175,8 +286,11 @@ export const AdminDashboard = () => {
                                             <td className="py-4 px-4 text-gray-400 font-mono text-sm">{u.admissionNumber}</td>
                                             <td className="py-4 px-4 text-gray-400 text-sm">{u.classId || 'Not Assigned'}</td>
                                             <td className="py-4 px-4">
-                                                <button className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition-colors">
-                                                    <MoreVertical className="w-4 h-4" />
+                                                <button
+                                                    onClick={() => setSelectedStudentForLinking({ id: u.id, name: u.fullName })}
+                                                    className="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-colors text-sm font-bold"
+                                                >
+                                                    Link Parents
                                                 </button>
                                             </td>
                                         </tr>

@@ -13,7 +13,7 @@ export interface UserProfile {
     uid: string;
     fullName: string;
     email?: string;
-    role: 'admin' | 'staff' | 'student' | 'parent';
+    role: 'admin' | 'staff' | 'student' | 'parent' | 'bursar';
     schoolId: string;
     admissionNumber?: string;
     staffId?: string;
