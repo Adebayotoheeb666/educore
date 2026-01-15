@@ -1,6 +1,7 @@
-
-import { useState } from 'react';
-import { ToggleLeft, ToggleRight, Wifi } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ToggleLeft, ToggleRight, Wifi, CheckCircle, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
+import { storageService, type StorageStats, type SyncStatus } from '../lib/storageService';
+import { auth } from '../lib/firebase';
 
 const Toggle = ({ checked, onChange }: { checked: boolean, onChange: () => void }) => (
     <button onClick={onChange} className={`transition-colors text-3xl ${checked ? 'text-teal-500' : 'text-gray-600'}`}>
@@ -12,6 +13,11 @@ export const Settings = () => {
     const [dataSaver, setDataSaver] = useState(false);
     const [geminiNano, setGeminiNano] = useState(false);
     const [autoSync, setAutoSync] = useState(true);
+    const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
+    const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     const [classes, setClasses] = useState(['JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']);
     const [newClass, setNewClass] = useState('');
