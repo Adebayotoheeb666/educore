@@ -232,8 +232,11 @@ export const AdminDashboard = () => {
                                             <td className="py-4 px-4 text-gray-400 font-mono text-sm">{u.staffId || 'N/A'}</td>
                                             <td className="py-4 px-4 text-gray-400 text-sm">{u.email}</td>
                                             <td className="py-4 px-4">
-                                                <button className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition-colors">
-                                                    <MoreVertical className="w-4 h-4" />
+                                                <button
+                                                    onClick={() => setSelectedStaffForAssignment({ id: u.id, name: u.fullName })}
+                                                    className="px-4 py-2 bg-teal-600/20 hover:bg-teal-600/40 text-teal-400 rounded-lg transition-colors text-sm font-bold"
+                                                >
+                                                    Assign
                                                 </button>
                                             </td>
                                         </tr>
