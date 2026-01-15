@@ -74,10 +74,78 @@ export const AdminDashboard = () => {
         fetchData();
     }, [schoolId]);
 
+    const handleBulkImportSuccess = (result: ImportResult) => {
+        // Refresh student list
+        if (result.imported > 0) {
+            fetchData();
+        }
+    };
+
+    const fetchData = async () => {
+        if (!schoolId) return;
+
+        setLoading(true);
+        try {
+            // Fetch All School Users
+            const usersQ = query(collection(db, 'users'), where('schoolId', '==', schoolId));
+            const usersSnap = await getDocs(usersQ);
+            const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            setStaff(allUsers.filter((u: any) => u.role === 'staff' || u.role === 'admin'));
+            setStudents(allUsers.filter((u: any) => u.role === 'student'));
+
+            // Fetch Classes
+            const classQ = query(collection(db, 'classes'), where('schoolId', '==', schoolId));
+            const classSnap = await getDocs(classQ);
+            setClasses(classSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+            // Fetch Financials
+            const transQ = query(collection(db, 'financial_transactions'), where('schoolId', '==', schoolId));
+            const transSnap = await getDocs(transQ);
+            const total = transSnap.docs.reduce((acc, doc) => acc + (doc.data().amount || 0), 0);
+
+            // Assuming default fee of 150k per student for now
+            const totalExpected = allUsers.filter((u: any) => u.role === 'student').length * 150000;
+            setFinancials({
+                totalRevenue: total,
+                outstanding: totalExpected - total
+            });
+        } catch (err) {
+            console.error("Error fetching school data:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Placeholder for data fetching logic
 
     if (role !== 'admin') {
         return <div className="p-8 text-white">Access Denied: Admins Only</div>;
+    }
+
+    // Bulk Import Modal
+    if (showBulkImport) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <div className="bg-dark-card border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="sticky top-0 bg-dark-card border-b border-white/10 p-6 flex items-center justify-between">
+                        <h1 className="text-2xl font-bold text-white">Bulk Import Students</h1>
+                        <button
+                            onClick={() => setShowBulkImport(false)}
+                            className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        <BulkStudentImport
+                            onSuccess={handleBulkImportSuccess}
+                            onClose={() => setShowBulkImport(false)}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
