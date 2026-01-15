@@ -113,12 +113,13 @@ export const Dashboard = () => {
             <div>
                 <div className="flex items-center justify-between mb-6 pt-4">
                     <h2 className="text-xl font-bold text-white">Today's Schedule</h2>
-                    <span className="text-gray-500 text-sm font-bold">Monday, Oct 24</span>
+                    <span className="text-gray-500 text-sm font-bold">{new Date().toLocaleDateString('en-NG', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
                 </div>
 
                 <div className="space-y-3">
-                    <ScheduleItem time="09:00 AM" subject="SS1 Physics" topic="Kinematics & Dynamics" room="Hall A" />
-                    <ScheduleItem time="11:30 AM" subject="SS3 Mathematics" topic="Calculus II: Integration" room="Lab 2" />
+                    <div className="text-center py-8 text-gray-500">
+                        <p>No schedule added yet. Add your classes to track your daily timetable.</p>
+                    </div>
                 </div>
             </div>
 
