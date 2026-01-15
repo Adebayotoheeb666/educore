@@ -242,36 +242,53 @@ export const Settings = () => {
                 <div className="bg-dark-card border border-white/5 p-6 rounded-2xl">
                     <div className="flex justify-between items-start mb-6">
                         <div>
-                            <div className="text-3xl font-bold text-white">1.65 GB</div>
+                            <div className="text-3xl font-bold text-white">
+                                {storageStats ? `${(storageStats.usedSpace / (1024 * 1024)).toFixed(2)} MB` : 'Loading...'}
+                            </div>
                             <div className="text-gray-500 text-sm">Total space used</div>
                         </div>
-                        <button className="border border-teal-500/30 text-teal-400 px-4 py-2 rounded-lg text-sm font-bold hover:bg-teal-500/10 transition-colors">
-                            Clear Cache
+                        <button
+                            onClick={handleClearCache}
+                            disabled={loading}
+                            className="border border-red-500/30 text-red-400 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            {loading ? 'Clearing...' : 'Clear Cache'}
                         </button>
                     </div>
 
-                    {/* Bar */}
-                    <div className="h-4 bg-gray-800 rounded-full overflow-hidden flex mb-4">
-                        <div className="w-[30%] bg-teal-500" />
-                        <div className="w-[50%] bg-slate-600" />
-                    </div>
+                    {/* Storage Bar */}
+                    {storageStats && (
+                        <>
+                            <div className="h-4 bg-gray-800 rounded-full overflow-hidden flex mb-4">
+                                <div
+                                    className="bg-teal-500 transition-all"
+                                    style={{ width: `${Math.min(50, storageStats.percentUsed)}%` }}
+                                />
+                                <div
+                                    className="bg-slate-600"
+                                    style={{ width: `${Math.max(0, 100 - storageStats.percentUsed)}%` }}
+                                />
+                            </div>
 
-                    <div className="flex gap-8">
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-teal-500" />
-                            <div>
-                                <div className="text-white text-xs font-bold">Local Content</div>
-                                <div className="text-gray-500 text-[10px]">450 MB</div>
+                            <div className="flex gap-8">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-teal-500" />
+                                    <div>
+                                        <div className="text-white text-xs font-bold">Local Cache</div>
+                                        <div className="text-gray-500 text-[10px]">{(storageStats.cacheSpace / (1024 * 1024)).toFixed(2)} MB</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-slate-600" />
+                                    <div>
+                                        <div className="text-white text-xs font-bold">Firestore Cache</div>
+                                        <div className="text-gray-500 text-[10px]">{(storageStats.cloudAssets / (1024 * 1024)).toFixed(2)} MB</div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-slate-600" />
-                            <div>
-                                <div className="text-white text-xs font-bold">Cloud Assets</div>
-                                <div className="text-gray-500 text-[10px]">1.2 GB</div>
-                            </div>
-                        </div>
-                    </div>
+                        </>
+                    )}
                 </div>
             </section>
 
