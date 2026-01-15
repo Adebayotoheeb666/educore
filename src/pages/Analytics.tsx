@@ -17,34 +17,38 @@ interface UnifiedResult {
     subject?: string;
 }
 
-const StudentRow = ({ name, score }: { name: string, score: number }) => {
+const StudentRow = ({ result }: { result: UnifiedResult }) => {
     let grade = 'F';
     let color = "bg-red-500 text-white";
 
-    const percentage = (score / 20) * 100;
+    const percentage = (result.score / result.total) * 100;
 
     if (percentage >= 70) { grade = 'A'; color = "bg-teal-500 text-white"; }
     else if (percentage >= 60) { grade = 'B'; color = "bg-yellow-500 text-black"; }
     else if (percentage >= 50) { grade = 'C'; color = "bg-yellow-600 text-white"; }
     else if (percentage >= 45) { grade = 'D'; color = "bg-orange-500 text-white"; }
 
+    const typeLabel = result.type === 'exam' ? 'Exam' : 'AI Scan';
+    const dateStr = result.createdAt?.toDate?.()?.toLocaleDateString('en-NG') || 'N/A';
+
     return (
-        <div className="grid grid-cols-5 gap-4 items-center py-4 border-b border-white/5 hover:bg-white/5 px-4 transition-colors">
-            <div className="col-span-1 flex items-center gap-3">
+        <div className="grid grid-cols-6 gap-4 items-center py-4 border-b border-white/5 hover:bg-white/5 px-4 transition-colors">
+            <div className="col-span-2 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden">
-                    <img src={`https://ui-avatars.com/api/?name=${name}&background=random`} alt={name} />
+                    <img src={`https://ui-avatars.com/api/?name=${result.studentName}&background=random`} alt={result.studentName} />
                 </div>
-                <span className="font-bold text-white">{name}</span>
+                <span className="font-bold text-white text-sm">{result.studentName}</span>
             </div>
-            {/* Mock columns for now, just showing the latest score in Alg 1 */}
+            <div className="text-center text-sm text-gray-400">{result.subject || '-'}</div>
             <div className="flex justify-center">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${color}`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${color}`}>
                     {grade}
                 </div>
             </div>
-            <div className="text-center text-gray-600">-</div>
-            <div className="text-center text-gray-600">-</div>
-            <div className="text-center text-gray-600">-</div>
+            <div className="text-center text-sm text-gray-400">{result.score}/{result.total}</div>
+            <div className="text-center text-sm text-gray-400">
+                <span className="bg-teal-500/20 text-teal-300 px-2 py-1 rounded text-xs">{typeLabel}</span>
+            </div>
         </div>
     );
 };
