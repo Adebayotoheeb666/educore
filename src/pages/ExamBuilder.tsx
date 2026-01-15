@@ -305,9 +305,31 @@ export const ExamBuilder = () => {
                 </div>
             </section>
 
+            {/* Exam Title Input */}
+            {generatedQuestions.length > 0 && (
+                <section className="bg-dark-card border border-white/5 p-4 rounded-2xl">
+                    <label className="text-gray-400 text-xs font-bold block mb-2">Exam Title (Optional)</label>
+                    <input
+                        type="text"
+                        placeholder="e.g., SS3 Biology Mid-Term Exam"
+                        value={examTitle}
+                        onChange={(e) => setExamTitle(e.target.value)}
+                        className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white placeholder-gray-600 focus:border-teal-500/50 outline-none"
+                    />
+                </section>
+            )}
+
             {/* Footer Actions */}
             {generatedQuestions.length > 0 && (
                 <div className="flex gap-4 pt-4 border-t border-white/5">
+                    <button
+                        onClick={handleExportExam}
+                        disabled={exporting}
+                        className="flex-1 bg-dark-card border border-white/10 hover:bg-white/5 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors py-3 disabled:opacity-50"
+                    >
+                        <Download className={cn("w-5 h-5", exporting && "animate-spin")} />
+                        <span>{exporting ? 'Exporting...' : 'Export PDF'}</span>
+                    </button>
                     <button
                         onClick={handleSaveExam}
                         className="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors py-3"
