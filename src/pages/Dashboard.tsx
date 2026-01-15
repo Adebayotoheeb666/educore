@@ -24,6 +24,26 @@ const ScheduleItem = ({ time, subject, topic, room }: any) => (
 export const Dashboard = () => {
     const user = auth.currentUser;
     const displayName = user?.displayName || 'Teacher';
+    const [pendingCount, setPendingCount] = useState(0);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchPendingGrades = async () => {
+            if (!user) return;
+            try {
+                const q = query(collection(db, 'results'), where('userId', '==', user.uid));
+                const snapshot = await getDocs(q);
+                setPendingCount(snapshot.size);
+            } catch (err) {
+                console.error('Error fetching pending grades:', err);
+                setPendingCount(0);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPendingGrades();
+    }, [user]);
 
     return (
         <div className="space-y-8 pb-20">
