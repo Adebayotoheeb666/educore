@@ -63,6 +63,7 @@ export const ParentPortal = () => {
     const [aiInsight, setAiInsight] = useState<string>('');
     const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
     const [showChildrenMenu, setShowChildrenMenu] = useState(false);
+    const [activeTab, setActiveTab] = useState<'overview' | 'trends' | 'messaging' | 'finances'>('overview');
 
     // Fetch parent's children
     useEffect(() => {
