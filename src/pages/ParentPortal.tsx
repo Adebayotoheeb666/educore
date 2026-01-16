@@ -8,12 +8,19 @@ import {
     AlertCircle,
     BarChart3,
     CreditCard,
-    ExternalLink
+    ExternalLink,
+    MessageSquare,
+    Wallet,
+    LineChart
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { geminiService } from '../lib/gemini';
+import { ParentTeacherMessaging } from '../components/ParentPortal/ParentTeacherMessaging';
+import { FinancialInvoicing } from '../components/ParentPortal/FinancialInvoicing';
+import { NotificationCenter } from '../components/ParentPortal/NotificationCenter';
+import { ChildPerformanceTrends } from '../components/ParentPortal/ChildPerformanceTrends';
 
 interface Child {
     id: string; // supbase user id
