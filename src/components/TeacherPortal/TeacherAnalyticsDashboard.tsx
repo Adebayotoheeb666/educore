@@ -44,7 +44,7 @@ interface PerformanceMetrics {
   totalStudents: number;
   classCount: number;
   improvementRate: number;
-  at RiskStudents: number;
+  atRiskStudents: number;
 }
 
 export const TeacherAnalyticsDashboard = () => {
