@@ -1,7 +1,23 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+/**
+ * SECURITY HARDENED GEMINI SERVICE
+ * ================================
+ * This service proxies all Gemini API calls through a Supabase Edge Function.
+ * Benefits:
+ * 1. API key is never exposed to the client
+ * 2. Server-side rate limiting is enforced
+ * 3. All requests can be logged and audited
+ * 4. Requests are batched and optimized server-side
+ *
+ * Migration Notes:
+ * - Remove direct GoogleGenerativeAI client initialization
+ * - All calls now go through geminiProxyRequest()
+ * - Error handling is improved with retry logic
+ * - Rate limiting warnings are shown to users
+ */
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(API_KEY);
+import { supabase } from './supabase';
+import type { UserProfile } from './types';
+import { rateLimiter, retryWithBackoff } from './rateLimiter';
 
 interface MCQuestion {
   id: number;
@@ -25,112 +41,217 @@ interface GradingResult {
   ocrAccuracy: number;
 }
 
+// ============================================
+// EDGE FUNCTION PROXY
+// ============================================
+
+/**
+ * Proxy a request to the Gemini Edge Function
+ * Handles authentication, rate limiting, and error handling
+ */
+async function geminiProxyRequest(
+  action: string,
+  params: Record<string, unknown>,
+  userProfile: UserProfile
+): Promise<any> {
+  // Check client-side rate limit first
+  const rateLimitCheck = rateLimiter.checkLimit(action, userProfile.id);
+  if (!rateLimitCheck.allowed) {
+    throw new Error(
+      `Rate limit exceeded for ${action}. Please wait ${rateLimitCheck.retryAfter} seconds before trying again.`
+    );
+  }
+
+  // Get auth token
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error('Authentication required. Please log in.');
+  }
+
+  // Prepare request
+  const requestBody = {
+    action,
+    params,
+    schoolId: userProfile.schoolId,
+    userId: userProfile.id,
+  };
+
+  // Get edge function URL
+  const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-proxy`;
+
+  // Make request with retry logic
+  const makeRequest = async () => {
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+
+      // Handle rate limiting from server
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After') || '60';
+        throw new Error(
+          `Server rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
+        );
+      }
+
+      throw new Error(
+        errorData.details || errorData.error || 'Failed to process request'
+      );
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || 'Request failed');
+    }
+
+    return result.data;
+  };
+
+  // Retry with exponential backoff
+  return retryWithBackoff(makeRequest, {
+    maxAttempts: 3,
+    initialDelayMs: 1000,
+    maxDelayMs: 10000,
+    backoffMultiplier: 2,
+  });
+}
+
+// ============================================
+// GET CURRENT USER PROFILE (helper)
+// ============================================
+
+let cachedProfile: UserProfile | null = null;
+
+async function getCurrentUserProfile(): Promise<UserProfile> {
+  if (cachedProfile) return cachedProfile;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('User not authenticated');
+
+  const { data } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (!data) throw new Error('User profile not found');
+
+  // Convert snake_case to camelCase
+  cachedProfile = {
+    id: data.id,
+    fullName: data.full_name,
+    email: data.email,
+    role: data.role,
+    schoolId: data.school_id,
+    admissionNumber: data.admission_number,
+    staffId: data.staff_id,
+    assignedClasses: data.assigned_classes,
+    assignedSubjects: data.assigned_subjects,
+    phoneNumber: data.phone_number,
+    profileImage: data.profile_image,
+    linkedStudents: data.linked_students,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+
+  return cachedProfile;
+}
+
+/**
+ * Clear cached profile (call after user update)
+ */
+export function clearProfileCache() {
+  cachedProfile = null;
+}
+
+// ============================================
+// GEMINI SERVICE IMPLEMENTATION
+// ============================================
+
 export const geminiService = {
-  async generateLessonNote(topic: string, subject: string, level: string, options?: { personalization?: string, translation?: boolean, waecFocus?: boolean }) {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  /**
+   * Generate a lesson note using Gemini AI via Edge Function
+   */
+  async generateLessonNote(
+    topic: string,
+    subject: string,
+    level: string,
+    options?: { personalization?: string; translation?: boolean; waecFocus?: boolean }
+  ): Promise<string> {
+    try {
+      const userProfile = await getCurrentUserProfile();
 
-    let prompt = `Generate a comprehensive lesson note for ${level} ${subject} on the topic "${topic}" following the Nigerian NERDC curriculum.`;
-
-    // Developmental adjustments for younger years
-    if (level === 'Creche' || level.includes('Nursery')) {
-      prompt += `\n- DEVELOPMENTAL FOCUS: Early Years Foundation. Use very simple language, focus on sensory play, rhymes, and visual aids. Keep sections extremely short and engaging.`;
-    } else if (level.includes('Primary')) {
-      prompt += `\n- DEVELOPMENTAL FOCUS: Primary level. Use clear, concrete examples and include interactive classroom activities.`;
+      return await geminiProxyRequest(
+        'generateLessonNote',
+        { topic, subject, level, options },
+        userProfile
+      );
+    } catch (error) {
+      console.error('Lesson generation error:', error);
+      throw error instanceof Error
+        ? error
+        : new Error('Failed to generate lesson note');
     }
-
-    if (options?.personalization === 'advanced') {
-      prompt += `\n- TARGET AUDIENCE: Advanced learners. Use more complex terminology and include challenging extension activities.`;
-    } else if (options?.personalization === 'support') {
-      prompt += `\n- TARGET AUDIENCE: Students needing extra support. Use simpler language, break down complex concepts further, and include foundational drills.`;
-    }
-
-    if (options?.translation) {
-      prompt += `\n- LANGUAGE SUPPORT: Include a final section titled "Local Context Keywords" that translates 5-7 key technical terms from this lesson into Yoruba, Hausa, and Igbo with brief explanations.`;
-    }
-
-    if (options?.waecFocus) {
-      prompt += `\n- EXAM FOCUS: Highlight concepts that frequently appear in WAEC/NECO/JAMB examinations.`;
-    }
-
-    prompt += `\n\nStructure the note exactly like a standard Nigerian lesson plan:
-    1. Prerequisite Knowledge (Entry Behavior)
-    2. Performance Objectives (SMART)
-    3. Content (Detailed notes breaking down themes)
-    4. Instructional Materials (Suggested local resources)
-    5. Presentation (Teacher and Student Activities)
-    6. Local Context/Nigerian Examples
-    7. Evaluation (Short quiz/questions).
-    
-    Format in professional Markdown.`;
-
-    const result = await model.generateContent(prompt);
-    return result.response.text();
   },
 
+  /**
+   * Generate exam questions using Gemini AI via Edge Function
+   */
   async generateQuestions(
     context: string,
     count: number = 10,
     mcqRatio: number = 0.6,
     difficultyLevel: number = 50
   ): Promise<(MCQuestion | EssayQuestion)[]> {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const mcqCount = Math.ceil(count * mcqRatio);
-    const essayCount = count - mcqCount;
-    const difficulty = difficultyLevel < 33 ? "easy" : difficultyLevel < 67 ? "intermediate" : "difficult (WAEC standard)";
-
-    const prompt = `Based on this educational material, generate exam questions for Nigerian students (NERDC curriculum).
-
-MATERIAL:
-${context}
-
-REQUIREMENTS:
-- Generate exactly ${mcqCount} Multiple Choice questions (4 options each)
-- Generate exactly ${essayCount} Essay/Theory questions
-- Difficulty level: ${difficulty}
-- Format as valid JSON array
-
-Return ONLY valid JSON array in this format:
-[
-  {"type":"mcq","question":"Question text?","options":["A) Option1","B) Option2","C) Option3","D) Option4"],"answer":"A"},
-  {"type":"essay","question":"Essay question text?"}
-]
-
-Important: Return ONLY the JSON array, no other text.`;
-
     try {
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text().trim();
+      const userProfile = await getCurrentUserProfile();
 
-      // Extract JSON from response if wrapped in code blocks
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : responseText;
-      const questionsData = JSON.parse(jsonStr);
+      const questions = await geminiProxyRequest(
+        'generateQuestions',
+        { context, count, mcqRatio, difficultyLevel },
+        userProfile
+      );
 
-      return questionsData.map((q: any, idx: number) =>
+      return questions.map((q: any, idx: number) =>
         q.type === 'mcq'
           ? {
-            id: idx + 1,
-            type: 'mcq' as const,
-            text: q.question || q.text,
-            options: q.options || [],
-            answer: q.answer || '',
-          }
+              id: idx + 1,
+              type: 'mcq' as const,
+              text: q.text || q.question,
+              options: q.options || [],
+              answer: q.answer || '',
+            }
           : {
-            id: idx + 1,
-            type: 'essay' as const,
-            text: q.question || q.text,
-          }
+              id: idx + 1,
+              type: 'essay' as const,
+              text: q.text || q.question,
+            }
       );
     } catch (error) {
-      console.error('Error parsing questions:', error);
-      // Fallback: return empty array on parse error
+      console.error('Question generation error:', error);
       return [];
     }
   },
 
+  /**
+   * Extract text from PDF (remains client-side as it's local processing)
+   */
   async extractTextFromPDF(fileData: ArrayBuffer): Promise<string> {
     try {
-      // Use PDF.js to extract text
       const pdfjsLib = await import('pdfjs-dist');
       const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
       let fullText = '';
@@ -138,159 +259,140 @@ Important: Return ONLY the JSON array, no other text.`;
       for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 50); pageNum++) {
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
-        const pageText = textContent.items.map((item: any) => item.str).join(' ');
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
         fullText += pageText + '\n';
       }
 
       return fullText;
     } catch (error) {
-      console.error('Error extracting PDF text:', error);
-      throw new Error('Failed to extract text from PDF. Please ensure it is a valid PDF file.');
+      console.error('PDF extraction error:', error);
+      throw new Error(
+        'Failed to extract text from PDF. Please ensure it is a valid PDF file.'
+      );
     }
   },
 
+  /**
+   * Grade a handwritten exam script using Gemini AI via Edge Function
+   */
   async gradeScript(
     imageBase64: string,
-    markingScheme: string = "Standard marking scheme for secondary school exam"
+    markingScheme: string = 'Standard marking scheme for secondary school exam'
   ): Promise<GradingResult> {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-    const prompt = `You are an expert exam grader. Analyze this student's handwritten exam script.
-
-MARKING SCHEME:
-${markingScheme}
-
-GRADING REQUIREMENTS:
-1. Extract and read all handwritten text from the image
-2. Grade out of 20 based on the marking scheme
-3. Identify missing key concepts or keywords
-4. Provide constructive feedback
-5. Estimate OCR accuracy percentage
-
-Return ONLY a valid JSON object in this format:
-{
-  "score": <number 0-20>,
-  "feedback": "Detailed feedback about the student's work",
-  "missingKeywords": ["keyword1", "keyword2"],
-  "ocrAccuracy": <number 0-100>
-}
-
-Important: Return ONLY the JSON object, no other text.`;
-
-    const imagePart = {
-      inlineData: {
-        data: imageBase64,
-        mimeType: "image/jpeg",
-      },
-    };
-
     try {
-      const result = await model.generateContent([prompt, imagePart]);
-      const responseText = result.response.text().trim();
+      const userProfile = await getCurrentUserProfile();
 
-      // Extract JSON from response
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : responseText;
-      const gradingData = JSON.parse(jsonStr);
+      const result = await geminiProxyRequest(
+        'gradeScript',
+        { imageBase64, markingScheme },
+        userProfile
+      );
 
       return {
-        score: Math.min(20, Math.max(0, gradingData.score || 0)),
+        score: Math.min(20, Math.max(0, result.score || 0)),
         total: 20,
-        feedback: gradingData.feedback || '',
-        missingKeywords: gradingData.missingKeywords || [],
-        ocrAccuracy: gradingData.ocrAccuracy || 85,
+        feedback: result.feedback || '',
+        missingKeywords: result.missingKeywords || [],
+        ocrAccuracy: result.ocrAccuracy || 85,
       };
     } catch (error) {
-      console.error('Error grading script:', error);
-      // Return default response
+      console.error('Script grading error:', error);
       return {
         score: 0,
         total: 20,
-        feedback: 'Unable to grade script. Please ensure the image is clear and readable.',
+        feedback:
+          'Unable to grade script. Please ensure the image is clear and readable.',
         missingKeywords: [],
         ocrAccuracy: 0,
       };
     }
   },
 
-  async generateStudentPerformanceInsight(results: any[], attendanceRate: number) {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    const prompt = `You are an AI educational counselor. Analyze the following student performance data and provide a concise, encouraging, and professional progress report for the student and their parents.
-    
-    DATA:
-    - Results: ${JSON.stringify(results)}
-    - Attendance Rate: ${attendanceRate}%
-    
-    REQUIREMENTS:
-    1. Summarize overall performance (Distinction, Credit, or Needs Improvement).
-    2. Identify the strongest and weakest subjects.
-    3. Note the impact of attendance on their performance.
-    4. Provide 3 specific, actionable "Next Steps" for improvement.
-    5. Output in professional Markdown format, keeping it under 250 words.
-    
-    Tone: Encouraging, Nigerian educational context.`;
-
+  /**
+   * Generate student performance insight using Gemini AI via Edge Function
+   */
+  async generateStudentPerformanceInsight(
+    results: any[],
+    attendanceRate: number,
+    studentContext?: string
+  ): Promise<string> {
     try {
-      const result = await model.generateContent(prompt);
-      return result.response.text();
-    } catch (err) {
-      console.error("AI Insight Error:", err);
-      return "Unable to generate insights at this time. Please try again later.";
+      const userProfile = await getCurrentUserProfile();
+
+      return await geminiProxyRequest(
+        'generateStudentPerformanceInsight',
+        { results, attendanceRate, studentContext },
+        userProfile
+      );
+    } catch (error) {
+      console.error('Performance insight error:', error);
+      return 'Unable to generate insights at this time. Please try again later.';
     }
   },
 
-  async chatWithStudyAssistant(message: string, history: { role: 'user' | 'model', parts: string }[], studentContext: string) {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const chat = model.startChat({
-      history: [
-        {
-          role: "user",
-          parts: [{
-            text: `You are the EduCore AI Study Assistant. Your goal is to help Nigerian students succeed in their exams (WAEC/NECO/JAMB).
-          
-          STUDENT CONTEXT:
-          ${studentContext}
-          
-          INSTRUCTIONS:
-          - Be encouraging and helpful.
-          - Suggest relevant study topics based on their context.
-          - Answer academic questions clearly.
-          - Use Nigerian examples where possible.` }]
-        },
-        {
-          role: "model",
-          parts: [{ text: "Hello! I am your EduCore AI Study Assistant. I've analyzed your academic records and I'm ready to help you excel. What would you like to study today?" }]
-        },
-        ...history.map(h => ({ role: h.role, parts: [{ text: h.parts }] }))
-      ]
-    });
+  /**
+   * Chat with AI study assistant using Gemini AI via Edge Function
+   */
+  async chatWithStudyAssistant(
+    message: string,
+    history?: { role: 'user' | 'model'; content: string }[],
+    studentContext?: string
+  ): Promise<string> {
+    try {
+      const userProfile = await getCurrentUserProfile();
 
-    const result = await chat.sendMessage(message);
-    return result.response.text();
+      return await geminiProxyRequest(
+        'chatWithStudyAssistant',
+        { message, history, studentContext },
+        userProfile
+      );
+    } catch (error) {
+      console.error('Study assistant error:', error);
+      throw error instanceof Error
+        ? error
+        : new Error('Failed to get response from AI assistant');
+    }
   },
 
-  async predictAttendanceIssues(attendanceData: any[]) {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    const prompt = `Analyze the following student attendance data and predict potential absence patterns or students at risk of falling below the 75% attendance threshold required for exams.
-
-DATA:
-${JSON.stringify(attendanceData)}
-
-REQUIREMENTS:
-1. Identify students with declining attendance trends.
-2. Highlight any class-wide patterns (e.g., lower attendance on specific days).
-3. Provide 3 proactive recommendations for the teacher.
-4. Output in a concise, professional Markdown format.
-
-Tone: Professional, Nigerian educational context.`;
-
+  /**
+   * Predict attendance issues using Gemini AI via Edge Function
+   */
+  async predictAttendanceIssues(
+    attendanceData: any[],
+    recentCount: number = 5
+  ): Promise<string> {
     try {
-      const result = await model.generateContent(prompt);
-      return result.response.text();
-    } catch (err) {
-      console.error("Attendance Prediction Error:", err);
-      return "Unable to generate prediction at this time. Please try again later.";
+      const userProfile = await getCurrentUserProfile();
+
+      return await geminiProxyRequest(
+        'predictAttendanceIssues',
+        { attendanceData, recentCount },
+        userProfile
+      );
+    } catch (error) {
+      console.error('Attendance prediction error:', error);
+      return 'Unable to generate prediction at this time. Please try again later.';
     }
-  }
+  },
+
+  /**
+   * Get rate limit status for a specific action
+   */
+  getRateLimitStatus(action: string, userId: string) {
+    const remaining = rateLimiter.getRemainingRequests(action, userId);
+    const isApproaching = remaining <= 2;
+    const config = rateLimiter.getLimits()[action] || { maxRequests: 10 };
+
+    return {
+      action,
+      remaining,
+      limit: config.maxRequests,
+      isApproaching,
+      warningMessage: isApproaching
+        ? `Only ${remaining} requests remaining for ${action}`
+        : null,
+    };
+  },
 };
