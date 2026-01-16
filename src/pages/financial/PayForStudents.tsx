@@ -8,8 +8,7 @@ import {
     Download,
     AlertCircle
 } from 'lucide-react';
-import { db } from '../../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '../../lib/supabase';
 
 // Zod Schema for Payment Validation
 const paymentDetailsSchema = z.object({
@@ -77,16 +76,18 @@ export const PayForStudents = () => {
         }
 
         try {
-            await addDoc(collection(db, "financial_transactions"), {
+            const { error } = await supabase.from('financial_transactions').insert({
                 amount: totalAmount,
                 type: 'income',
                 category: 'School Fees',
                 description: `Fees payment for ${selectedStudent.name}`,
-                items: selectedFees,
-                date: serverTimestamp(),
+                // items: selectedFees, // Handled as JSON or separate table if schema supports
                 status: 'completed',
-                studentId: selectedStudent.id
+                student_id: selectedStudent.id,
+                metadata: { items: selectedFees }
             });
+
+            if (error) throw error;
             setStep(3);
         } catch (err) {
             console.error(err);

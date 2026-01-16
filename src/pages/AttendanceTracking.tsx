@@ -5,8 +5,11 @@ import {
     CheckCircle2,
     XCircle,
     ChevronRight,
-    Save
+    Save,
+    Sparkles
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { geminiService } from '../lib/gemini';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/auditService';
@@ -20,6 +23,8 @@ export const AttendanceTracking = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [predicting, setPredicting] = useState(false);
+    const [aiInsight, setAiInsight] = useState<string | null>(null);
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -29,14 +34,24 @@ export const AttendanceTracking = () => {
         const fetchClasses = async () => {
             setLoading(true);
             try {
-                // Fetch classes assigned to this teacher or all classes if admin
-                const { data, error } = await supabase
-                    .from('classes')
-                    .select('*')
-                    .eq('school_id', schoolId);
+                // 1. If admin, fetch all classes. If staff, fetch assigned classes.
+                if (profile?.role === 'admin') {
+                    const { data, error } = await supabase
+                        .from('classes')
+                        .select('*')
+                        .eq('school_id', schoolId);
+                    if (error) throw error;
+                    setClasses(data || []);
+                } else {
+                    const { data: assignments, error: assignError } = await supabase
+                        .from('staff_assignments')
+                        .select('class_id, classes(*)')
+                        .eq('staff_id', user?.id);
 
-                if (error) throw error;
-                setClasses(data.map(c => ({ id: c.id, name: c.name, ...c })));
+                    if (assignError) throw assignError;
+                    const assigned = assignments?.map(a => a.classes).filter(Boolean) || [];
+                    setClasses(assigned);
+                }
             } catch (err) {
                 console.error("Error fetching classes:", err);
             } finally {
@@ -67,7 +82,8 @@ export const AttendanceTracking = () => {
                     .from('users')
                     .select('*')
                     .eq('school_id', schoolId)
-                    .eq('role', 'student');
+                    .eq('role', 'student')
+                    .eq('class_id', selectedClass);
 
                 if (error) throw error;
 
@@ -152,8 +168,31 @@ export const AttendanceTracking = () => {
         }
     };
 
+    const generateAIInsight = async () => {
+        if (!selectedClass || !schoolId) return;
+        setPredicting(true);
+        try {
+            // Fetch recent attendance for this class
+            const { data, error } = await supabase
+                .from('attendance')
+                .select('*, users(full_name)')
+                .eq('class_id', selectedClass)
+                .order('date', { ascending: false })
+                .limit(100);
+
+            if (error) throw error;
+            const insight = await geminiService.predictAttendanceIssues(data || []);
+            setAiInsight(insight);
+        } catch (err) {
+            console.error("AI Insight Error:", err);
+            alert("Failed to generate AI insights");
+        } finally {
+            setPredicting(false);
+        }
+    };
+
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 pb-20">
             <header>
                 <h1 className="text-3xl font-bold text-white mb-2">Daily Attendance</h1>
                 <p className="text-gray-400">Record and track student presence in real-time.</p>
@@ -189,7 +228,7 @@ export const AttendanceTracking = () => {
                 </div>
 
                 {/* Attendance List */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2 shadow-2xl">
                     {!selectedClass ? (
                         <div className="h-full min-h-[400px] border-2 border-dashed border-white/5 rounded-[32px] flex flex-col items-center justify-center text-gray-600 p-8">
                             <Calendar className="w-16 h-16 mb-4 opacity-20" />
@@ -218,10 +257,39 @@ export const AttendanceTracking = () => {
                                 </button>
                             </div>
 
+                            {/* AI Insights Section */}
+                            <div className="px-6 py-4 bg-teal-500/5 border-b border-white/5 flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-teal-400">
+                                    <Sparkles className="w-4 h-4" />
+                                    <span className="text-sm font-bold uppercase tracking-wider">AI Attendance Insights</span>
+                                </div>
+                                <button
+                                    onClick={generateAIInsight}
+                                    disabled={predicting || !students.length}
+                                    className="text-xs bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-white"
+                                >
+                                    {predicting ? 'Analyzing...' : 'Generate Prediction'}
+                                </button>
+                            </div>
+
+                            {aiInsight && (
+                                <div className="m-6 p-6 bg-dark-bg/50 border border-teal-500/20 rounded-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+                                    <div className="prose prose-invert prose-sm max-w-none prose-teal">
+                                        <ReactMarkdown>{aiInsight}</ReactMarkdown>
+                                    </div>
+                                    <button
+                                        onClick={() => setAiInsight(null)}
+                                        className="mt-4 text-xs text-gray-400 hover:text-white transition-colors"
+                                    >
+                                        Dismiss
+                                    </button>
+                                </div>
+                            )}
+
                             <div className="flex-1 overflow-y-auto p-6">
                                 <div className="space-y-3">
                                     {students.map(s => (
-                                        <div key={s.id} className="flex items-center justify-between p-4 bg-dark-bg rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
+                                        <div key={s.id} className="flex items-center justify-between p-4 bg-dark-bg rounded-2xl border border-white/5 hover:border-white/10 transition-colors shadow-inner">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 font-bold">
                                                     {s.fullName?.charAt(0) || 'S'}

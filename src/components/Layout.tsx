@@ -1,7 +1,7 @@
 
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, FileText, Camera, BarChart2, Settings, LogOut, DollarSign, CheckCircle2, Calculator } from 'lucide-react';
+import { LayoutDashboard, BookOpen, FileText, Camera, BarChart2, Settings, LogOut, DollarSign, CheckCircle2, Calculator, Users } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -127,6 +127,7 @@ export const Layout = ({ children }: LayoutProps) => {
                             <SidebarItem to="/lessons" icon={BookOpen} label="Lesson Generator" />
                             <SidebarItem to="/exams" icon={FileText} label="Exam Builder" />
                             <SidebarItem to="/marking" icon={Camera} label="Paper Scanner" />
+                            <SidebarItem to="/students/assign" icon={Users} label="Student Assignment" />
                             <SidebarItem to="/attendance" icon={CheckCircle2} label="Attendance" />
                             <SidebarItem to="/grades" icon={Calculator} label="Grades" />
                             <SidebarItem to="/financial" icon={DollarSign} label="Financials" />

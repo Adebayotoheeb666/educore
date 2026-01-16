@@ -9,8 +9,7 @@ import {
     Wallet,
     AlertCircle
 } from 'lucide-react';
-import { db } from '../../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { logAction } from '../../lib/auditService';
 
@@ -58,23 +57,24 @@ export const FundParentWallet = () => {
 
         setLoading(true);
         try {
-            await addDoc(collection(db, "financial_transactions"), {
+            const { error: txError } = await supabase.from('financial_transactions').insert({
                 amount: data.amount,
                 type: 'income',
                 category: 'Wallet Funding',
                 description: `Wallet funding for ${selectedStudent.name}`,
-                date: serverTimestamp(),
                 status: 'completed',
-                studentId: selectedStudent.id,
-                parentId: selectedStudent.parentId,
-                schoolId
+                student_id: selectedStudent.id,
+                parent_id: selectedStudent.parentId,
+                school_id: schoolId
             });
+
+            if (txError) throw txError;
 
             // Log wallet funding action
             try {
                 await logAction(
                     schoolId,
-                    user.uid,
+                    user.id,
                     profile.fullName || 'Unknown User',
                     'create',
                     'financial',

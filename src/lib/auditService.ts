@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { AuditLog } from './types';
+export type { AuditLog };
 
 /**
  * Log an action to the audit trail

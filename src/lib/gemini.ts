@@ -267,5 +267,30 @@ Important: Return ONLY the JSON object, no other text.`;
 
     const result = await chat.sendMessage(message);
     return result.response.text();
+  },
+
+  async predictAttendanceIssues(attendanceData: any[]) {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `Analyze the following student attendance data and predict potential absence patterns or students at risk of falling below the 75% attendance threshold required for exams.
+
+DATA:
+${JSON.stringify(attendanceData)}
+
+REQUIREMENTS:
+1. Identify students with declining attendance trends.
+2. Highlight any class-wide patterns (e.g., lower attendance on specific days).
+3. Provide 3 proactive recommendations for the teacher.
+4. Output in a concise, professional Markdown format.
+
+Tone: Professional, Nigerian educational context.`;
+
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (err) {
+      console.error("Attendance Prediction Error:", err);
+      return "Unable to generate prediction at this time. Please try again later.";
+    }
   }
 };

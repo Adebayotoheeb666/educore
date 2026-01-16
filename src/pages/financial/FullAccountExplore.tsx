@@ -9,8 +9,7 @@ import {
     Filter,
     Download
 } from 'lucide-react';
-import { db } from '../../lib/firebase';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { supabase } from '../../lib/supabase';
 
 interface Transaction {
     id: string;
@@ -33,37 +32,58 @@ export const FullAccountExplore = () => {
     });
 
     useEffect(() => {
-        const q = query(
-            collection(db, "financial_transactions"),
-            orderBy("date", "desc"),
-            limit(50)
-        );
+        const fetchTransactions = async () => {
+            const { data, error } = await supabase
+                .from('financial_transactions')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
+            if (error) {
+                console.error("Error fetching transactions:", error);
+            } else if (data) {
+                updateStateWithTransactions(data);
+            }
+            setLoading(false);
+        };
+
+        const updateStateWithTransactions = (data: any[]) => {
+            const mappedData = data.map(tx => ({
+                id: tx.id,
+                amount: tx.amount,
+                type: tx.type,
+                description: tx.description,
+                date: tx.created_at,
+                category: tx.category,
+                status: tx.status
             })) as Transaction[];
 
-            setTransactions(data);
+            setTransactions(mappedData);
 
             // Calculate Stats
-            const inc = data.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
-            const exp = data.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
+            const inc = mappedData.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
+            const exp = mappedData.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
 
             setStats({
                 income: inc,
                 expenses: exp,
                 balance: inc - exp
             });
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching transactions:", error);
-            // Fallback for demo/empty state or permission denied
-            setLoading(false);
-        });
+        };
 
-        return () => unsubscribe();
+        fetchTransactions();
+
+        // Real-time subscription
+        const channel = supabase
+            .channel('financial_transactions_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_transactions' }, () => {
+                fetchTransactions();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const formatCurrency = (amount: number) => {
@@ -190,7 +210,7 @@ export const FullAccountExplore = () => {
                                         </span>
                                     </td>
                                     <td className="py-4 text-gray-400 text-sm">
-                                        {tx.date?.seconds ? new Date(tx.date.seconds * 1000).toLocaleDateString() : 'Just now'}
+                                        {tx.date ? new Date(tx.date).toLocaleDateString() : 'Just now'}
                                     </td>
                                     <td className="py-4">
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${tx.status === 'completed'

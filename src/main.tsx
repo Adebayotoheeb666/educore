@@ -7,6 +7,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Lazy load pages
 const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
+const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
 const Login = lazy(() => import('./pages/Login').then(module => ({ default: module.Login })));
 const LessonGenerator = lazy(() => import('./pages/LessonGenerator').then(module => ({ default: module.LessonGenerator })));
 const ExamBuilder = lazy(() => import('./pages/ExamBuilder').then(module => ({ default: module.ExamBuilder })));
@@ -19,6 +20,7 @@ const PayForStudents = lazy(() => import('./pages/financial/PayForStudents').the
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 const AttendanceTracking = lazy(() => import('./pages/AttendanceTracking').then(module => ({ default: module.AttendanceTracking })));
 const GradeEntry = lazy(() => import('./pages/GradeEntry').then(module => ({ default: module.GradeEntry })));
+const ClassManager = lazy(() => import('./pages/ClassManager').then(module => ({ default: module.ClassManager })));
 const StudentPortal = lazy(() => import('./pages/StudentPortal').then(module => ({ default: module.StudentPortal })));
 const StudentAttendance = lazy(() => import('./pages/StudentAttendance.tsx').then(module => ({ default: module.StudentAttendance })));
 const StudentResults = lazy(() => import('./pages/StudentResults.tsx').then(module => ({ default: module.StudentResults })));
@@ -26,6 +28,7 @@ const ParentPortal = lazy(() => import('./pages/ParentPortal').then(module => ({
 const PasswordReset = lazy(() => import('./pages/PasswordReset').then(module => ({ default: module.PasswordReset })));
 const TermManagement = lazy(() => import('./pages/TermManagement').then(module => ({ default: module.TermManagement })));
 const AuditLogViewer = lazy(() => import('./pages/AuditLogViewer').then(module => ({ default: module.AuditLogViewer })));
+const StudentAssignment = lazy(() => import('./pages/StudentAssignment').then(module => ({ default: module.StudentAssignment })));
 
 const LoadingSpinner = () => (
   <div className="min-h-screen bg-dark-bg flex items-center justify-center">
@@ -35,6 +38,10 @@ const LoadingSpinner = () => (
 
 const router = createBrowserRouter([
   {
+    path: "/",
+    element: <Suspense fallback={<LoadingSpinner />}><LandingPage /></Suspense>,
+  },
+  {
     path: "/login",
     element: <Suspense fallback={<LoadingSpinner />}><Login /></Suspense>,
   },
@@ -43,8 +50,12 @@ const router = createBrowserRouter([
     element: <Suspense fallback={<LoadingSpinner />}><PasswordReset /></Suspense>,
   },
   {
-    path: "/",
+    path: "/dashboard",
     element: <ProtectedRoute><Layout><Suspense fallback={<LoadingSpinner />}><Dashboard /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/class-manager",
+    element: <ProtectedRoute allowedRoles={['admin', 'staff']}><Layout><Suspense fallback={<LoadingSpinner />}><ClassManager /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/lessons",
@@ -77,7 +88,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/financial/pay-fees",
-    element: <ProtectedRoute allowedRoles={['admin', 'bursar']}><Layout><Suspense fallback={<LoadingSpinner />}><PayForStudents /></Suspense></Layout></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['admin', 'bursar', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><PayForStudents /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/admin",
@@ -90,6 +101,10 @@ const router = createBrowserRouter([
   {
     path: "/grades",
     element: <ProtectedRoute allowedRoles={['admin', 'staff']}><Layout><Suspense fallback={<LoadingSpinner />}><GradeEntry /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/students/assign",
+    element: <ProtectedRoute allowedRoles={['admin', 'staff']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentAssignment /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/portal",
@@ -116,7 +131,6 @@ const router = createBrowserRouter([
     element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><AuditLogViewer /></Suspense></Layout></ProtectedRoute>,
   },
 ]);
-
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

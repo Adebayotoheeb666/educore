@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, Zap, Maximize2, Download, AlertCircle } from 'lucide-react';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { exportService } from '../lib/exportService';
-import type { ExamResult, AIScanResult } from '../lib/types';
 
 interface UnifiedResult {
     id: string;
@@ -35,9 +33,9 @@ const StudentRow = ({ result }: { result: UnifiedResult }) => {
             <div className="col-span-2 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden">
                     <img src={`https://ui-avatars.com/api/?name=${result.studentName}&background=random`} alt={result.studentName} />
-                </div>
+                </div >
                 <span className="font-bold text-white text-sm">{result.studentName}</span>
-            </div>
+            </div >
             <div className="text-center text-sm text-gray-400">{result.subject || '-'}</div>
             <div className="flex justify-center">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${color}`}>
@@ -48,7 +46,7 @@ const StudentRow = ({ result }: { result: UnifiedResult }) => {
             <div className="text-center text-sm text-gray-400">
                 <span className="bg-teal-500/20 text-teal-300 px-2 py-1 rounded text-xs">{typeLabel}</span>
             </div>
-        </div>
+        </div >
     );
 };
 
@@ -68,61 +66,67 @@ export const Analytics = () => {
 
                 // Fetch exam results from results collection
                 try {
-                    const examQ = query(
-                        collection(db, "results"),
-                        where("schoolId", "==", schoolId),
-                        where("teacherId", "==", user.uid),
-                        orderBy("updatedAt", "desc"),
-                        limit(50)
-                    );
-                    const examSnapshot = await getDocs(examQ);
-                    examSnapshot.forEach((doc) => {
-                        const data = doc.data() as ExamResult;
-                        unifiedResults.push({
-                            id: doc.id,
-                            studentName: `Student ${data.studentId.substring(0, 8)}`,
-                            score: data.totalScore,
-                            total: 100,
-                            feedback: data.remarks,
-                            type: 'exam',
-                            createdAt: data.updatedAt,
-                            subject: data.subjectId
+                    const { data: examData, error: examError } = await supabase
+                        .from('results')
+                        .select('*')
+                        .eq('school_id', schoolId)
+                        .eq('teacher_id', user.id)
+                        .order('updated_at', { ascending: false })
+                        .limit(50);
+
+                    if (examError) throw examError;
+
+                    if (examData) {
+                        examData.forEach((data: any) => {
+                            unifiedResults.push({
+                                id: data.id,
+                                studentName: `Student ${data.student_id ? data.student_id.substring(0, 8) : 'N/A'}`,
+                                score: data.total_score,
+                                total: 100,
+                                feedback: data.remarks,
+                                type: 'exam',
+                                createdAt: data.updated_at,
+                                subject: data.subject_id
+                            });
                         });
-                    });
+                    }
                 } catch (err) {
                     console.warn("Error fetching exam results:", err);
                 }
 
                 // Fetch AI scan results from ai_scan_results collection
                 try {
-                    const aiQ = query(
-                        collection(db, "ai_scan_results"),
-                        where("schoolId", "==", schoolId),
-                        where("teacherId", "==", user.uid),
-                        orderBy("createdAt", "desc"),
-                        limit(50)
-                    );
-                    const aiSnapshot = await getDocs(aiQ);
-                    aiSnapshot.forEach((doc) => {
-                        const data = doc.data() as AIScanResult;
-                        unifiedResults.push({
-                            id: doc.id,
-                            studentName: data.studentName,
-                            score: data.score,
-                            total: data.total,
-                            feedback: data.feedback,
-                            type: 'ai_scan',
-                            createdAt: data.createdAt
+                    const { data: aiData, error: aiError } = await supabase
+                        .from('ai_scan_results')
+                        .select('*')
+                        .eq('school_id', schoolId)
+                        .eq('teacher_id', user.id)
+                        .order('created_at', { ascending: false })
+                        .limit(50);
+
+                    if (aiError) throw aiError;
+
+                    if (aiData) {
+                        aiData.forEach((data: any) => {
+                            unifiedResults.push({
+                                id: data.id,
+                                studentName: data.student_name,
+                                score: data.score,
+                                total: data.total,
+                                feedback: data.feedback,
+                                type: 'ai_scan',
+                                createdAt: data.created_at
+                            });
                         });
-                    });
+                    }
                 } catch (err) {
                     console.warn("Error fetching AI scan results:", err);
                 }
 
                 // Sort by creation date
                 unifiedResults.sort((a, b) => {
-                    const aDate = a.createdAt?.toDate?.() || new Date(0);
-                    const bDate = b.createdAt?.toDate?.() || new Date(0);
+                    const aDate = a.createdAt ? new Date(a.createdAt) : new Date(0);
+                    const bDate = b.createdAt ? new Date(b.createdAt) : new Date(0);
                     return bDate.getTime() - aDate.getTime();
                 });
 

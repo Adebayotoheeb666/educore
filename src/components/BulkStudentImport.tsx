@@ -77,7 +77,7 @@ export const BulkStudentImport = ({ onSuccess, onClose }: BulkStudentImportProps
                 fileData,
                 schoolId,
                 false,
-                user.uid,
+                user.id,
                 profile.fullName || 'Unknown User'
             );
             setResult(importResult);
@@ -307,7 +307,7 @@ export const BulkStudentImport = ({ onSuccess, onClose }: BulkStudentImportProps
                     <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 max-h-[200px] overflow-y-auto">
                         <p className="text-red-300 font-bold mb-3">Errors ({result.errors.length})</p>
                         <div className="space-y-2 text-sm text-red-200/80">
-                            {result.errors.slice(0, 5).map((err, idx) => (
+                            {result.errors.slice(0, 5).map((err: any, idx: number) => (
                                 <p key={idx}>
                                     <span className="font-mono">Row {err.row}</span>: {err.error}
                                 </p>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ToggleLeft, ToggleRight, Wifi, CheckCircle, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
 import { storageService, type StorageStats, type SyncStatus } from '../lib/storageService';
-import { auth } from '../lib/firebase';
+import { useAuth } from '../hooks/useAuth';
 
 const Toggle = ({ checked, onChange }: { checked: boolean, onChange: () => void }) => (
     <button onClick={onChange} className={`transition-colors text-3xl ${checked ? 'text-teal-500' : 'text-gray-600'}`}>
@@ -10,6 +10,7 @@ const Toggle = ({ checked, onChange }: { checked: boolean, onChange: () => void 
 );
 
 export const Settings = () => {
+    const { user } = useAuth();
     const [dataSaver, setDataSaver] = useState(false);
     const [geminiNano, setGeminiNano] = useState(false);
     const [autoSync, setAutoSync] = useState(true);
@@ -111,7 +112,7 @@ export const Settings = () => {
     };
 
     const handleManualSync = async () => {
-        if (!auth.currentUser) {
+        if (!user) {
             setError('Please sign in to sync data.');
             return;
         }

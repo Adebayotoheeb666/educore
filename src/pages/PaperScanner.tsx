@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { geminiService } from '../lib/gemini';
 import { useAuth } from '../hooks/useAuth';
-import type { AIScanResult } from '../lib/types';
+
 
 interface GradingData {
     score: number;

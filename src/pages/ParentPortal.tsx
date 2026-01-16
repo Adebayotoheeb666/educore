@@ -6,8 +6,11 @@ import {
     TrendingUp,
     CheckCircle2,
     AlertCircle,
-    BarChart3
+    BarChart3,
+    CreditCard,
+    ExternalLink
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { geminiService } from '../lib/gemini';
@@ -22,7 +25,6 @@ interface AttendanceRecord {
     id: string;
     status: 'present' | 'absent';
     date: string;
-    description?: string;
 }
 
 interface ExamResult {
@@ -33,6 +35,7 @@ interface ExamResult {
     totalScore: number;
     grade?: string;
     term?: string;
+    subjectName?: string;
 }
 
 interface AttendanceStats {
@@ -147,7 +150,7 @@ export const ParentPortal = () => {
                 // Fetch results
                 const { data: resultsData, error: resError } = await supabase
                     .from('results')
-                    .select('*')
+                    .select('*, subjects(name)')
                     .eq('school_id', schoolId)
                     .eq('student_id', selectedChildId)
                     .order('updated_at', { ascending: false }) // or created_at
@@ -162,8 +165,9 @@ export const ParentPortal = () => {
                     examScore: r.exam_score,
                     totalScore: r.total_score,
                     term: r.term,
-                    grade: r.grade
-                })) as ExamResult[];
+                    grade: r.grade,
+                    subjectName: r.subjects?.name || r.subject_id
+                })) as any[];
 
                 setResults(resultsList);
             } catch (err) {
@@ -274,7 +278,7 @@ export const ParentPortal = () => {
             </header>
 
             {/* Attendance & Performance Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 {/* Attendance Card */}
                 <div className="bg-dark-card border border-white/5 rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -335,6 +339,25 @@ export const ParentPortal = () => {
                                 : 'More data needed'}
                         </div>
                     </div>
+                </div>
+
+                {/* Fees Card (Integrated) */}
+                <div className="bg-dark-card border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-gray-400 text-sm font-bold">Fees & Payments</h3>
+                        <CreditCard className="w-5 h-5 text-orange-400" />
+                    </div>
+                    <div className="space-y-3">
+                        <div className="text-3xl font-bold text-white">₦42,500</div>
+                        <div className="text-xs text-orange-400 font-bold uppercase tracking-wider">Outstanding Balance</div>
+                    </div>
+                    <NavLink
+                        to="/financial/pay-fees"
+                        className="mt-6 w-full flex items-center justify-center gap-2 py-3 bg-orange-500/10 hover:bg-orange-500 text-orange-400 hover:text-dark-bg font-bold rounded-xl transition-all border border-orange-500/20 group-hover:scale-[1.02]"
+                    >
+                        <span>Pay Fees</span>
+                        <ExternalLink className="w-4 h-4" />
+                    </NavLink>
                 </div>
             </div>
 
@@ -397,7 +420,7 @@ export const ParentPortal = () => {
 
                                     return (
                                         <tr key={result.id} className="hover:bg-white/5 transition-colors">
-                                            <td className="px-6 py-4 text-white font-medium">{result.subjectId}</td>
+                                            <td className="px-6 py-4 text-white font-medium">{result.subjectName}</td>
                                             <td className="px-6 py-4 text-center text-gray-400">{result.caScore}</td>
                                             <td className="px-6 py-4 text-center text-gray-400">{result.examScore}</td>
                                             <td className="px-6 py-4 text-center text-white font-bold">{result.totalScore}</td>

@@ -12,6 +12,15 @@ export const getVirtualEmail = (schoolId: string, admissionNumber: string) => {
 };
 
 /**
+ * Maps a staff ID to a virtual email for Auth
+ */
+export const getStaffVirtualEmail = (schoolId: string, staffId: string) => {
+    const cleanSchool = schoolId.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const cleanStaffId = staffId.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    return `${cleanStaffId}@${cleanSchool}.educore.app`;
+}
+
+/**
  * Registers a new school and its first admin
  */
 export const registerSchool = async (adminData: any, schoolData: any) => {
@@ -38,7 +47,8 @@ export const registerSchool = async (adminData: any, schoolData: any) => {
         .insert({
             name,
             address,
-            contact_email: email
+            contact_email: email,
+            admin_uid: uid // explicitly link admin
         })
         .select()
         .single();
@@ -62,26 +72,190 @@ export const registerSchool = async (adminData: any, schoolData: any) => {
 };
 
 /**
+ * Activates a pre-created account (Student or Staff) on first login.
+ * This performs a SignUp behind the scenes.
+ */
+export const activateAccount = async (
+    schoolId: string,
+    identifier: string, // Admission Number or Staff ID
+    password: string,
+    type: 'student' | 'staff'
+) => {
+    const virtualEmail = type === 'student'
+        ? getVirtualEmail(schoolId, identifier)
+        : getStaffVirtualEmail(schoolId, identifier);
+
+    // 1. Attempt Sign Up
+    const { data, error } = await supabase.auth.signUp({
+        email: virtualEmail,
+        password,
+        options: {
+            data: {
+                role: type,
+                schoolId: schoolId,
+                mappedId: identifier
+            }
+        }
+    });
+
+    if (error) throw error;
+    if (!data.user) throw new Error("Activation failed");
+
+    return data;
+}
+
+/**
+ * Helper to reconcile the "Placeholder Profile" with the new "Auth Profile"
+ */
+const linkProfileAfterActivation = async (schoolId: string, authUid: string, identifier: string, role: 'student' | 'staff') => {
+    // 1. Find the placeholder profile
+    const idField = role === 'student' ? 'admission_number' : 'staff_id';
+
+    // We need to fetch the OLD row.
+    const { data: placeholder, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('school_id', schoolId)
+        .eq(idField, identifier)
+        .neq('id', authUid) // Don't fetch if it's already the correct one
+        .maybeSingle();
+
+    if (error || !placeholder) {
+        console.warn("No placeholder profile found to link. Creating fresh profile.");
+        // Create fresh profile if missing
+        await supabase.from('users').insert({
+            id: authUid,
+            school_id: schoolId,
+            role: role,
+            [idField]: identifier,
+            full_name: role === 'student' ? 'Student' : 'Staff Member', // Default fallback
+            email: getVirtualEmail(schoolId, identifier) // Just to have something
+        });
+        return;
+    }
+
+    // 2. Insert NEW row with correct UID (Clone)
+    const { id, created_at, updated_at, ...profileData } = placeholder;
+
+    const { error: insertError } = await supabase
+        .from('users')
+        .upsert({
+            ...profileData,
+            id: authUid, // The new Auth UID
+            email: getVirtualEmail(schoolId, identifier) // Update email to virtual one
+        });
+
+    if (insertError) {
+        console.error("Failed to link profile:", insertError);
+        return;
+    }
+
+    // 3. Migrate Related Records (Partial Attempt)
+    if (placeholder.id) {
+        // Migrate Classes
+        await supabase
+            .from('student_classes')
+            .update({ student_id: authUid })
+            .eq('student_id', placeholder.id);
+
+        // Migrate Staff Assignments (if teacher)
+        if (role === 'staff') {
+            // Assuming table name is staff_assignments based on types.ts
+            const { error: assignError } = await supabase
+                .from('staff_assignments')
+                .update({ staff_id: authUid })
+                .eq('staff_id', placeholder.id);
+
+            if (assignError) console.warn("Staff assignment migration warning:", assignError);
+        }
+
+        // Finally, delete the old placeholder
+        await supabase.from('users').delete().eq('id', placeholder.id);
+    }
+
+    // Special case for parents: If they logged in with student creds, 
+    // we might need to ensure they have the 'parent' role if they intended to be in the parent portal.
+    // However, the current logic assumes Admission Number login is primarily for students.
+    // If a parent uses it, they effectively "are" the student for that session.
+};
+
+/**
+ * Login for parents using their child's admission number and PIN
+ * This is an alternative to phone OTP login.
+ */
+export const loginWithParentCredentials = async (schoolId: string, admissionNumber: string, pin: string) => {
+    const virtualEmail = getVirtualEmail(schoolId, admissionNumber);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: virtualEmail,
+        password: pin
+    });
+
+    if (error) throw error;
+    return data;
+};
+
+/**
  * Login with admission number (for students)
  */
 export const loginWithAdmissionNumber = async (schoolId: string, admissionNumber: string, password: string) => {
-    // 1. We need to find the school first to normalize the ID if needed, 
-    // but assuming schoolId passed here is the database UUID or a slug.
-    // For simplicity, let's assume the UI sends the correct School UUID or we do a lookup.
-
-    // For now, constructing email with raw input. 
-    // In production, you might look up the student by admission_number column via a Edge Function 
-    // to get their real internal email.
     const virtualEmail = getVirtualEmail(schoolId, admissionNumber);
+
+    // 1. Try Login
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: virtualEmail,
+        password
+    });
+
+    if (error) {
+        // We attempt to ACTIVATE (SignUp) if login fails.
+        // This is a "Just-in-Time" registration.
+        try {
+            console.log("Login failed, attempting activation...");
+            const authResponse = await activateAccount(schoolId, admissionNumber, password, 'student');
+
+            if (authResponse.user) {
+                // Post-Activation: Link/Clone Profile
+                await linkProfileAfterActivation(schoolId, authResponse.user.id, admissionNumber, 'student');
+                return authResponse;
+            }
+        } catch (activationError) {
+            console.error("Activation failed:", activationError);
+            throw error; // Throw original login error if activation fails
+        }
+    }
+
+    return data;
+};
+
+/**
+ * Login with Staff ID
+ */
+export const loginWithStaffId = async (schoolId: string, staffId: string, password: string) => {
+    const virtualEmail = getStaffVirtualEmail(schoolId, staffId);
 
     const { data, error } = await supabase.auth.signInWithPassword({
         email: virtualEmail,
         password
     });
 
-    if (error) throw error;
+    if (error) {
+        // Try Activation
+        try {
+            console.log("Login failed, attempting activation...");
+            const authResponse = await activateAccount(schoolId, staffId, password, 'staff');
+            if (authResponse.user) {
+                await linkProfileAfterActivation(schoolId, authResponse.user.id, staffId, 'staff');
+                return authResponse;
+            }
+        } catch (activationError) {
+            console.error("Activation failed:", activationError);
+            throw error;
+        }
+    }
+
     return data;
-};
+}
 
 /**
  * Initiate phone login (sends OTP)
@@ -151,8 +325,12 @@ export const getCurrentUserProfile = async (uid: string): Promise<UserProfile | 
         schoolId: data.school_id,
         admissionNumber: data.admission_number,
         phoneNumber: data.phone_number,
+        staffId: data.staff_id,
+        assignedClasses: data.assigned_classes,
+        assignedSubjects: data.assigned_subjects,
+        linkedStudents: data.linked_students,
+        profileImage: data.profile_image,
         createdAt: data.created_at,
         updatedAt: data.updated_at
     };
 };
-

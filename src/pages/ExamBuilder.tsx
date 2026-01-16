@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Upload, CheckSquare, Trash2, AlertCircle, Download } from 'lucide-react';
 import { cn } from '../components/Layout';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { geminiService } from '../lib/gemini';
 import { exportService } from '../lib/exportService';
@@ -16,18 +16,56 @@ interface Question {
 }
 
 export const ExamBuilder = () => {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [difficulty, setDifficulty] = useState(50);
     const [generatedQuestions, setQuestions] = useState<Question[]>([]);
     const [sourceText, setSourceText] = useState<string>('');
     const [error, setError] = useState<string>('');
+    const [classes, setClasses] = useState<any[]>([]);
+    const [subjects, setSubjects] = useState<any[]>([]);
+    const [selectedClass, setSelectedClass] = useState<string>('');
+    const [selectedSubject, setSelectedSubject] = useState<string>('');
+    const [fetchingMetadata, setFetchingMetadata] = useState(true);
     const [fileName, setFileName] = useState<string>('');
     const [questionCount, setQuestionCount] = useState(10);
     const [mcqRatio, setMcqRatio] = useState(0.6);
     const [examTitle, setExamTitle] = useState('');
 
+    const { schoolId } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!schoolId) return;
+
+        const fetchMetadata = async () => {
+            setFetchingMetadata(true);
+            try {
+                const { data: classData, error: classError } = await supabase
+                    .from('classes')
+                    .select('*')
+                    .eq('school_id', schoolId);
+                if (classError) throw classError;
+                setClasses(classData || []);
+                if (classData?.length) setSelectedClass(classData[0].id);
+
+                const { data: subjectData, error: subjectError } = await supabase
+                    .from('subjects')
+                    .select('*')
+                    .eq('school_id', schoolId);
+                if (subjectError) throw subjectError;
+                setSubjects(subjectData || []);
+                if (subjectData?.length) setSelectedSubject(subjectData[0].id);
+            } catch (err) {
+                console.error("Error fetching metadata:", err);
+            } finally {
+                setFetchingMetadata(false);
+            }
+        };
+
+        fetchMetadata();
+    }, [schoolId]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -105,20 +143,25 @@ export const ExamBuilder = () => {
     };
 
     const handleSaveExam = async () => {
-        if (!auth.currentUser) {
+        if (!user) {
             alert("Please sign in to save exams.");
             return;
         }
         if (generatedQuestions.length === 0) return;
 
         try {
-            await addDoc(collection(db, "exams"), {
-                userId: auth.currentUser.uid,
+            const { error } = await supabase.from('exams').insert({
+                user_id: user.id,
+                school_id: schoolId,
+                class_id: selectedClass,
+                subject_id: selectedSubject,
                 title: examTitle || "Generated Exam",
                 questions: generatedQuestions,
                 difficulty,
-                createdAt: serverTimestamp()
             });
+
+            if (error) throw error;
+
             alert("Exam Saved Successfully!");
             navigate('/dashboard');
         } catch (e) {
@@ -175,6 +218,31 @@ export const ExamBuilder = () => {
             {/* Configuration */}
             <section>
                 <div className="text-teal-500 text-xs font-bold uppercase tracking-wider mb-4">EXAM CONFIGURATION</div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="bg-dark-card border border-white/5 p-4 rounded-xl">
+                        <label className="text-gray-500 text-xs font-bold block mb-1">Target Class</label>
+                        <select
+                            className="w-full bg-transparent text-white outline-none font-medium [&>option]:text-black"
+                            value={selectedClass}
+                            onChange={(e) => setSelectedClass(e.target.value)}
+                            disabled={fetchingMetadata}
+                        >
+                            {fetchingMetadata ? <option>Loading...</option> : classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="bg-dark-card border border-white/5 p-4 rounded-xl">
+                        <label className="text-gray-500 text-xs font-bold block mb-1">Subject</label>
+                        <select
+                            className="w-full bg-transparent text-white outline-none font-medium [&>option]:text-black"
+                            value={selectedSubject}
+                            onChange={(e) => setSelectedSubject(e.target.value)}
+                            disabled={fetchingMetadata}
+                        >
+                            {fetchingMetadata ? <option>Loading...</option> : subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                    </div>
+                </div>
 
                 {/* Question Count */}
                 <div className="bg-dark-card border border-white/5 p-4 rounded-xl mb-4">

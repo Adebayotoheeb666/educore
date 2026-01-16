@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Send, Download, AlertCircle, Archive, Clock, Sparkles } from 'lucide-react';
 import { geminiService } from '../lib/gemini';
@@ -6,6 +6,16 @@ import { exportService } from '../lib/exportService';
 import { cn } from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+
+interface ClassData {
+    id: string;
+    name: string;
+}
+
+interface SubjectData {
+    id: string;
+    name: string;
+}
 
 interface LessonNote {
     id: string;
@@ -20,14 +30,55 @@ interface LessonNote {
 }
 
 export const LessonGenerator = () => {
-    const { user, schoolId } = useAuth();
+    const { user, schoolId, profile } = useAuth();
     const [topic, setTopic] = useState('');
-    const [subject, setSubject] = useState('Basic Science');
-    const [level, setLevel] = useState('Primary 1');
+    const [subject, setSubject] = useState('');
+    const [level, setLevel] = useState('');
+    const [classes, setClasses] = useState<ClassData[]>([]);
+    const [subjects, setSubjects] = useState<SubjectData[]>([]);
     const [loading, setLoading] = useState(false);
+    const [fetchingMetadata, setFetchingMetadata] = useState(true);
     const [exporting, setExporting] = useState(false);
     const [result, setResult] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!schoolId) return;
+
+        const fetchMetadata = async () => {
+            setFetchingMetadata(true);
+            try {
+                // Fetch Classes
+                let classesQuery = supabase.from('classes').select('id, name').eq('school_id', schoolId);
+
+                // If staff, filter by assignments (optional optimization, but let's stick to school-wide for now to be safe, or check profile)
+                if (profile?.role === 'staff') {
+                    // For now, consistent with GradeEntry, we'll fetch all but UI could filter
+                }
+
+                const { data: classData, error: classError } = await classesQuery;
+                if (classError) throw classError;
+                setClasses(classData || []);
+                if (classData && classData.length > 0) setLevel(classData[0].name);
+
+                // Fetch Subjects
+                const { data: subjectData, error: subjectError } = await supabase
+                    .from('subjects')
+                    .select('id, name')
+                    .eq('school_id', schoolId);
+                if (subjectError) throw subjectError;
+                setSubjects(subjectData || []);
+                if (subjectData && subjectData.length > 0) setSubject(subjectData[0].name);
+
+            } catch (err) {
+                console.error("Error fetching metadata:", err);
+            } finally {
+                setFetchingMetadata(false);
+            }
+        };
+
+        fetchMetadata();
+    }, [schoolId]);
 
     // AI Polish States
     const [personalization, setPersonalization] = useState('standard');
@@ -58,12 +109,13 @@ export const LessonGenerator = () => {
                     .from('lessons')
                     .insert({
                         topic,
-                        subject_id: subject, // Using subject name as ID or column mapping
-                        level,
                         content: note,
                         teacher_id: user.id,
                         school_id: schoolId,
-                        personalization, // Assuming these columns exist or we add them to a JSON 'options' column
+                        class_id: classes.find(c => c.name === level)?.id,
+                        subject_id: subjects.find(s => s.name === subject)?.id,
+                        personalization,
+                        // Assuming these columns exist or we add them to a JSON 'options' column
                         // wrapper for options if schema is simple:
                         // options: { personalization, translation: includeTranslation, waecFocus }
                         translation: includeTranslation,
@@ -89,7 +141,7 @@ export const LessonGenerator = () => {
         try {
             const { data, error } = await supabase
                 .from('lessons')
-                .select('*')
+                .select('*, subjects(name)')
                 .eq('teacher_id', user.id)
                 .order('created_at', { ascending: false });
 
@@ -98,7 +150,7 @@ export const LessonGenerator = () => {
             const mappedNotes: LessonNote[] = (data || []).map(d => ({
                 id: d.id,
                 topic: d.topic,
-                subject: d.subject_id, // Map back
+                subject: d.subjects?.name || d.subject_id,
                 level: d.level,
                 content: d.content,
                 personalization: d.personalization || 'standard',
@@ -180,20 +232,21 @@ export const LessonGenerator = () => {
 
             {view === 'generate' ? (
                 <>
-                    {/* Controls */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="bg-dark-card border border-white/5 rounded-xl p-3">
                             <label className="text-gray-500 text-xs font-bold block mb-1">Class Level</label>
                             <select
                                 className="w-full bg-transparent text-white outline-none font-medium [&>option]:text-black"
                                 value={level} onChange={e => setLevel(e.target.value)}
+                                disabled={fetchingMetadata}
                             >
-                                <option>Creche</option>
-                                <option>Nursery 1</option> <option>Nursery 2</option>
-                                <option>Primary 1</option> <option>Primary 2</option> <option>Primary 3</option>
-                                <option>Primary 4</option> <option>Primary 5</option> <option>Primary 6</option>
-                                <option>JSS 1</option> <option>JSS 2</option> <option>JSS 3</option>
-                                <option>SS 1</option> <option>SS 2</option> <option>SS 3</option>
+                                {fetchingMetadata ? (
+                                    <option>Loading classes...</option>
+                                ) : (
+                                    classes.map(c => (
+                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                    ))
+                                )}
                             </select>
                         </div>
                         <div className="bg-dark-card border border-white/5 rounded-xl p-3">
@@ -201,9 +254,15 @@ export const LessonGenerator = () => {
                             <select
                                 className="w-full bg-transparent text-white outline-none font-medium [&>option]:text-black"
                                 value={subject} onChange={e => setSubject(e.target.value)}
+                                disabled={fetchingMetadata}
                             >
-                                <option>Basic Science</option> <option>Mathematics</option> <option>English</option>
-                                <option>Physics</option> <option>Chemistry</option>
+                                {fetchingMetadata ? (
+                                    <option>Loading subjects...</option>
+                                ) : (
+                                    subjects.map(s => (
+                                        <option key={s.id} value={s.name}>{s.name}</option>
+                                    ))
+                                )}
                             </select>
                         </div>
                     </div>

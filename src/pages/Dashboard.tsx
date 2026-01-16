@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText } from 'lucide-react';
+import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText, Users } from 'lucide-react';
 import { NavLink, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -18,8 +18,6 @@ export const Dashboard = () => {
         const fetchPendingGrades = async () => {
             if (!user) return;
             try {
-                // Assuming 'results' table uses snake_case 'user_id' based on pattern
-                // If it uses camelCase 'userId', we might need to adjust.
                 const { count, error } = await supabase
                     .from('results')
                     .select('*', { count: 'exact', head: true })
@@ -29,7 +27,6 @@ export const Dashboard = () => {
                 setPendingCount(count || 0);
             } catch (err) {
                 console.error('Error fetching pending grades:', err);
-                // Fallback attempt with camelCase if snake_case failed (optional safety)
                 setPendingCount(0);
             } finally {
                 setLoading(false);
@@ -63,7 +60,7 @@ export const Dashboard = () => {
             <div>
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-white">AI Toolkit</h2>
-                    <span className="text-teal-500 text-sm font-bold">3 tools available</span>
+                    <span className="text-teal-500 text-sm font-bold">4 tools available</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -99,6 +96,20 @@ export const Dashboard = () => {
                             <Scan className="w-6 h-6 text-teal-400" />
                         </div>
                         <span className="text-xl font-bold text-white">Scan Scripts</span>
+                    </NavLink>
+
+                    <NavLink to="/class-manager" className="bg-dark-card border border-white/5 p-6 rounded-[24px] h-48 flex flex-col justify-between hover:bg-white/5 transition-colors group">
+                        <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center group-hover:bg-teal-500/20 transition-colors">
+                            <Users className="w-6 h-6 text-teal-400" />
+                        </div>
+                        <span className="text-xl font-bold text-white">Class Manager</span>
+                    </NavLink>
+
+                    <NavLink to="/attendance" className="bg-dark-card border border-white/5 p-6 rounded-[24px] h-48 flex flex-col justify-between hover:bg-white/5 transition-colors group">
+                        <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center group-hover:bg-teal-500/20 transition-colors">
+                            <Calendar className="w-6 h-6 text-teal-400" />
+                        </div>
+                        <span className="text-xl font-bold text-white">Take Attendance</span>
                     </NavLink>
                 </div>
             </div>
@@ -148,3 +159,8 @@ export const Dashboard = () => {
         </div>
     );
 };
+
+// Help helper
+const Calendar = ({ className }: any) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></svg>
+);

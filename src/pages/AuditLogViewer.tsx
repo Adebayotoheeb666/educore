@@ -64,9 +64,10 @@ export const AuditLogViewer = () => {
         // Date range filter
         if (startDate || endDate) {
             filtered = filtered.filter(log => {
-                const logDate = log.timestamp instanceof Date
-                    ? log.timestamp
-                    : new Date(log.timestamp as any);
+                const timestamp = log.timestamp as any;
+                const logDate = timestamp instanceof Date
+                    ? timestamp
+                    : new Date(timestamp);
 
                 if (startDate && logDate < new Date(startDate)) return false;
                 if (endDate && logDate > new Date(endDate + 'T23:59:59')) return false;

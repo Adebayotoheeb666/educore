@@ -12,8 +12,10 @@ import {
     MessageSquare,
     Send,
     X,
-    Bot
+    Bot,
+    ArrowRight
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { geminiService } from '../lib/gemini';
@@ -35,6 +37,7 @@ interface StudentResult {
     totalScore: number;
     schoolId: string;
     studentId: string;
+    subjectName?: string;
 }
 
 export const StudentPortal = () => {
@@ -65,9 +68,8 @@ export const StudentPortal = () => {
                 // 1. Fetch Student Results
                 const { data: resultsData, error: resultsError } = await supabase
                     .from('results')
-                    .select('*')
-                    .eq('school_id', schoolId)
-                    .eq('student_id', user.id); // Assuming user.id links to student_id or public_users.id
+                    .select('*, subjects(name)')
+                    .eq('student_id', user.id);
 
                 if (resultsError) throw resultsError;
 
@@ -77,6 +79,7 @@ export const StudentPortal = () => {
                     caScore: r.ca_score,
                     examScore: r.exam_score,
                     totalScore: r.total_score,
+                    subjectName: r.subjects?.name || r.subject_id,
                     schoolId: r.school_id,
                     studentId: r.student_id
                 })) as StudentResult[];
@@ -226,9 +229,10 @@ export const StudentPortal = () => {
                             <BookOpen className="w-5 h-5 text-teal-400" />
                             <h2 className="text-lg font-bold text-white">Academic Performance</h2>
                         </div>
-                        <button className="text-teal-500 text-sm font-bold hover:underline py-1 px-3 rounded-lg hover:bg-teal-500/10 transition-colors">
-                            View All
-                        </button>
+                        <NavLink to="/portal/results" className="text-teal-500 text-sm font-bold hover:underline py-1 px-3 rounded-lg hover:bg-teal-500/10 transition-colors flex items-center gap-1">
+                            <span>View All</span>
+                            <ArrowRight className="w-3 h-3" />
+                        </NavLink>
                     </div>
                     <div className="p-6 space-y-4">
                         {results.length === 0 ? (
@@ -238,10 +242,10 @@ export const StudentPortal = () => {
                                 <div key={res.id} className="flex items-center justify-between p-4 bg-dark-bg rounded-2xl border border-white/5 hover:border-teal-500/20 transition-all group">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 group-hover:bg-teal-500/10 group-hover:text-teal-400 transition-all">
-                                            {res.subjectId?.charAt(0).toUpperCase()}
+                                            {res.subjectName?.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <div className="text-white font-bold">{res.subjectId || 'Subject'}</div>
+                                            <div className="text-white font-bold">{res.subjectName || 'Subject'}</div>
                                             <div className="text-gray-500 text-xs">CA: {res.caScore} | Exam: {res.examScore}</div>
                                         </div>
                                     </div>
@@ -256,9 +260,15 @@ export const StudentPortal = () => {
 
                 {/* Attendance Timeline */}
                 <section className="bg-dark-card border border-white/5 rounded-[32px] overflow-hidden">
-                    <div className="p-6 border-b border-white/5 flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-teal-400" />
-                        <h2 className="text-lg font-bold text-white">Recent Attendance</h2>
+                    <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Calendar className="w-5 h-5 text-teal-400" />
+                            <h2 className="text-lg font-bold text-white">Recent Attendance</h2>
+                        </div>
+                        <NavLink to="/portal/attendance" className="text-teal-500 text-sm font-bold hover:underline py-1 px-3 rounded-lg hover:bg-teal-500/10 transition-colors flex items-center gap-1">
+                            <span>View History</span>
+                            <ArrowRight className="w-3 h-3" />
+                        </NavLink>
                     </div>
                     <div className="p-6">
                         {attendance.length === 0 ? (

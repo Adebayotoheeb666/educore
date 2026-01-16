@@ -31,6 +31,7 @@ interface StudentResult {
     term?: string;
     session?: string;
     createdAt?: string;
+    subjectName?: string;
 }
 
 export const StudentResults = () => {
@@ -49,7 +50,7 @@ export const StudentResults = () => {
             try {
                 const { data, error } = await supabase
                     .from('results')
-                    .select('*')
+                    .select('*, subjects(name)')
                     .eq('school_id', schoolId)
                     .eq('student_id', user.id)
                     .order('created_at', { ascending: false });
@@ -63,8 +64,9 @@ export const StudentResults = () => {
                     examScore: r.exam_score,
                     totalScore: r.total_score,
                     term: r.term,
-                    session: r.session || '2025/2026', // Fallback or fetch from r.session
-                    createdAt: r.created_at
+                    session: r.session || '2025/2026',
+                    createdAt: r.created_at,
+                    subjectName: r.subjects?.name || r.subject_id
                 }));
 
                 setResults(resultsList);
@@ -79,7 +81,7 @@ export const StudentResults = () => {
     }, [user, schoolId]);
 
     const filteredResults = results.filter(result => {
-        const matchesSearch = result.subjectId?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = (result.subjectName || result.subjectId)?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesTerm = termFilter === 'all' || result.term === termFilter;
         return matchesSearch && matchesTerm;
     });
@@ -169,7 +171,7 @@ export const StudentResults = () => {
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={filteredResults}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                                <XAxis dataKey="subjectId" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                                <XAxis dataKey="subjectName" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                                 <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} domain={[0, 100]} />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', fontSize: '12px' }}
@@ -215,13 +217,13 @@ export const StudentResults = () => {
                                     const { grade, color } = getGrade(res.totalScore);
                                     return (
                                         <tr key={res.id} className="hover:bg-white/[0.02] transition-colors group">
-                                            <td className="px-8 py-6 font-bold text-white">{res.subjectId}</td>
+                                            <td className="px-8 py-6 font-bold text-white">{res.subjectName}</td>
                                             <td className="px-8 py-6 text-center text-gray-400">{res.caScore}</td>
                                             <td className="px-8 py-6 text-center text-gray-400">{res.examScore}</td>
                                             <td className="px-8 py-6 text-center">
                                                 <span className={`px-4 py-2 rounded-xl font-black ${res.totalScore >= 70 ? 'bg-emerald-500/10 text-emerald-500' :
-                                                        res.totalScore >= 50 ? 'bg-blue-500/10 text-blue-400' :
-                                                            'bg-red-500/10 text-red-500'
+                                                    res.totalScore >= 50 ? 'bg-blue-500/10 text-blue-400' :
+                                                        'bg-red-500/10 text-red-500'
                                                     }`}>
                                                     {res.totalScore}
                                                 </span>

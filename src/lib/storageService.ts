@@ -32,7 +32,7 @@ export const storageService = {
         }
       }
 
-      // Estimate IndexedDB space (used by Supabase offline persistence if enabled)
+      // Estimate IndexedDB space (used by Supabase offline persistence or browser default)
       let indexedDBSize = 0;
       if (typeof window !== 'undefined' && 'indexedDB' in window) {
         try {
@@ -146,8 +146,7 @@ export const storageService = {
       for (const item of pendingSync) {
         if (item.type === 'grade') {
           try {
-            // Using direct Supabase insert instead of batch for now
-            // In production, should bunch them up
+            // Using direct Supabase insert instead of batch for now (e.g., instead of Firestore)
             await supabase.from('results').insert(item.data);
             itemsProcessed++;
           } catch (e) {

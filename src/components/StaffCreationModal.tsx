@@ -32,7 +32,7 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
         setError('');
 
         try {
-            const result = await createStaffAccount(schoolId, user.uid, formData);
+            const result = await createStaffAccount(schoolId, user.id, formData);
             setCreatedCredentials({
                 staffId: result.staffId,
                 tempPassword: result.tempPassword
