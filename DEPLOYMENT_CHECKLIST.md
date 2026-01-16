@@ -184,7 +184,7 @@ supabase functions deploy payment-webhook
 3. [ ] Click **Settings**
 4. [ ] Add Secret:
    - **Key**: `STRIPE_SECRET_KEY`
-   - **Value**: `sk_test_xxxxxxxxxxxxxxxxxxxxxxxx`
+   - **Value**: ``
 5. [ ] Click **Update**
 
 #### For payment-webhook
@@ -194,7 +194,7 @@ supabase functions deploy payment-webhook
 3. [ ] Click **Settings**
 4. [ ] Add Secret #1:
    - **Key**: `STRIPE_SECRET_KEY`
-   - **Value**: `sk_test_xxxxxxxxxxxxxxxxxxxxxxxx`
+   - **Value**: ``
 5. [ ] Add Secret #2:
    - **Key**: `STRIPE_WEBHOOK_SECRET`
    - **Value**: `whsec_test_xxxxxxxxxxxxxxxxxxxxxxxx` (from Step 4.2 below)
