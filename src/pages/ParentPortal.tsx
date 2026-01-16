@@ -314,92 +314,95 @@ export const ParentPortal = () => {
                 })}
             </div>
 
-            {/* Attendance & Performance Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                {/* Attendance Card */}
-                <div className="bg-dark-card border border-white/5 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-gray-400 text-sm font-bold">Attendance Rate</h3>
-                        <Calendar className="w-5 h-5 text-teal-400" />
+            {/* Tab Content */}
+            {activeTab === 'overview' && (
+                <div className="space-y-6">
+                    {/* Attendance & Performance Cards */}
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                                {/* Attendance Card */}
+                        <div className="bg-dark-card border border-white/5 rounded-2xl p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-gray-400 text-sm font-bold">Attendance Rate</h3>
+                                <Calendar className="w-5 h-5 text-teal-400" />
                     </div>
-                    <div className="space-y-3">
-                        <div className="text-3xl font-bold text-white">{attendance.rate.toFixed(1)}%</div>
-                        <div className="text-sm text-gray-400">
-                            {attendance.present} present, {attendance.absent} absent out of {attendance.total} days
+                            <div className="space-y-3">
+                                <div className="text-3xl font-bold text-white">{attendance.rate.toFixed(1)}%</div>
+                                <div className="text-sm text-gray-400">
+                                    {attendance.present} present, {attendance.absent} absent out of {attendance.total} days
+                                </div>
+                                <div className="w-full bg-white/5 rounded-full h-2 mt-4 overflow-hidden">
+                                    <div
+                                        className="bg-teal-500 h-full transition-all"
+                                        style={{ width: `${attendance.rate}%` }}
+                                    />
+                                </div>
+                            </div>
                         </div>
-                        <div className="w-full bg-white/5 rounded-full h-2 mt-4 overflow-hidden">
-                            <div
-                                className="bg-teal-500 h-full transition-all"
-                                style={{ width: `${attendance.rate}%` }}
-                            />
-                        </div>
-                    </div>
-                </div>
 
-                {/* Average Score Card */}
-                <div className="bg-dark-card border border-white/5 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-gray-400 text-sm font-bold">Average Score</h3>
-                        <Award className="w-5 h-5 text-emerald-400" />
-                    </div>
-                    <div className="space-y-3">
-                        <div className="text-3xl font-bold text-white">
-                            {results.length > 0
-                                ? (results.reduce((sum, r) => sum + r.totalScore, 0) / results.length).toFixed(1)
-                                : 'N/A'}
+                        {/* Average Score Card */}
+                        <div className="bg-dark-card border border-white/5 rounded-2xl p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-gray-400 text-sm font-bold">Average Score</h3>
+                                <Award className="w-5 h-5 text-emerald-400" />
+                            </div>
+                            <div className="space-y-3">
+                                <div className="text-3xl font-bold text-white">
+                                    {results.length > 0
+                                        ? (results.reduce((sum, r) => sum + r.totalScore, 0) / results.length).toFixed(1)
+                                        : 'N/A'}
+                                </div>
+                                <div className="text-sm text-gray-400">
+                                    {results.length} subject{results.length !== 1 ? 's' : ''} recorded
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-sm text-gray-400">
-                            {results.length} subject{results.length !== 1 ? 's' : ''} recorded
-                        </div>
-                    </div>
-                </div>
 
-                {/* Performance Trend Card */}
-                <div className="bg-dark-card border border-white/5 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-gray-400 text-sm font-bold">Performance</h3>
-                        <TrendingUp className="w-5 h-5 text-blue-400" />
-                    </div>
-                    <div className="space-y-3">
-                        <div className="text-3xl font-bold text-white">
-                            {results.length > 1
-                                ? results[0].totalScore > results[results.length - 1].totalScore
-                                    ? '📈'
-                                    : results[0].totalScore < results[results.length - 1].totalScore
-                                        ? '📉'
-                                        : '→'
-                                : '→'}
+                        {/* Performance Trend Card */}
+                        <div className="bg-dark-card border border-white/5 rounded-2xl p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-gray-400 text-sm font-bold">Performance</h3>
+                                <TrendingUp className="w-5 h-5 text-blue-400" />
+                            </div>
+                            <div className="space-y-3">
+                                <div className="text-3xl font-bold text-white">
+                                    {results.length > 1
+                                        ? results[0].totalScore > results[results.length - 1].totalScore
+                                            ? '📈'
+                                            : results[0].totalScore < results[results.length - 1].totalScore
+                                                ? '📉'
+                                                : '→'
+                                        : '→'}
+                                </div>
+                                <div className="text-sm text-gray-400">
+                                    {results.length > 1
+                                        ? `Latest: ${results[0].totalScore}, Previous: ${results[results.length - 1].totalScore}`
+                                        : 'More data needed'}
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-sm text-gray-400">
-                            {results.length > 1
-                                ? `Latest: ${results[0].totalScore}, Previous: ${results[results.length - 1].totalScore}`
-                                : 'More data needed'}
+
+                        {/* Fees Card (Integrated) */}
+                        <div className="bg-dark-card border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-gray-400 text-sm font-bold">Fees & Payments</h3>
+                                <CreditCard className="w-5 h-5 text-orange-400" />
+                            </div>
+                            <div className="space-y-3">
+                                <div className="text-3xl font-bold text-white">₦42,500</div>
+                                <div className="text-xs text-orange-400 font-bold uppercase tracking-wider">Outstanding Balance</div>
+                            </div>
+                            <NavLink
+                                to="/financial/pay-fees"
+                                className="mt-6 w-full flex items-center justify-center gap-2 py-3 bg-orange-500/10 hover:bg-orange-500 text-orange-400 hover:text-dark-bg font-bold rounded-xl transition-all border border-orange-500/20 group-hover:scale-[1.02]"
+                            >
+                                <span>Pay Fees</span>
+                                <ExternalLink className="w-4 h-4" />
+                            </NavLink>
                         </div>
                     </div>
-                </div>
 
-                {/* Fees Card (Integrated) */}
-                <div className="bg-dark-card border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-gray-400 text-sm font-bold">Fees & Payments</h3>
-                        <CreditCard className="w-5 h-5 text-orange-400" />
-                    </div>
-                    <div className="space-y-3">
-                        <div className="text-3xl font-bold text-white">₦42,500</div>
-                        <div className="text-xs text-orange-400 font-bold uppercase tracking-wider">Outstanding Balance</div>
-                    </div>
-                    <NavLink
-                        to="/financial/pay-fees"
-                        className="mt-6 w-full flex items-center justify-center gap-2 py-3 bg-orange-500/10 hover:bg-orange-500 text-orange-400 hover:text-dark-bg font-bold rounded-xl transition-all border border-orange-500/20 group-hover:scale-[1.02]"
-                    >
-                        <span>Pay Fees</span>
-                        <ExternalLink className="w-4 h-4" />
-                    </NavLink>
-                </div>
-            </div>
-
-            {/* AI Performance Insight */}
-            {results.length > 0 && (
+                    {/* AI Performance Insight */}
+                    {results.length > 0 && (
                 <div className="bg-gradient-to-br from-teal-500/10 to-emerald-500/10 border border-teal-500/30 rounded-2xl p-6">
                     <div className="flex items-start justify-between mb-4">
                         <div>
@@ -428,8 +431,8 @@ export const ParentPortal = () => {
                 </div>
             )}
 
-            {/* Recent Results Table */}
-            {results.length > 0 && (
+                    {/* Recent Results Table */}
+                    {results.length > 0 && (
                 <div className="bg-dark-card border border-white/5 rounded-2xl overflow-hidden">
                     <div className="p-6 border-b border-white/5">
                         <h3 className="text-lg font-bold text-white">Recent Results</h3>
@@ -471,15 +474,32 @@ export const ParentPortal = () => {
                 </div>
             )}
 
-            {/* Empty State for No Results */}
-            {results.length === 0 && !loading && (
-                <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-8 text-center">
-                    <AlertCircle className="w-12 h-12 text-orange-400 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-orange-300 mb-2">No Results Yet</h2>
-                    <p className="text-orange-200/70">
-                        Your child doesn't have any recorded results yet. Results will appear here as teachers record grades.
-                    </p>
+                    {/* Empty State for No Results */}
+                    {results.length === 0 && !loading && (
+                        <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-8 text-center">
+                            <AlertCircle className="w-12 h-12 text-orange-400 mx-auto mb-4" />
+                            <h2 className="text-xl font-bold text-orange-300 mb-2">No Results Yet</h2>
+                            <p className="text-orange-200/70">
+                                Your child doesn't have any recorded results yet. Results will appear here as teachers record grades.
+                            </p>
+                        </div>
+                    )}
                 </div>
+            )}
+
+            {/* Performance Trends Tab */}
+            {activeTab === 'trends' && selectedChildId && (
+                <ChildPerformanceTrends childId={selectedChildId} />
+            )}
+
+            {/* Messaging Tab */}
+            {activeTab === 'messaging' && selectedChildId && (
+                <ParentTeacherMessaging childId={selectedChildId} />
+            )}
+
+            {/* Finances Tab */}
+            {activeTab === 'finances' && selectedChildId && (
+                <FinancialInvoicing childId={selectedChildId} />
             )}
         </div>
     );
