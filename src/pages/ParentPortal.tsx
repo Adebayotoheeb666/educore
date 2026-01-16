@@ -238,52 +238,81 @@ export const ParentPortal = () => {
     }
 
     return (
-        <div className="space-y-8 min-h-screen bg-dark-bg text-gray-100 p-8">
-            {/* Header with Child Switcher */}
+        <div className="space-y-6 min-h-screen bg-dark-bg text-gray-100 p-8">
+            {/* Header with Child Switcher and Notifications */}
             <header className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Parent Portal</h1>
                     <p className="text-gray-400 mt-2">Monitor your children's academic progress</p>
                 </div>
 
-                {children.length > 1 && (
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowChildrenMenu(!showChildrenMenu)}
-                            className="flex items-center gap-3 px-6 py-3 bg-dark-card border border-white/10 hover:border-teal-500 rounded-xl transition-colors"
-                        >
-                            <div className="flex-1 text-left">
-                                <p className="text-xs text-gray-400">Viewing</p>
-                                <p className="text-white font-bold">{selectedChildName}</p>
-                            </div>
-                            <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${showChildrenMenu ? 'rotate-180' : ''}`} />
-                        </button>
+                <div className="flex items-center gap-4">
+                    <NotificationCenter childId={selectedChildId} />
 
-                        {showChildrenMenu && (
-                            <div className="absolute right-0 mt-2 w-72 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                                {children.map(child => (
-                                    <button
-                                        key={child.id}
-                                        onClick={() => handleSelectChild(child.id, child.fullName)}
-                                        className={`w-full text-left px-6 py-4 transition-colors flex items-center justify-between border-b border-white/5 last:border-b-0 ${selectedChildId === child.id
-                                            ? 'bg-teal-500/20 text-teal-400'
-                                            : 'hover:bg-white/5 text-gray-300'
-                                            }`}
-                                    >
-                                        <div>
-                                            <p className="font-bold">{child.fullName}</p>
-                                            <p className="text-xs text-gray-500 mt-1">#{child.admissionNumber}</p>
-                                        </div>
-                                        {selectedChildId === child.id && (
-                                            <CheckCircle2 className="w-5 h-5" />
-                                        )}
-                                    </button>
-                                ))}
+                    {children.length > 1 && (
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowChildrenMenu(!showChildrenMenu)}
+                                className="flex items-center gap-3 px-6 py-3 bg-dark-card border border-white/10 hover:border-teal-500 rounded-xl transition-colors"
+                            >
+                                <div className="flex-1 text-left">
+                                    <p className="text-xs text-gray-400">Viewing</p>
+                                    <p className="text-white font-bold">{selectedChildName}</p>
+                                </div>
+                                <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${showChildrenMenu ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {showChildrenMenu && (
+                                <div className="absolute right-0 mt-2 w-72 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                                    {children.map(child => (
+                                        <button
+                                            key={child.id}
+                                            onClick={() => handleSelectChild(child.id, child.fullName)}
+                                            className={`w-full text-left px-6 py-4 transition-colors flex items-center justify-between border-b border-white/5 last:border-b-0 ${selectedChildId === child.id
+                                                ? 'bg-teal-500/20 text-teal-400'
+                                                : 'hover:bg-white/5 text-gray-300'
+                                                }`}
+                                        >
+                                            <div>
+                                                <p className="font-bold">{child.fullName}</p>
+                                                <p className="text-xs text-gray-500 mt-1">#{child.admissionNumber}</p>
+                                            </div>
+                                            {selectedChildId === child.id && (
+                                                <CheckCircle2 className="w-5 h-5" />
+                                            )}
+                                        </button>
+                                    ))}
                             </div>
-                        )}
-                    </div>
-                )}
+                            )}
+                        </div>
+                    )}
+                </div>
             </header>
+
+            {/* Navigation Tabs */}
+            <div className="flex gap-2 border-b border-white/10">
+                {[
+                    { id: 'overview', label: 'Overview', icon: BarChart3 },
+                    { id: 'trends', label: 'Performance Trends', icon: LineChart },
+                    { id: 'messaging', label: 'Messages', icon: MessageSquare },
+                    { id: 'finances', label: 'Finances', icon: Wallet }
+                ].map(tab => {
+                    const Icon = tab.icon;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`px-4 py-3 font-bold transition-colors flex items-center gap-2 border-b-2 ${activeTab === tab.id
+                                ? 'border-teal-500 text-teal-400'
+                                : 'border-transparent text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            <Icon className="w-4 h-4" />
+                            {tab.label}
+                        </button>
+                    );
+                })}
+            </div>
 
             {/* Attendance & Performance Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
