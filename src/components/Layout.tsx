@@ -6,10 +6,12 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../lib/firebase';
-import { signOut } from 'firebase/auth';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Bell } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { getNotifications, markAsRead, markAllAsRead } from '../lib/notificationService';
+import type { Notification } from '../lib/types';
 
 // Helper for Tailwind classes
 export function cn(...inputs: (string | undefined | null | false)[]) {
@@ -39,7 +41,63 @@ const SidebarItem = ({ to, icon: Icon, label }: { to: string; icon: any; label: 
 
 export const Layout = ({ children }: LayoutProps) => {
     const navigate = useNavigate();
-    const { profile } = useAuth();
+    const { profile, schoolId, user } = useAuth();
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const notificationRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            if (schoolId && user) {
+                const data = await getNotifications(schoolId, user.id);
+                setNotifications(data);
+                setUnreadCount(data.filter(n => !n.read).length);
+            }
+        };
+
+        if (schoolId && user) {
+            fetchNotifications();
+            // Poll every minute for new notifications
+            const interval = setInterval(fetchNotifications, 60000);
+            return () => clearInterval(interval);
+        }
+    }, [schoolId, user]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+                setShowNotifications(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleNotificationClick = async (notification: Notification & { id?: string }) => {
+        if (!notification.read && notification.id) {
+            await markAsRead(notification.id);
+            setNotifications(prev => prev.map(n =>
+                (n as any).id === notification.id ? { ...n, read: true } : n
+            ));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+        if (notification.link) {
+            navigate(notification.link);
+            setShowNotifications(false);
+        }
+    };
+
+    const handleMarkAllRead = async () => {
+        const unreadIds = notifications.filter(n => !n.read).map(n => (n as any).id).filter(Boolean);
+        if (unreadIds.length > 0) {
+            await markAllAsRead(unreadIds);
+            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+            setUnreadCount(0);
+        }
+    };
+
     return (
         <div className="flex min-h-screen bg-dark-bg text-dark-text font-sans selection:bg-teal-500/30">
             {/* Sidebar */}
@@ -92,7 +150,7 @@ export const Layout = ({ children }: LayoutProps) => {
                 <button
                     onClick={async () => {
                         try {
-                            await signOut(auth);
+                            await supabase.auth.signOut();
                             localStorage.removeItem('isAuthenticated'); // Clear mock auth if any
                             localStorage.removeItem('user');
                             navigate('/login');
@@ -110,6 +168,87 @@ export const Layout = ({ children }: LayoutProps) => {
             {/* Main Content */}
             <main className="flex-1 md:ml-64 p-4 md:p-8">
                 <div className="max-w-7xl mx-auto">
+                    {/* Top Bar with Notifications */}
+                    <div className="flex justify-end mb-6 relative z-40">
+                        <div className="relative" ref={notificationRef}>
+                            <button
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className="relative p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                            >
+                                <Bell className="w-6 h-6" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center border-2 border-dark-bg">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Notifications Dropdown */}
+                            {showNotifications && (
+                                <div className="absolute right-0 mt-2 w-80 md:w-96 bg-dark-card border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                                    <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                                        <h3 className="font-bold text-white">Notifications</h3>
+                                        {unreadCount > 0 && (
+                                            <button
+                                                onClick={handleMarkAllRead}
+                                                className="text-xs text-teal-400 hover:text-teal-300 font-medium"
+                                            >
+                                                Mark all read
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="max-h-[60vh] overflow-y-auto">
+                                        {notifications.length === 0 ? (
+                                            <div className="p-8 text-center text-gray-500 text-sm">
+                                                No notifications yet
+                                            </div>
+                                        ) : (
+                                            <div className="divide-y divide-white/5">
+                                                {notifications.map((notification, idx) => (
+                                                    <div
+                                                        key={(notification as any).id || idx}
+                                                        onClick={() => handleNotificationClick(notification)}
+                                                        className={cn(
+                                                            "p-4 cursor-pointer hover:bg-white/5 transition-colors",
+                                                            !notification.read && "bg-teal-500/5"
+                                                        )}
+                                                    >
+                                                        <div className="flex gap-3">
+                                                            <div className={cn(
+                                                                "w-2 h-2 rounded-full mt-2 flex-shrink-0",
+                                                                notification.type === 'error' ? "bg-red-500" :
+                                                                    notification.type === 'warning' ? "bg-orange-500" :
+                                                                        notification.type === 'success' ? "bg-emerald-500" :
+                                                                            "bg-blue-500"
+                                                            )} />
+                                                            <div>
+                                                                <h4 className={cn(
+                                                                    "text-sm font-medium mb-1",
+                                                                    !notification.read ? "text-white" : "text-gray-400"
+                                                                )}>
+                                                                    {notification.title}
+                                                                </h4>
+                                                                <p className="text-xs text-gray-500 leading-relaxed">
+                                                                    {notification.message}
+                                                                </p>
+                                                                <span className="text-[10px] text-gray-600 mt-2 block">
+                                                                    {notification.createdAt && typeof notification.createdAt !== 'string'
+                                                                        ? (notification.createdAt as any).toDate?.().toLocaleDateString()
+                                                                        : new Date().toLocaleDateString()
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {children}
                 </div>
             </main>

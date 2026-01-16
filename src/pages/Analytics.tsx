@@ -29,7 +29,6 @@ const StudentRow = ({ result }: { result: UnifiedResult }) => {
     else if (percentage >= 45) { grade = 'D'; color = "bg-orange-500 text-white"; }
 
     const typeLabel = result.type === 'exam' ? 'Exam' : 'AI Scan';
-    const dateStr = result.createdAt?.toDate?.()?.toLocaleDateString('en-NG') || 'N/A';
 
     return (
         <div className="grid grid-cols-6 gap-4 items-center py-4 border-b border-white/5 hover:bg-white/5 px-4 transition-colors">

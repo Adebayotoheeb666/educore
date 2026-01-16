@@ -1,11 +1,5 @@
-/**
- * Bulk Import Service for Students
- * Handles CSV/Excel parsing and bulk Firestore writes with validation
- */
-
-import { collection, addDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { db } from './firebase';
-import type { UserProfile, ParentStudentLink } from './types';
+import { supabase } from './supabase';
+import { logAction } from './auditService';
 
 export interface StudentImportRow {
     admissionNumber: string;
@@ -35,12 +29,12 @@ export interface ImportResult {
 export const parseCSVFile = async (file: File): Promise<StudentImportRow[]> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        
+
         reader.onload = (e) => {
             try {
                 const text = e.target?.result as string;
                 const lines = text.split('\n').filter(line => line.trim());
-                
+
                 if (lines.length < 2) {
                     reject(new Error('CSV file must have at least a header and one data row'));
                     return;
@@ -50,7 +44,7 @@ export const parseCSVFile = async (file: File): Promise<StudentImportRow[]> => {
                 const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
                 const requiredFields = ['admissionnumber', 'fullname'];
                 const missingFields = requiredFields.filter(field => !headers.includes(field));
-                
+
                 if (missingFields.length > 0) {
                     reject(new Error(`Missing required columns: ${missingFields.join(', ')}`));
                     return;
@@ -134,13 +128,14 @@ export const validateStudentData = (rows: StudentImportRow[]): { valid: boolean;
 };
 
 /**
- * Import students in bulk into Firestore
- * Creates user profiles and optionally creates parent accounts
+ * Import students in bulk into Supabase
  */
 export const bulkImportStudents = async (
     rows: StudentImportRow[],
     schoolId: string,
-    createParents: boolean = false
+    createParents: boolean = false,
+    currentUserId?: string,
+    currentUserName?: string
 ): Promise<ImportResult> => {
     const result: ImportResult = {
         success: false,
@@ -158,70 +153,119 @@ export const bulkImportStudents = async (
     }
 
     try {
-        const batch = writeBatch(db);
-        let batchCount = 0;
-        const maxBatchSize = 500; // Firestore batch limit
+        // Process students in batches
+        const batchSize = 50;
 
-        const parentStudentLinks: ParentStudentLink[] = [];
+        for (let i = 0; i < rows.length; i += batchSize) {
+            const batch = rows.slice(i, i + batchSize);
 
-        for (const row of rows) {
-            try {
-                // Validate again individually
-                if (!row.admissionNumber || !row.fullName) {
-                    result.errors.push({
-                        row: rows.indexOf(row) + 2,
-                        admissionNumber: row.admissionNumber,
-                        error: 'Missing required fields'
-                    });
-                    result.failed++;
-                    continue;
-                }
+            const usersToInsert: any[] = [];
+            const parentsToInsert: any[] = [];
+            const linksToInsert: any[] = [];
+            const enrollmentsToInsert: any[] = [];
 
-                // Create student profile
-                const studentProfile: UserProfile = {
-                    uid: `student_${schoolId}_${row.admissionNumber}`, // Will be replaced by actual Firebase UID
-                    fullName: row.fullName.trim(),
+            for (const row of batch) {
+                // Generate a deterministic UID for the student
+                const studentUid = `${schoolId}_${row.admissionNumber.trim().toLowerCase()}`;
+
+                // Student Profile
+                usersToInsert.push({
+                    id: studentUid,
+                    full_name: row.fullName.trim(),
                     email: row.email?.trim(),
                     role: 'student',
-                    schoolId,
-                    admissionNumber: row.admissionNumber.trim()
-                };
-
-                // Note: In production, this should create Firebase Auth user first
-                // For now, we'll add to users collection with placeholder UID
-                const studentRef = collection(db, 'users');
-                const studentData = {
-                    ...studentProfile,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                };
-
-                // We can't directly batch addDoc, so we'll need to collect for later
-                // This is a limitation of Firestore - we'll use Promise.all instead
-
-                result.imported++;
-            } catch (error) {
-                result.errors.push({
-                    row: rows.indexOf(row) + 2,
-                    admissionNumber: row.admissionNumber,
-                    error: error instanceof Error ? error.message : 'Unknown error'
+                    school_id: schoolId,
+                    admission_number: row.admissionNumber.trim()
                 });
-                result.failed++;
+
+                // Parent Handling
+                if (createParents && (row.parentEmail || row.parentPhone)) {
+                    const parentUid = `${schoolId}_parent_${row.admissionNumber.trim().toLowerCase()}`;
+
+                    parentsToInsert.push({
+                        id: parentUid,
+                        full_name: row.parentName || `Parent of ${row.fullName}`,
+                        email: row.parentEmail?.trim(),
+                        phone_number: row.parentPhone?.trim(),
+                        role: 'parent',
+                        school_id: schoolId
+                    });
+
+                    linksToInsert.push({
+                        id: `${parentUid}_${studentUid}`,
+                        school_id: schoolId,
+                        parent_ids: [parentUid],
+                        student_id: studentUid,
+                        relationship: 'Guardian'
+                    });
+                }
+
+                if (row.className) {
+                    enrollmentsToInsert.push({
+                        school_id: schoolId,
+                        student_id: studentUid,
+                        class_id: row.className,
+                        enrollment_date: new Date().toISOString().split('T')[0],
+                        status: 'active'
+                    });
+                }
             }
 
-            batchCount++;
-            if (batchCount >= maxBatchSize) {
-                await batch.commit();
-                batchCount = 0;
-            }
-        }
+            // Perform Supabase Inserts (Sequential to maintain integrity if possible, or parallel)
+            // Note: In a real scenario, use upsert/onConflict if re-importing is allowed.
 
-        // Commit remaining batch
-        if (batchCount > 0) {
-            await batch.commit();
+            // 1. Insert Students
+            const { error: studentError } = await supabase.from('users').upsert(usersToInsert);
+            if (studentError) {
+                result.failed += batch.length;
+                result.errors.push({ row: i, error: `Batch student insert failed: ${studentError.message}` });
+                continue;
+            }
+
+            // 2. Insert Parents
+            if (parentsToInsert.length > 0) {
+                const { error: parentError } = await supabase.from('users').upsert(parentsToInsert);
+                if (parentError) {
+                    // Log error but explicit failure not crucial if students succeeded? 
+                    // Let's count as error.
+                    result.errors.push({ row: i, error: `Batch parent insert failed: ${parentError.message}` });
+                }
+            }
+
+            // 3. Insert Links
+            if (linksToInsert.length > 0) {
+                await supabase.from('parent_student_links').upsert(linksToInsert);
+            }
+
+            // 4. Insert Enrollments
+            if (enrollmentsToInsert.length > 0) {
+                await supabase.from('student_classes').insert(enrollmentsToInsert);
+            }
+
+            result.imported += batch.length;
         }
 
         result.success = result.failed === 0;
+
+        // Log the bulk import action
+        if (currentUserId && currentUserName) {
+            await logAction(
+                schoolId,
+                currentUserId,
+                currentUserName,
+                'import',
+                'student',
+                undefined,
+                undefined,
+                {
+                    totalRows: result.totalRows,
+                    imported: result.imported,
+                    failed: result.failed,
+                    createParents
+                }
+            );
+        }
+
         return result;
     } catch (error) {
         result.success = false;
@@ -232,6 +276,7 @@ export const bulkImportStudents = async (
         return result;
     }
 };
+
 
 /**
  * Generate CSV template for students

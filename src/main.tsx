@@ -22,6 +22,10 @@ const GradeEntry = lazy(() => import('./pages/GradeEntry').then(module => ({ def
 const StudentPortal = lazy(() => import('./pages/StudentPortal').then(module => ({ default: module.StudentPortal })));
 const StudentAttendance = lazy(() => import('./pages/StudentAttendance.tsx').then(module => ({ default: module.StudentAttendance })));
 const StudentResults = lazy(() => import('./pages/StudentResults.tsx').then(module => ({ default: module.StudentResults })));
+const ParentPortal = lazy(() => import('./pages/ParentPortal').then(module => ({ default: module.ParentPortal })));
+const PasswordReset = lazy(() => import('./pages/PasswordReset').then(module => ({ default: module.PasswordReset })));
+const TermManagement = lazy(() => import('./pages/TermManagement').then(module => ({ default: module.TermManagement })));
+const AuditLogViewer = lazy(() => import('./pages/AuditLogViewer').then(module => ({ default: module.AuditLogViewer })));
 
 const LoadingSpinner = () => (
   <div className="min-h-screen bg-dark-bg flex items-center justify-center">
@@ -33,6 +37,10 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <Suspense fallback={<LoadingSpinner />}><Login /></Suspense>,
+  },
+  {
+    path: "/reset-password",
+    element: <Suspense fallback={<LoadingSpinner />}><PasswordReset /></Suspense>,
   },
   {
     path: "/",
@@ -95,7 +103,20 @@ const router = createBrowserRouter([
     path: "/portal/results",
     element: <ProtectedRoute allowedRoles={['student', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentResults /></Suspense></Layout></ProtectedRoute>,
   },
+  {
+    path: "/portal/parent",
+    element: <ProtectedRoute allowedRoles={['parent']}><Layout><Suspense fallback={<LoadingSpinner />}><ParentPortal /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/admin/terms",
+    element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><TermManagement /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/admin/audit-logs",
+    element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><AuditLogViewer /></Suspense></Layout></ProtectedRoute>,
+  },
 ]);
+
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

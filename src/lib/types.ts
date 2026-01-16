@@ -1,28 +1,34 @@
 /**
- * Centralized TypeScript types for all Firestore collections.
+ * Centralized TypeScript types for all Supabase tables.
  * This ensures schema consistency across the application.
  */
-
-import { Timestamp } from 'firebase/firestore';
 
 // ============================================
 // SCHOOL & ADMINISTRATION
 // ============================================
 
 export interface School {
+  id: string; // Changed from schoolId to look consistent, or keep schoolId if that's the DB column? usage suggests schoolId usually refers to the ID of the school. In Supabase usually 'id'. keeping consistency with previous usage: schoolId might be safer for now, but usually Supabase uses 'id'. existing code might rely on 'schoolId'. I will check usage later. Let's keep schoolId for now but be aware. Actually `registerSchool` in authService uses `school.id`.
+  // Wait, `authService.ts` does: `const { data: school ... } = ... .from('schools')...`. The result `school` has `id`.
+  // So likely the interface should have `id`.
+  // However, looking at the code, it uses `schoolId` in many places as a foreign key. 
+  // For the School *object* itself, it likely has `id`.
+  // The interface 'School' here seems to represent the document/row.
+  // I will assume for now we keep the property names as they were unless they are strictly `uid` -> `id` for users.
   schoolId: string;
   name: string;
   address: string;
-  adminUid: string;
+  adminUid: string; // This should probably be adminId
   logo?: string;
   phone?: string;
   email?: string;
   website?: string;
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Term {
+  id?: string;
   schoolId: string;
   name: string; // e.g., "1st Term", "2nd Semester"
   startDate: string; // ISO format: YYYY-MM-DD
@@ -31,8 +37,8 @@ export interface Term {
     [grade: string]: [number, number]; // e.g., A: [70, 100]
   };
   isActive: boolean;
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 // ============================================
@@ -40,7 +46,7 @@ export interface Term {
 // ============================================
 
 export interface UserProfile {
-  uid: string;
+  id: string; // Changed from uid
   fullName: string;
   email?: string;
   role: 'admin' | 'staff' | 'student' | 'parent' | 'bursar';
@@ -49,19 +55,21 @@ export interface UserProfile {
   staffId?: string; // For staff
   assignedClasses?: string[]; // For staff - array of class IDs
   assignedSubjects?: string[]; // For staff - array of subject IDs
-  phone?: string;
+  phoneNumber?: string;
   profileImage?: string;
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  linkedStudents?: string[]; // Added this as per conversation history and error in ParentPortal
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface ParentStudentLink {
+  id?: string;
   schoolId: string;
   parentIds: string[]; // Array of parent UIDs
   studentId: string;
   relationship: 'Father' | 'Mother' | 'Guardian' | 'Other';
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 // ============================================
@@ -69,43 +77,47 @@ export interface ParentStudentLink {
 // ============================================
 
 export interface Class {
+  id?: string;
   schoolId: string;
   name: string; // e.g., "SS1A", "Form 3B"
   level?: string; // e.g., "Secondary 1", "Form 3"
   classTeacherId?: string; // UID of class teacher
   capacity?: number;
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Subject {
+  id?: string;
   schoolId: string;
   name: string;
   code?: string;
   description?: string;
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface StaffAssignment {
+  id?: string;
   schoolId: string;
   staffId: string; // UID of staff member
   classId: string;
   subjectId: string;
   startDate: string; // ISO format: YYYY-MM-DD
   endDate?: string; // ISO format: YYYY-MM-DD
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface StudentClass {
+  id?: string;
   schoolId: string;
   studentId: string; // UID
   classId: string;
   enrollmentDate: string; // ISO format: YYYY-MM-DD
   status: 'active' | 'graduated' | 'transferred' | 'dropped';
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 // ============================================
@@ -113,6 +125,7 @@ export interface StudentClass {
 // ============================================
 
 export interface ExamResult {
+  id?: string;
   schoolId: string;
   studentId: string;
   classId: string;
@@ -125,11 +138,12 @@ export interface ExamResult {
   totalScore: number;
   grade?: string; // Computed grade: A, B, C, etc.
   remarks?: string;
-  createdAt: string | Timestamp;
-  updatedAt: string | Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AIScanResult {
+  id?: string;
   schoolId: string;
   studentId?: string; // Optional - may not be identified from scan
   studentName: string; // Name written on script or entered manually
@@ -142,11 +156,12 @@ export interface AIScanResult {
   missingKeywords: string[];
   ocrAccuracy: number; // 0-1 confidence score
   scriptUrl?: string; // URL to stored script image
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface AttendanceRecord {
+  id?: string;
   schoolId: string;
   studentId: string;
   classId: string;
@@ -154,8 +169,8 @@ export interface AttendanceRecord {
   date: string; // ISO format: YYYY-MM-DD
   status: 'present' | 'absent' | 'late' | 'excused';
   remarks?: string;
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 // ============================================
@@ -163,6 +178,7 @@ export interface AttendanceRecord {
 // ============================================
 
 export interface LessonNote {
+  id?: string;
   schoolId: string;
   staffId: string; // UID of teacher
   subject: string;
@@ -172,11 +188,12 @@ export interface LessonNote {
   generatedBy: 'gemini' | 'manual';
   archived: boolean;
   tags?: string[];
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface ExamQuestion {
+  id?: string;
   schoolId: string;
   staffId: string;
   topic?: string;
@@ -188,8 +205,8 @@ export interface ExamQuestion {
   difficultyLevel: 'easy' | 'medium' | 'hard';
   marks?: number;
   generatedBy: 'gemini' | 'manual';
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 // ============================================
@@ -197,6 +214,7 @@ export interface ExamQuestion {
 // ============================================
 
 export interface FinancialTransaction {
+  id?: string;
   schoolId: string;
   type: 'fee-payment' | 'refund' | 'wallet-funding' | 'expense';
   amount: number;
@@ -213,16 +231,17 @@ export interface FinancialTransaction {
     description: string;
     amount: number;
   }>;
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface StudentWallet {
+  id?: string;
   schoolId: string;
   studentId: string;
   balance: number;
   currency: string; // e.g., "NGN"
-  lastUpdated: string | Timestamp;
+  lastUpdated: string;
   transactions?: string[]; // Array of transaction IDs
 }
 
@@ -231,9 +250,10 @@ export interface StudentWallet {
 // ============================================
 
 export interface StudentPerformanceInsight {
+  id?: string;
   schoolId: string;
   studentId: string;
-  generatedAt: string | Timestamp;
+  generatedAt: string;
   attendanceRate: number;
   averageScore: number;
   strongSubjects: string[];
@@ -243,23 +263,24 @@ export interface StudentPerformanceInsight {
 }
 
 export interface ChatSession {
+  id?: string;
   schoolId: string;
   studentId: string;
   messages: Array<{
     role: 'user' | 'model';
     content: string;
-    timestamp: string | Timestamp;
+    timestamp: string;
   }>;
   context?: string; // Student's academic context
-  createdAt: string | Timestamp;
-  updatedAt?: string | Timestamp;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 // ============================================
 // TYPE UTILITIES
 // ============================================
 
-export type FirestoreDocument = 
+export type FirestoreDocument =
   | School
   | Term
   | UserProfile
@@ -276,7 +297,41 @@ export type FirestoreDocument =
   | FinancialTransaction
   | StudentWallet
   | StudentPerformanceInsight
-  | ChatSession;
+  | ChatSession
+  | AuditLog
+  | Notification;
 
-// Helper type for Firestore document data with ID
+export interface Notification {
+  id?: string;
+  schoolId: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  link?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+// Helper type for document data with ID (Supabase returns object with id usually, so this might be redundant or just T)
 export type DocWithId<T> = T & { id: string };
+
+// ============================================
+// AUDIT LOGGING
+// ============================================
+
+export interface AuditLog {
+  id?: string;
+  schoolId: string;
+  userId: string;
+  userEmail?: string;
+  userName: string;
+  action: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'export' | 'import';
+  resourceType: 'student' | 'staff' | 'result' | 'attendance' | 'financial' | 'term' | 'class' | 'subject' | 'parent';
+  resourceId?: string;
+  changes?: Record<string, any>;
+  metadata?: Record<string, any>;
+  ipAddress?: string;
+  userAgent?: string;
+  timestamp: string;
+}

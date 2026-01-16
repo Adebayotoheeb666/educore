@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Save, AlertCircle, CheckCircle2, Plus, Trash2 } from 'lucide-react';
-import { collection, query, where, getDocs, setDoc, doc, serverTimestamp, deleteDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { Save, AlertCircle, CheckCircle2, Plus, Trash2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import type { ParentStudentLink, UserProfile } from '../lib/types';
+import type { ParentStudentLink } from '../lib/types';
 
 interface ParentStudentLinkModalProps {
     studentId: string;
@@ -13,7 +12,7 @@ interface ParentStudentLinkModalProps {
 }
 
 interface ParentOption {
-    uid: string;
+    id: string;
     name: string;
     phone?: string;
 }
@@ -42,25 +41,39 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
             try {
                 // Fetch parent accounts
-                const parentQ = query(
-                    collection(db, 'users'),
-                    where('schoolId', '==', schoolId),
-                    where('role', '==', 'parent')
-                );
-                const parentSnap = await getDocs(parentQ);
-                setParents(parentSnap.docs.map(doc => {
-                    const data = doc.data() as UserProfile;
-                    return { uid: doc.id, name: data.fullName, phone: data.phone };
-                }));
+                const { data: parentData, error: parentError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('role', 'parent');
+
+                if (parentError) throw parentError;
+
+                setParents(parentData.map(p => ({
+                    id: p.id,
+                    name: p.full_name,
+                    phone: p.phone_number
+                })));
 
                 // Fetch existing parent-student links for this student
-                const linkQ = query(
-                    collection(db, 'parent_student_links'),
-                    where('schoolId', '==', schoolId),
-                    where('studentId', '==', studentId)
-                );
-                const linkSnap = await getDocs(linkQ);
-                const existing = linkSnap.docs.map(doc => doc.data() as ParentStudentLink);
+                const { data: linkData, error: linkError } = await supabase
+                    .from('parent_student_links')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('student_id', studentId);
+
+                if (linkError) throw linkError;
+
+                const existing = linkData.map(l => ({
+                    id: l.id,
+                    schoolId: l.school_id,
+                    parentIds: l.parent_ids,
+                    studentId: l.student_id,
+                    relationship: l.relationship,
+                    createdAt: l.created_at,
+                    updatedAt: l.updated_at
+                })) as ParentStudentLink[];
+
                 setExistingLinks(existing);
 
                 // Initialize with existing links
@@ -125,23 +138,40 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
         try {
             // Delete existing links
-            for (const oldLink of existingLinks) {
-                const linkId = `${oldLink.parentIds[0]}_${studentId}`;
-                await deleteDoc(doc(db, 'parent_student_links', linkId));
+            if (existingLinks.length > 0) {
+                const { error: deleteError } = await supabase
+                    .from('parent_student_links')
+                    .delete()
+                    .eq('school_id', schoolId)
+                    .eq('student_id', studentId);
+
+                if (deleteError) throw deleteError;
             }
 
             // Create new links for each parent
             for (const link of links) {
+                // In Supabase, we don't necessarily need to construct the ID manually if auto-gen,
+                // but if we Want to maintain the structure: `${link.parentId}_${studentId}`
                 const linkId = `${link.parentId}_${studentId}`;
-                const linkData: ParentStudentLink = {
-                    schoolId,
-                    parentIds: [link.parentId],
-                    studentId,
-                    relationship: link.relationship,
-                    createdAt: serverTimestamp()
-                };
 
-                await setDoc(doc(db, 'parent_student_links', linkId), linkData);
+                const { error: insertError } = await supabase
+                    .from('parent_student_links')
+                    .insert({
+                        id: linkId,
+                        school_id: schoolId,
+                        parent_ids: [link.parentId], // Array in DB? Or just parent_id? 
+                        // The original interface implies parentIds: string[].
+                        // If the DB schema supports array, fine. If it's a join table, usually one parent per row.
+                        // Assuming the schema follows the original Firestore structure where 'parentIds' was an array.
+                        // However, standard SQL normalization would suggest one row per link.
+                        // Based on the 'links' state which has single parentId per entry, 
+                        // but 'existingLinks' mapping 'parentIds' property...
+                        // Let's assume the DB table 'parent_student_links' has a 'parent_ids' column (text[]).
+                        student_id: studentId,
+                        relationship: link.relationship
+                    });
+
+                if (insertError) throw insertError;
             }
 
             setSuccess(true);
@@ -203,7 +233,7 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
                             >
                                 <option value="">Select Parent</option>
                                 {parents.map(parent => (
-                                    <option key={parent.uid} value={parent.uid}>
+                                    <option key={parent.id} value={parent.id}>
                                         {parent.name} {parent.phone ? `(${parent.phone})` : ''}
                                     </option>
                                 ))}

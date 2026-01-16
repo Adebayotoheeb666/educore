@@ -1,13 +1,26 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Send, Download, AlertCircle, Archive, Clock } from 'lucide-react';
+import { Send, Download, AlertCircle, Archive, Clock, Sparkles } from 'lucide-react';
 import { geminiService } from '../lib/gemini';
 import { exportService } from '../lib/exportService';
 import { cn } from '../components/Layout';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
+
+interface LessonNote {
+    id: string;
+    topic: string;
+    subject: string;
+    level: string;
+    content: string;
+    personalization: string;
+    translation: boolean;
+    waecFocus: boolean;
+    created_at: string;
+}
 
 export const LessonGenerator = () => {
+    const { user, schoolId } = useAuth();
     const [topic, setTopic] = useState('');
     const [subject, setSubject] = useState('Basic Science');
     const [level, setLevel] = useState('Primary 1');
@@ -24,7 +37,7 @@ export const LessonGenerator = () => {
 
     // Archive States
     const [view, setView] = useState<'generate' | 'archive'>('generate');
-    const [archives, setArchives] = useState<any[]>([]);
+    const [archives, setArchives] = useState<LessonNote[]>([]);
     const [fetchingArchives, setFetchingArchives] = useState(false);
 
     const handleGenerate = async () => {
@@ -39,16 +52,28 @@ export const LessonGenerator = () => {
             });
             setResult(note);
 
-            if (auth.currentUser) {
-                await addDoc(collection(db, "notes"), {
-                    userId: auth.currentUser.uid,
-                    topic,
-                    subject,
-                    level,
-                    content: note,
-                    options: { personalization, translation: includeTranslation, waecFocus },
-                    createdAt: serverTimestamp()
-                });
+            if (user && schoolId) {
+                // Save to Supabase
+                const { error: saveError } = await supabase
+                    .from('lessons')
+                    .insert({
+                        topic,
+                        subject_id: subject, // Using subject name as ID or column mapping
+                        level,
+                        content: note,
+                        teacher_id: user.id,
+                        school_id: schoolId,
+                        personalization, // Assuming these columns exist or we add them to a JSON 'options' column
+                        // wrapper for options if schema is simple:
+                        // options: { personalization, translation: includeTranslation, waecFocus }
+                        translation: includeTranslation,
+                        waec_focus: waecFocus
+                    });
+
+                if (saveError) {
+                    console.error("Error saving lesson to Supabase:", saveError);
+                    // Don't block UI on save error, but log it
+                }
             }
         } catch (e) {
             console.error(e);
@@ -59,16 +84,30 @@ export const LessonGenerator = () => {
     };
 
     const fetchArchives = async () => {
-        if (!auth.currentUser) return;
+        if (!user) return;
         setFetchingArchives(true);
         try {
-            const q = query(
-                collection(db, "notes"),
-                where("userId", "==", auth.currentUser.uid),
-                orderBy("createdAt", "desc")
-            );
-            const snap = await getDocs(q);
-            setArchives(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            const { data, error } = await supabase
+                .from('lessons')
+                .select('*')
+                .eq('teacher_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const mappedNotes: LessonNote[] = (data || []).map(d => ({
+                id: d.id,
+                topic: d.topic,
+                subject: d.subject_id, // Map back
+                level: d.level,
+                content: d.content,
+                personalization: d.personalization || 'standard',
+                translation: d.translation || false,
+                waecFocus: d.waec_focus || false,
+                created_at: d.created_at
+            }));
+
+            setArchives(mappedNotes);
         } catch (e) {
             console.error(e);
         } finally {
@@ -76,11 +115,17 @@ export const LessonGenerator = () => {
         }
     };
 
-    const handleRecycle = (note: any) => {
+    const handleRecycle = (note: LessonNote) => {
         setTopic(note.topic);
         setSubject(note.subject);
         setLevel(note.level);
         setResult(note.content);
+
+        // Restore options
+        setPersonalization(note.personalization);
+        setIncludeTranslation(note.translation);
+        setWaecFocus(note.waecFocus);
+
         setView('generate');
     };
 
@@ -97,14 +142,17 @@ export const LessonGenerator = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 bg-dark-bg p-8 min-h-screen text-gray-100">
             <header className="flex items-center justify-between">
                 <div>
                     <div className="text-teal-500 text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
                         NERDC Online
                     </div>
-                    <h1 className="text-2xl font-bold text-white">Lesson Planner</h1>
+                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <Sparkles className="w-6 h-6 text-teal-400" />
+                        Lesson Planner
+                    </h1>
                 </div>
                 <div className="flex bg-dark-card border border-white/5 rounded-xl p-1">
                     <button
@@ -137,7 +185,7 @@ export const LessonGenerator = () => {
                         <div className="bg-dark-card border border-white/5 rounded-xl p-3">
                             <label className="text-gray-500 text-xs font-bold block mb-1">Class Level</label>
                             <select
-                                className="w-full bg-transparent text-white outline-none font-medium"
+                                className="w-full bg-transparent text-white outline-none font-medium [&>option]:text-black"
                                 value={level} onChange={e => setLevel(e.target.value)}
                             >
                                 <option>Creche</option>
@@ -151,7 +199,7 @@ export const LessonGenerator = () => {
                         <div className="bg-dark-card border border-white/5 rounded-xl p-3">
                             <label className="text-gray-500 text-xs font-bold block mb-1">Subject</label>
                             <select
-                                className="w-full bg-transparent text-white outline-none font-medium"
+                                className="w-full bg-transparent text-white outline-none font-medium [&>option]:text-black"
                                 value={subject} onChange={e => setSubject(e.target.value)}
                             >
                                 <option>Basic Science</option> <option>Mathematics</option> <option>English</option>
@@ -186,7 +234,7 @@ export const LessonGenerator = () => {
                                 <p className="text-xs text-gray-500">Tailor note depth to student needs</p>
                             </div>
                             <select
-                                className="bg-dark-bg border border-white/10 text-white rounded-lg px-3 py-1 text-sm outline-none focus:border-teal-500/50"
+                                className="bg-dark-bg border border-white/10 text-white rounded-lg px-3 py-1 text-sm outline-none focus:border-teal-500/50 [&>option]:text-black"
                                 value={personalization}
                                 onChange={(e) => setPersonalization(e.target.value)}
                             >
@@ -274,7 +322,7 @@ export const LessonGenerator = () => {
                                                 <span>{note.level}</span>
                                                 <span className="w-1 h-1 rounded-full bg-gray-700" />
                                                 <Clock className="w-3 h-3" />
-                                                <span>{note.createdAt?.toDate().toLocaleDateString()}</span>
+                                                <span>{new Date(note.created_at).toLocaleDateString()}</span>
                                             </div>
                                         </div>
                                     </div>

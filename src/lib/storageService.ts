@@ -1,5 +1,4 @@
-import { db } from './firebase';
-import { writeBatch } from 'firebase/firestore';
+import { supabase } from './supabase';
 
 export interface StorageStats {
   totalSpace: number;
@@ -33,7 +32,7 @@ export const storageService = {
         }
       }
 
-      // Estimate IndexedDB space (used by Firestore offline persistence)
+      // Estimate IndexedDB space (used by Supabase offline persistence if enabled)
       let indexedDBSize = 0;
       if (typeof window !== 'undefined' && 'indexedDB' in window) {
         try {
@@ -141,21 +140,21 @@ export const storageService = {
       }
 
       // Process pending items (this is a placeholder for actual sync logic)
-      const batch = writeBatch(db);
+
       let itemsProcessed = 0;
 
       for (const item of pendingSync) {
         if (item.type === 'grade') {
           try {
-            // Placeholder: await addDoc(collection(db, 'results'), item.data);
+            // Using direct Supabase insert instead of batch for now
+            // In production, should bunch them up
+            await supabase.from('results').insert(item.data);
             itemsProcessed++;
           } catch (e) {
             console.error('Error syncing item:', e);
           }
         }
       }
-
-      await batch.commit();
 
       // Clear pending items and update last sync
       localStorage.setItem('pendingSync', JSON.stringify([]));

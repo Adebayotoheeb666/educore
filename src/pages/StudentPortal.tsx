@@ -15,16 +15,9 @@ import {
     Bot
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { geminiService } from '../lib/gemini';
 import { cn } from '../components/Layout';
-import {
-    collection,
-    query,
-    where,
-    getDocs,
-    limit
-} from 'firebase/firestore';
 
 interface AttendanceRecord {
     id: string;
@@ -70,30 +63,50 @@ export const StudentPortal = () => {
             setLoading(true);
             try {
                 // 1. Fetch Student Results
-                const resultsQ = query(
-                    collection(db, 'results'),
-                    where('schoolId', '==', schoolId),
-                    where('studentId', '==', user.uid)
-                );
-                const resultsSnap = await getDocs(resultsQ);
-                const resultsList = resultsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentResult));
+                const { data: resultsData, error: resultsError } = await supabase
+                    .from('results')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('student_id', user.id); // Assuming user.id links to student_id or public_users.id
+
+                if (resultsError) throw resultsError;
+
+                const resultsList = (resultsData || []).map(r => ({
+                    id: r.id,
+                    subjectId: r.subject_id || r.subjectId || 'Unknown', // Handle snake_case from Supabase
+                    caScore: r.ca_score,
+                    examScore: r.exam_score,
+                    totalScore: r.total_score,
+                    schoolId: r.school_id,
+                    studentId: r.student_id
+                })) as StudentResult[];
+
                 setResults(resultsList);
 
                 // 2. Fetch Attendance (Recent)
-                const attendanceQ = query(
-                    collection(db, 'attendance'),
-                    where('schoolId', '==', schoolId),
-                    where('studentId', '==', user.uid),
-                    limit(20)
-                );
-                const attendanceSnap = await getDocs(attendanceQ);
-                const attendanceList = attendanceSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+                const { data: attendanceData, error: attendanceError } = await supabase
+                    .from('attendance')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('student_id', user.id)
+                    .limit(20);
+
+                if (attendanceError) throw attendanceError;
+
+                const attendanceList = (attendanceData || []).map(a => ({
+                    id: a.id,
+                    status: a.status,
+                    date: a.date,
+                    schoolId: a.school_id,
+                    studentId: a.student_id
+                })) as AttendanceRecord[];
+
                 setAttendance(attendanceList);
 
                 // 3. Calculate Stats
                 const totalAttendance = attendanceList.length;
                 const presentCount = attendanceList.filter(a => a.status === 'present').length;
-                const rate = totalAttendance > 0 ? (presentCount / totalAttendance) * 100 : 0;
+                const rate = totalAttendance > 0 ? (presentCount / totalAttendance) * 100 : 100;
 
                 const avg = resultsList.length > 0
                     ? resultsList.reduce((acc, curr) => acc + (curr.totalScore || 0), 0) / resultsList.length
@@ -286,23 +299,29 @@ export const StudentPortal = () => {
                         </p>
                     </div>
                     {!aiInsight ? (
-                        <button
-                            onClick={handleGenerateInsight}
-                            disabled={isGenerating || results.length === 0}
-                            className="md:ml-auto px-8 py-4 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-2xl transition-all shadow-xl shadow-indigo-500/20 whitespace-nowrap flex items-center gap-2"
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    Analyzing...
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="w-5 h-5" />
-                                    Generate Insight
-                                </>
-                            )}
-                        </button>
+                        <div className="relative md:ml-auto">
+                            <div className="absolute -top-3 -right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-bounce z-20">
+                                NEW
+                            </div>
+                            <button
+                                onClick={handleGenerateInsight}
+                                disabled={isGenerating || results.length === 0}
+                                className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-2xl transition-all shadow-xl shadow-indigo-500/20 whitespace-nowrap flex items-center gap-2 relative overflow-hidden group"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                                {isGenerating ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        Analyzing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="w-5 h-5 animate-pulse" />
+                                        Generate Insight
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     ) : (
                         <button
                             onClick={() => setAiInsight(null)}

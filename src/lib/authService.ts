@@ -1,31 +1,14 @@
-import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword
-} from 'firebase/auth';
-import {
-    doc,
-    getDoc,
-    setDoc
-} from 'firebase/firestore';
-import { auth, db } from './firebase';
-
-export interface UserProfile {
-    uid: string;
-    fullName: string;
-    email?: string;
-    role: 'admin' | 'staff' | 'student' | 'parent' | 'bursar';
-    schoolId: string;
-    admissionNumber?: string;
-    staffId?: string;
-    assignedClasses?: string[];
-    assignedSubjects?: string[];
-}
+import { supabase } from './supabase';
+import type { UserProfile } from './types';
 
 /**
- * Maps an admission number to a virtual email for Firebase Auth
+ * Maps an admission number to a virtual email for Auth
  */
 export const getVirtualEmail = (schoolId: string, admissionNumber: string) => {
-    return `${admissionNumber.toLowerCase()}@${schoolId.toLowerCase()}.edu`;
+    // Sanitize schoolId and admissionNumber to ensure valid email format
+    const cleanSchool = schoolId.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const cleanAdm = admissionNumber.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    return `${cleanAdm}@${cleanSchool}.educore.app`;
 };
 
 /**
@@ -36,51 +19,140 @@ export const registerSchool = async (adminData: any, schoolData: any) => {
     const { name, address } = schoolData;
 
     // 1. Create Auth User
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const uid = userCredential.user.uid;
-
-    // 2. Generate School ID (simple slug for now)
-    const schoolId = name.toLowerCase().replace(/\s+/g, '-') + '-' + Math.random().toString(36).substring(2, 7);
-
-    // 3. Create School Document
-    await setDoc(doc(db, 'schools', schoolId), {
-        schoolId,
-        name,
-        address,
-        adminUid: uid,
-        createdAt: new Date().toISOString()
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: { fullName, role: 'admin' } // stored in authentication metadata
+        }
     });
 
-    // 4. Create User Profile
-    const profile: UserProfile = {
-        uid,
-        fullName,
-        email,
-        role: 'admin',
-        schoolId
-    };
-    await setDoc(doc(db, 'users', uid), profile);
+    if (authError) throw authError;
+    if (!authData.user) throw new Error('User creation failed');
 
-    return { schoolId, uid };
+    const uid = authData.user.id;
+
+    // 2. Create School Document
+    const { data: school, error: schoolError } = await supabase
+        .from('schools')
+        .insert({
+            name,
+            address,
+            contact_email: email
+        })
+        .select()
+        .single();
+
+    if (schoolError) throw schoolError;
+
+    // 3. Create Admin Profile in public.users
+    const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+            id: uid,
+            school_id: school.id,
+            role: 'admin',
+            email,
+            full_name: fullName
+        });
+
+    if (profileError) throw profileError;
+
+    return { schoolId: school.id, uid };
 };
 
 /**
- * Login using Admission Number and PIN
+ * Login with admission number (for students)
  */
-export const loginWithAdmissionNumber = async (schoolId: string, admissionNumber: string, pin: string) => {
+export const loginWithAdmissionNumber = async (schoolId: string, admissionNumber: string, password: string) => {
+    // 1. We need to find the school first to normalize the ID if needed, 
+    // but assuming schoolId passed here is the database UUID or a slug.
+    // For simplicity, let's assume the UI sends the correct School UUID or we do a lookup.
+
+    // For now, constructing email with raw input. 
+    // In production, you might look up the student by admission_number column via a Edge Function 
+    // to get their real internal email.
     const virtualEmail = getVirtualEmail(schoolId, admissionNumber);
-    // Using the admission number as password or a separate pin? 
-    // Let's assume the PIN is the password for the virtual account.
-    return await signInWithEmailAndPassword(auth, virtualEmail, pin);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: virtualEmail,
+        password
+    });
+
+    if (error) throw error;
+    return data;
 };
 
 /**
- * Get the current user's profile from Firestore
+ * Initiate phone login (sends OTP)
+ */
+export const signInWithPhone = async (phoneNumber: string) => {
+    const { data, error } = await supabase.auth.signInWithOtp({
+        phone: phoneNumber
+    });
+
+    if (error) throw error;
+    return data;
+};
+
+/**
+ * Confirm OTP code
+ */
+export const confirmPhoneOTP = async (phoneNumber: string, code: string, schoolId: string) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+        phone: phoneNumber,
+        token: code,
+        type: 'sms'
+    });
+
+    if (error) throw error;
+    const user = data.user;
+
+    if (user) {
+        // Check if profile exists
+        const { data: profile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile) {
+            // Link new parent to school
+            await supabase.from('users').insert({
+                id: user.id,
+                school_id: schoolId,
+                role: 'parent',
+                phone_number: phoneNumber,
+                full_name: 'Parent' // Prompt to update later
+            });
+        }
+    }
+
+    return data;
+};
+
+/**
+ * Get the current user's profile
  */
 export const getCurrentUserProfile = async (uid: string): Promise<UserProfile | null> => {
-    const userDoc = await getDoc(doc(db, 'users', uid));
-    if (userDoc.exists()) {
-        return userDoc.data() as UserProfile;
-    }
-    return null;
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', uid)
+        .single();
+
+    if (error || !data) return null;
+
+    return {
+        id: data.id,
+        fullName: data.full_name,
+        email: data.email,
+        role: data.role,
+        schoolId: data.school_id,
+        admissionNumber: data.admission_number,
+        phoneNumber: data.phone_number,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+    };
 };
+

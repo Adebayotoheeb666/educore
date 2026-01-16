@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../lib/firebase';
-import { registerSchool, loginWithAdmissionNumber } from '../lib/authService';
-import { Sparkles, Mail, Lock, ArrowRight, User, AlertCircle, Building2, UserCircle2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { signInWithPhone, confirmPhoneOTP, registerSchool, loginWithAdmissionNumber } from '../lib/authService';
+import { Sparkles, Mail, Lock, ArrowRight, User, AlertCircle, Building2, UserCircle2, Phone, ShieldCheck } from 'lucide-react';
 
-type AuthMode = 'login' | 'signup' | 'school-reg' | 'student-login';
+type AuthMode = 'login' | 'signup' | 'school-reg' | 'student-login' | 'parent-login';
 
 export const Login = () => {
     const [mode, setMode] = useState<AuthMode>('login');
@@ -16,30 +15,85 @@ export const Login = () => {
     const [schoolAddress, setSchoolAddress] = useState('');
     const [schoolId, setSchoolId] = useState('');
     const [admissionNumber, setAdmissionNumber] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [otp, setOtp] = useState('');
+    const [showOtpInput, setShowOtpInput] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
 
+    const handleSendOtp = async () => {
+        if (!phoneNumber || !schoolId) {
+            setError("Please enter School ID and Phone Number");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+        try {
+            // No Recaptcha needed for Supabase by default (or handled invisibly)
+            await signInWithPhone(phoneNumber);
+            setShowOtpInput(true);
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Failed to send OTP. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (!otp) return;
+
+        setLoading(true);
+        setError(null);
+        try {
+            await confirmPhoneOTP(phoneNumber, otp, schoolId);
+            navigate('/portal/parent');
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Invalid Code. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (mode === 'parent-login') {
+            if (showOtpInput) {
+                await handleVerifyOtp();
+            } else {
+                await handleSendOtp();
+            }
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
         try {
             if (mode === 'login') {
-                await signInWithEmailAndPassword(auth, email, password);
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                if (error) throw error;
+                navigate('/');
             } else if (mode === 'school-reg') {
                 await registerSchool(
                     { email, password, fullName: name },
                     { name: schoolName, address: schoolAddress }
                 );
+                navigate('/');
             } else if (mode === 'student-login') {
                 if (!schoolId || !admissionNumber || !password) {
                     throw new Error("Please fill in all fields (School ID, Admission Number, and PIN)");
                 }
                 await loginWithAdmissionNumber(schoolId, admissionNumber, password);
+                navigate('/');
             }
-            navigate('/');
         } catch (err: any) {
             console.error(err);
             setError(err.message || 'Authentication failed. Please try again.');
@@ -64,11 +118,13 @@ export const Login = () => {
                         {mode === 'login' && 'Welcome Back'}
                         {mode === 'school-reg' && 'Register School'}
                         {mode === 'student-login' && 'Student Portal'}
+                        {mode === 'parent-login' && 'Parent Portal'}
                     </h1>
                     <p className="text-gray-400">
                         {mode === 'login' && 'Enter your details to access your classroom'}
                         {mode === 'school-reg' && 'Set up your school on Educore'}
                         {mode === 'student-login' && 'Login with your Admission ID'}
+                        {mode === 'parent-login' && 'Login with your registered phone number'}
                     </p>
                 </div>
 
@@ -155,6 +211,59 @@ export const Login = () => {
                         </>
                     )}
 
+                    {mode === 'parent-login' && (
+                        <>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">School ID</label>
+                                <div className="relative group">
+                                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
+                                    <input
+                                        type="text" required
+                                        className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
+                                        placeholder="wisdom-school"
+                                        value={schoolId}
+                                        onChange={(e) => setSchoolId(e.target.value)}
+                                        disabled={showOtpInput}
+                                    />
+                                </div>
+                            </div>
+
+                            {!showOtpInput ? (
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Phone Number</label>
+                                    <div className="relative group">
+                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
+                                        <input
+                                            type="tel" required
+                                            className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
+                                            placeholder="+234 800 000 0000"
+                                            value={phoneNumber}
+                                            onChange={(e) => setPhoneNumber(e.target.value)}
+                                        />
+                                    </div>
+                                    <div id="recaptcha-container"></div>
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Enter OTP Code</label>
+                                    <div className="relative group">
+                                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
+                                        <input
+                                            type="text" required
+                                            className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50 tracking-widest text-lg font-bold"
+                                            placeholder="1 2 3 4 5 6"
+                                            value={otp}
+                                            onChange={(e) => setOtp(e.target.value)}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        Code sent to {phoneNumber}. <button type="button" onClick={() => setShowOtpInput(false)} className="text-teal-400 hover:underline">Change Number</button>
+                                    </p>
+                                </div>
+                            )}
+                        </>
+                    )}
+
                     {(mode === 'login' || mode === 'school-reg') && (
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Email Address</label>
@@ -185,6 +294,17 @@ export const Login = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                             />
                         </div>
+                        {(mode === 'login' || mode === 'school-reg') && (
+                            <div className="text-right">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/reset-password')}
+                                    className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
+                                >
+                                    Forgot Password?
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <button
@@ -199,6 +319,7 @@ export const Login = () => {
                                     {mode === 'login' && 'Sign In'}
                                     {mode === 'school-reg' && 'Create School'}
                                     {mode === 'student-login' && 'Access Portal'}
+                                    {mode === 'parent-login' && (showOtpInput ? 'Verify & Login' : 'Send Code')}
                                 </span>
                                 <ArrowRight className="w-5 h-5" />
                             </>
@@ -207,18 +328,33 @@ export const Login = () => {
                 </form>
 
                 <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
-                    <button
-                        onClick={() => setMode(mode === 'login' ? 'student-login' : 'login')}
-                        className="w-full text-center text-gray-400 hover:text-white transition-colors text-sm"
-                    >
-                        {mode === 'login' ? 'Are you a Student/Parent? Login here' : 'Back to Staff/Admin Login'}
-                    </button>
-                    <button
-                        onClick={() => setMode(mode === 'school-reg' ? 'login' : 'school-reg')}
-                        className="w-full text-center text-teal-400 font-bold hover:text-teal-300 transition-colors text-sm"
-                    >
-                        {mode === 'school-reg' ? 'Already have a school account?' : 'Register your School on Educore'}
-                    </button>
+                    {/* Mode switching buttons */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => { setMode('login'); setError(null); }}
+                            className={`p-2 rounded-lg text-xs font-bold transition-colors ${mode === 'login' ? 'bg-teal-500/20 text-teal-400' : 'bg-white/5 text-gray-400 hover:text-white'}`}
+                        >
+                            Staff Login
+                        </button>
+                        <button
+                            onClick={() => { setMode('student-login'); setError(null); }}
+                            className={`p-2 rounded-lg text-xs font-bold transition-colors ${mode === 'student-login' ? 'bg-teal-500/20 text-teal-400' : 'bg-white/5 text-gray-400 hover:text-white'}`}
+                        >
+                            Student Login
+                        </button>
+                        <button
+                            onClick={() => { setMode('parent-login'); setError(null); }}
+                            className={`p-2 rounded-lg text-xs font-bold transition-colors ${mode === 'parent-login' ? 'bg-teal-500/20 text-teal-400' : 'bg-white/5 text-gray-400 hover:text-white'}`}
+                        >
+                            Parent Login
+                        </button>
+                        <button
+                            onClick={() => { setMode('school-reg'); setError(null); }}
+                            className={`p-2 rounded-lg text-xs font-bold transition-colors ${mode === 'school-reg' ? 'bg-teal-500/20 text-teal-400' : 'bg-white/5 text-gray-400 hover:text-white'}`}
+                        >
+                            Register School
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

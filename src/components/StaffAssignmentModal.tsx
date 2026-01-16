@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { collection, query, where, getDocs, setDoc, doc, serverTimestamp, deleteDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import type { StaffAssignment } from '../lib/types';
 
@@ -47,23 +46,43 @@ export const StaffAssignmentModal = ({ staffId, staffName, onClose, onSuccess }:
 
             try {
                 // Fetch classes
-                const classQ = query(collection(db, 'classes'), where('schoolId', '==', schoolId));
-                const classSnap = await getDocs(classQ);
-                setClasses(classSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
+                const { data: classData, error: classError } = await supabase
+                    .from('classes')
+                    .select('*')
+                    .eq('school_id', schoolId);
+
+                if (classError) throw classError;
+                setClasses(classData.map(c => ({ id: c.id, name: c.name })));
 
                 // Fetch subjects
-                const subjectQ = query(collection(db, 'subjects'), where('schoolId', '==', schoolId));
-                const subjectSnap = await getDocs(subjectQ);
-                setSubjects(subjectSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
+                const { data: subjectData, error: subjectError } = await supabase
+                    .from('subjects')
+                    .select('*')
+                    .eq('school_id', schoolId);
+
+                if (subjectError) throw subjectError;
+                setSubjects(subjectData.map(s => ({ id: s.id, name: s.name })));
 
                 // Fetch existing assignments
-                const assignmentQ = query(
-                    collection(db, 'staff_assignments'),
-                    where('schoolId', '==', schoolId),
-                    where('staffId', '==', staffId)
-                );
-                const assignmentSnap = await getDocs(assignmentQ);
-                const existing = assignmentSnap.docs.map(doc => doc.data() as StaffAssignment);
+                const { data: assignmentData, error: assignmentError } = await supabase
+                    .from('staff_assignments')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('staff_id', staffId);
+
+                if (assignmentError) throw assignmentError;
+
+                const existing = assignmentData.map(a => ({
+                    id: a.id,
+                    schoolId: a.school_id,
+                    staffId: a.staff_id,
+                    classId: a.class_id,
+                    subjectId: a.subject_id,
+                    startDate: a.start_date,
+                    createdAt: a.created_at,
+                    updatedAt: a.updated_at
+                })) as StaffAssignment[];
+
                 setExistingAssignments(existing);
 
                 // Initialize with existing assignments
@@ -111,24 +130,32 @@ export const StaffAssignmentModal = ({ staffId, staffName, onClose, onSuccess }:
 
         try {
             // Delete old assignments
-            for (const oldAssignment of existingAssignments) {
-                const assignmentId = `${staffId}_${oldAssignment.classId}_${oldAssignment.subjectId}`;
-                await deleteDoc(doc(db, 'staff_assignments', assignmentId));
+            if (existingAssignments.length > 0) {
+                const { error: deleteError } = await supabase
+                    .from('staff_assignments')
+                    .delete()
+                    .eq('school_id', schoolId)
+                    .eq('staff_id', staffId);
+
+                if (deleteError) throw deleteError;
             }
 
             // Create new assignments
             for (const assignment of assignments) {
                 const assignmentId = `${staffId}_${assignment.classId}_${assignment.subjectId}`;
-                const assignmentData: StaffAssignment = {
-                    schoolId,
-                    staffId,
-                    classId: assignment.classId,
-                    subjectId: assignment.subjectId,
-                    startDate: new Date().toISOString().split('T')[0],
-                    createdAt: serverTimestamp()
-                };
 
-                await setDoc(doc(db, 'staff_assignments', assignmentId), assignmentData);
+                const { error: insertError } = await supabase
+                    .from('staff_assignments')
+                    .insert({
+                        id: assignmentId,
+                        school_id: schoolId,
+                        staff_id: staffId,
+                        class_id: assignment.classId,
+                        subject_id: assignment.subjectId,
+                        start_date: new Date().toISOString().split('T')[0]
+                    });
+
+                if (insertError) throw insertError;
             }
 
             setSuccess(true);

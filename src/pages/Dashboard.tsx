@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText } from 'lucide-react';
 import { NavLink, Navigate } from 'react-router-dom';
-import { auth, db } from '../lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-
-
-
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 
 export const Dashboard = () => {
-    const { profile, role } = useAuth();
-    const user = auth.currentUser;
-    const displayName = profile?.fullName || user?.displayName || 'Teacher';
+    const { user, profile, role } = useAuth();
+    const displayName = profile?.fullName || user?.user_metadata?.full_name || 'Teacher';
     const [pendingCount, setPendingCount] = useState(0);
     const [loading, setLoading] = useState(true);
 
@@ -23,11 +18,18 @@ export const Dashboard = () => {
         const fetchPendingGrades = async () => {
             if (!user) return;
             try {
-                const q = query(collection(db, 'results'), where('userId', '==', user.uid));
-                const snapshot = await getDocs(q);
-                setPendingCount(snapshot.size);
+                // Assuming 'results' table uses snake_case 'user_id' based on pattern
+                // If it uses camelCase 'userId', we might need to adjust.
+                const { count, error } = await supabase
+                    .from('results')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id);
+
+                if (error) throw error;
+                setPendingCount(count || 0);
             } catch (err) {
                 console.error('Error fetching pending grades:', err);
+                // Fallback attempt with camelCase if snake_case failed (optional safety)
                 setPendingCount(0);
             } finally {
                 setLoading(false);

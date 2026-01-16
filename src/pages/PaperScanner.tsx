@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { X, Check, Upload, AlertCircle } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { geminiService } from '../lib/gemini';
 import { useAuth } from '../hooks/useAuth';
@@ -64,7 +63,7 @@ export const PaperScanner = () => {
     };
 
     const handleSaveResult = async () => {
-        if (!auth.currentUser || !schoolId) {
+        if (!user || !schoolId) {
             alert("Please sign in to save results.");
             return;
         }
@@ -75,19 +74,24 @@ export const PaperScanner = () => {
         }
 
         try {
-            const aiScanData: AIScanResult = {
-                schoolId,
-                studentName: studentName.trim(),
-                teacherId: auth.currentUser.uid,
+            const aiScanData = {
+                school_id: schoolId,
+                student_name: studentName.trim(),
+                teacher_id: user.id,
                 score: grading.score,
                 total: grading.total,
                 feedback: grading.feedback,
-                missingKeywords: grading.missingKeywords,
-                ocrAccuracy: grading.ocrAccuracy,
-                createdAt: serverTimestamp()
+                missing_keywords: grading.missingKeywords,
+                ocr_accuracy: grading.ocrAccuracy,
+                created_at: new Date().toISOString()
             };
 
-            await addDoc(collection(db, "ai_scan_results"), aiScanData);
+            const { error: insertError } = await supabase
+                .from('ai_scan_results')
+                .insert(aiScanData);
+
+            if (insertError) throw insertError;
+
             alert("Result Recorded!");
             navigate('/analytics');
         } catch (e) {

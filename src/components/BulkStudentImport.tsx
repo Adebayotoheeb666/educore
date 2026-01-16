@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, Download, AlertCircle, CheckCircle2, FileText, X } from 'lucide-react';
+import { Upload, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
 import {
     parseCSVFile,
     validateStudentData,
@@ -16,7 +16,7 @@ interface BulkStudentImportProps {
 }
 
 export const BulkStudentImport = ({ onSuccess, onClose }: BulkStudentImportProps) => {
-    const { schoolId } = useAuth();
+    const { schoolId, user, profile } = useAuth();
     const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'complete'>('upload');
     const [file, setFile] = useState<File | null>(null);
     const [fileData, setFileData] = useState<StudentImportRow[]>([]);
@@ -40,7 +40,7 @@ export const BulkStudentImport = ({ onSuccess, onClose }: BulkStudentImportProps
 
             // Parse file
             const parsed = await parseCSVFile(selectedFile);
-            
+
             if (parsed.length === 0) {
                 setError('No valid student records found in file');
                 return;
@@ -63,8 +63,8 @@ export const BulkStudentImport = ({ onSuccess, onClose }: BulkStudentImportProps
     };
 
     const handleImport = async () => {
-        if (!schoolId) {
-            setError('School ID not found');
+        if (!schoolId || !user || !profile) {
+            setError('User information not found');
             return;
         }
 
@@ -73,7 +73,13 @@ export const BulkStudentImport = ({ onSuccess, onClose }: BulkStudentImportProps
         setError('');
 
         try {
-            const importResult = await bulkImportStudents(fileData, schoolId, false);
+            const importResult = await bulkImportStudents(
+                fileData,
+                schoolId,
+                false,
+                user.uid,
+                profile.fullName || 'Unknown User'
+            );
             setResult(importResult);
             setStep('complete');
 

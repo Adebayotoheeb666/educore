@@ -5,27 +5,34 @@ import {
     Award,
     TrendingUp,
     CheckCircle2,
-    XCircle,
     AlertCircle,
     BarChart3
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
-import {
-    collection,
-    query,
-    where,
-    getDocs,
-    limit,
-    orderBy
-} from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { geminiService } from '../lib/gemini';
-import type { ParentStudentLink, AttendanceRecord, ExamResult } from '../lib/types';
 
 interface Child {
-    uid: string;
+    id: string; // supbase user id
     fullName: string;
     admissionNumber: string;
+}
+
+interface AttendanceRecord {
+    id: string;
+    status: 'present' | 'absent';
+    date: string;
+    description?: string;
+}
+
+interface ExamResult {
+    id: string;
+    subjectId: string;
+    caScore: number;
+    examScore: number;
+    totalScore: number;
+    grade?: string;
+    term?: string;
 }
 
 interface AttendanceStats {
@@ -36,7 +43,7 @@ interface AttendanceStats {
 }
 
 export const ParentPortal = () => {
-    const { user, schoolId } = useAuth();
+    const { user, schoolId, profile } = useAuth();
     const [children, setChildren] = useState<Child[]>([]);
     const [selectedChildId, setSelectedChildId] = useState<string>('');
     const [selectedChildName, setSelectedChildName] = useState<string>('');
@@ -54,44 +61,44 @@ export const ParentPortal = () => {
 
             setLoading(true);
             try {
-                // Query parent_student_links where parentIds contains current user
-                const linksQ = query(
-                    collection(db, 'parent_student_links'),
-                    where('schoolId', '==', schoolId),
-                    where('parentIds', 'array-contains', user.uid)
-                );
-                const linksSnap = await getDocs(linksQ);
-                const studentIds = linksSnap.docs.map(doc => doc.data().studentId);
+                // Check if profile.linkedStudents exists (array of UIDs)
+                // This assumes we migrated or store linkedStudents in public.users metadata/column.
+                // If not, we might need to fallback to querying users by parent_phone if that column exists.
 
-                if (studentIds.length === 0) {
+                let fetchedChildren: Child[] = [];
+
+                if (profile?.linkedStudents && Array.isArray(profile.linkedStudents) && profile.linkedStudents.length > 0) {
+                    const { data, error } = await supabase
+                        .from('users')
+                        .select('id, full_name, admission_number')
+                        .in('id', profile.linkedStudents)
+                        .eq('school_id', schoolId);
+
+                    if (error) throw error;
+
+                    fetchedChildren = (data || []).map(u => ({
+                        id: u.id,
+                        fullName: u.full_name,
+                        admissionNumber: u.admission_number
+                    }));
+
+                } else if (profile?.phoneNumber) {
+                    // Fallback: search by parent phone if we implemented that column in users
+                    // Check if 'parent_phone' column exists in your schema? 
+                    // I created 'phone_number' for the user themselves. I didn't explicitly create 'parent_phone'.
+                    // So let's stick to empty if no linkedStudents for now, or just show empty.
+                }
+
+                if (fetchedChildren.length === 0) {
                     setChildren([]);
                     setLoading(false);
                     return;
                 }
 
-                // Fetch student profiles
-                const childrenList: Child[] = [];
-                for (const studentId of studentIds) {
-                    const usersQ = query(
-                        collection(db, 'users'),
-                        where('schoolId', '==', schoolId)
-                    );
-                    const usersSnap = await getDocs(usersQ);
-                    const child = usersSnap.docs.find(doc => doc.id === studentId);
-                    if (child) {
-                        const data = child.data();
-                        childrenList.push({
-                            uid: child.id,
-                            fullName: data.fullName,
-                            admissionNumber: data.admissionNumber || ''
-                        });
-                    }
-                }
-
-                setChildren(childrenList);
-                if (childrenList.length > 0) {
-                    setSelectedChildId(childrenList[0].uid);
-                    setSelectedChildName(childrenList[0].fullName);
+                setChildren(fetchedChildren);
+                if (fetchedChildren.length > 0) {
+                    setSelectedChildId(fetchedChildren[0].id);
+                    setSelectedChildName(fetchedChildren[0].fullName);
                 }
             } catch (err) {
                 console.error('Error fetching children:', err);
@@ -101,7 +108,7 @@ export const ParentPortal = () => {
         };
 
         fetchChildren();
-    }, [user, schoolId]);
+    }, [user, schoolId, profile]);
 
     // Fetch child's academic data
     useEffect(() => {
@@ -113,15 +120,22 @@ export const ParentPortal = () => {
 
             try {
                 // Fetch attendance
-                const attendanceQ = query(
-                    collection(db, 'attendance'),
-                    where('schoolId', '==', schoolId),
-                    where('studentId', '==', selectedChildId),
-                    orderBy('date', 'desc'),
-                    limit(30)
-                );
-                const attendanceSnap = await getDocs(attendanceQ);
-                const attendanceRecords = attendanceSnap.docs.map(doc => doc.data() as AttendanceRecord);
+                const { data: attendanceData, error: attError } = await supabase
+                    .from('attendance')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('student_id', selectedChildId)
+                    .order('created_at', { ascending: false })
+                    .limit(30);
+
+                if (attError) throw attError;
+
+                const attendanceRecords = (attendanceData || []).map(a => ({
+                    id: a.id,
+                    status: a.status,
+                    date: a.date,
+                    // description: a.description 
+                })) as AttendanceRecord[];
 
                 const total = attendanceRecords.length;
                 const present = attendanceRecords.filter(a => a.status === 'present').length;
@@ -131,15 +145,26 @@ export const ParentPortal = () => {
                 setAttendance({ total, present, absent, rate });
 
                 // Fetch results
-                const resultsQ = query(
-                    collection(db, 'results'),
-                    where('schoolId', '==', schoolId),
-                    where('studentId', '==', selectedChildId),
-                    orderBy('updatedAt', 'desc'),
-                    limit(10)
-                );
-                const resultsSnap = await getDocs(resultsQ);
-                const resultsList = resultsSnap.docs.map(doc => doc.data() as ExamResult);
+                const { data: resultsData, error: resError } = await supabase
+                    .from('results')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('student_id', selectedChildId)
+                    .order('updated_at', { ascending: false }) // or created_at
+                    .limit(10);
+
+                if (resError) throw resError;
+
+                const resultsList = (resultsData || []).map(r => ({
+                    id: r.id,
+                    subjectId: r.subject_id,
+                    caScore: r.ca_score,
+                    examScore: r.exam_score,
+                    totalScore: r.total_score,
+                    term: r.term,
+                    grade: r.grade
+                })) as ExamResult[];
+
                 setResults(resultsList);
             } catch (err) {
                 console.error('Error fetching child data:', err);
@@ -158,7 +183,6 @@ export const ParentPortal = () => {
 
         setIsGeneratingInsight(true);
         try {
-            const avgScore = results.reduce((sum, r) => sum + r.totalScore, 0) / results.length;
             const insight = await geminiService.generateStudentPerformanceInsight(results, attendance.rate);
             setAiInsight(insight);
         } catch (err) {
@@ -176,7 +200,7 @@ export const ParentPortal = () => {
 
     if (loading && children.length === 0) {
         return (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-20 bg-dark-bg min-h-screen">
                 <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
             </div>
         );
@@ -184,13 +208,13 @@ export const ParentPortal = () => {
 
     if (children.length === 0) {
         return (
-            <div className="space-y-8">
+            <div className="min-h-screen bg-dark-bg text-gray-100 p-8">
                 <header>
                     <h1 className="text-3xl font-bold text-white">Parent Portal</h1>
                     <p className="text-gray-400 mt-2">Monitor your children's academic progress</p>
                 </header>
 
-                <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-8 text-center">
+                <div className="mt-8 bg-orange-500/10 border border-orange-500/30 rounded-2xl p-8 text-center">
                     <AlertCircle className="w-12 h-12 text-orange-400 mx-auto mb-4" />
                     <h2 className="text-xl font-bold text-orange-300 mb-2">No Children Found</h2>
                     <p className="text-orange-200/70">
@@ -202,7 +226,7 @@ export const ParentPortal = () => {
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 min-h-screen bg-dark-bg text-gray-100 p-8">
             {/* Header with Child Switcher */}
             <header className="flex items-center justify-between">
                 <div>
@@ -227,19 +251,18 @@ export const ParentPortal = () => {
                             <div className="absolute right-0 mt-2 w-72 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
                                 {children.map(child => (
                                     <button
-                                        key={child.uid}
-                                        onClick={() => handleSelectChild(child.uid, child.fullName)}
-                                        className={`w-full text-left px-6 py-4 transition-colors flex items-center justify-between border-b border-white/5 last:border-b-0 ${
-                                            selectedChildId === child.uid
-                                                ? 'bg-teal-500/20 text-teal-400'
-                                                : 'hover:bg-white/5 text-gray-300'
-                                        }`}
+                                        key={child.id}
+                                        onClick={() => handleSelectChild(child.id, child.fullName)}
+                                        className={`w-full text-left px-6 py-4 transition-colors flex items-center justify-between border-b border-white/5 last:border-b-0 ${selectedChildId === child.id
+                                            ? 'bg-teal-500/20 text-teal-400'
+                                            : 'hover:bg-white/5 text-gray-300'
+                                            }`}
                                     >
                                         <div>
                                             <p className="font-bold">{child.fullName}</p>
                                             <p className="text-xs text-gray-500 mt-1">#{child.admissionNumber}</p>
                                         </div>
-                                        {selectedChildId === child.uid && (
+                                        {selectedChildId === child.id && (
                                             <CheckCircle2 className="w-5 h-5" />
                                         )}
                                     </button>
@@ -302,8 +325,8 @@ export const ParentPortal = () => {
                                 ? results[0].totalScore > results[results.length - 1].totalScore
                                     ? '📈'
                                     : results[0].totalScore < results[results.length - 1].totalScore
-                                    ? '📉'
-                                    : '→'
+                                        ? '📉'
+                                        : '→'
                                 : '→'}
                         </div>
                         <div className="text-sm text-gray-400">

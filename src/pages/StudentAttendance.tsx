@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, CheckCircle2, XCircle, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { cn } from '../components/Layout';
 
 interface AttendanceRecord {
@@ -24,14 +23,19 @@ export const StudentAttendance = () => {
 
         const fetchAttendance = async () => {
             try {
-                const q = query(
-                    collection(db, 'attendance'),
-                    where('schoolId', '==', schoolId),
-                    where('studentId', '==', user.uid),
-                    orderBy('date', 'desc')
-                );
-                const snap = await getDocs(q);
-                const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+                const { data, error } = await supabase
+                    .from('attendance')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('student_id', user.id)
+                    .order('date', { ascending: false });
+
+                if (error) throw error;
+                const list = data.map(record => ({
+                    id: record.id,
+                    status: record.status,
+                    date: record.date
+                } as AttendanceRecord));
                 setAttendance(list);
             } catch (err) {
                 console.error("Error fetching attendance:", err);

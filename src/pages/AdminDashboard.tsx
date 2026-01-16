@@ -9,19 +9,16 @@ import {
     DollarSign,
     TrendingUp,
     Download,
-    X
+    X,
+    Calendar,
+    FileText
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { BulkStudentImport } from '../components/BulkStudentImport';
 import { StaffAssignmentModal } from '../components/StaffAssignmentModal';
 import { ParentStudentLinkModal } from '../components/ParentStudentLinkModal';
-import { db } from '../lib/firebase';
-import {
-    collection,
-    query,
-    where,
-    getDocs
-} from 'firebase/firestore';
+import { StaffCreationModal } from '../components/StaffCreationModal';
+import { supabase } from '../lib/supabase';
 import type { ImportResult } from '../lib/bulkImportService';
 
 export const AdminDashboard = () => {
@@ -34,6 +31,7 @@ export const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showBulkImport, setShowBulkImport] = useState(false);
+    const [showStaffCreation, setShowStaffCreation] = useState(false);
     const [selectedStaffForAssignment, setSelectedStaffForAssignment] = useState<{ id: string; name: string } | null>(null);
     const [selectedStudentForLinking, setSelectedStudentForLinking] = useState<{ id: string; name: string } | null>(null);
 
@@ -43,25 +41,51 @@ export const AdminDashboard = () => {
         setLoading(true);
         try {
             // Fetch All School Users
-            const usersQ = query(collection(db, 'users'), where('schoolId', '==', schoolId));
-            const usersSnap = await getDocs(usersQ);
-            const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const { data: allUsers, error: usersError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('school_id', schoolId);
 
-            setStaff(allUsers.filter((u: any) => u.role === 'staff' || u.role === 'admin'));
-            setStudents(allUsers.filter((u: any) => u.role === 'student'));
+            if (usersError) throw usersError;
+
+            // Map DB columns to frontend keys if needed (camelCase vs snake_case)
+            // My schema used snake_case for school_id, full_name, admission_number
+            // Frontend components expect: id, role, fullName, admissionNumber, etc.
+            const mappedUsers = (allUsers || []).map(u => ({
+                id: u.id,
+                ...u,
+                schoolId: u.school_id,
+                fullName: u.full_name,
+                admissionNumber: u.admission_number,
+                staffId: u.staff_id // if exists in DB
+            }));
+
+            setStaff(mappedUsers.filter((u: any) => u.role === 'staff' || u.role === 'admin'));
+            setStudents(mappedUsers.filter((u: any) => u.role === 'student'));
 
             // Fetch Classes
-            const classQ = query(collection(db, 'classes'), where('schoolId', '==', schoolId));
-            const classSnap = await getDocs(classQ);
-            setClasses(classSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            const { data: classData, error: classError } = await supabase
+                .from('classes')
+                .select('*')
+                .eq('school_id', schoolId);
+
+            if (classError) throw classError;
+            setClasses(classData || []);
 
             // Fetch Financials
-            const transQ = query(collection(db, 'financial_transactions'), where('schoolId', '==', schoolId));
-            const transSnap = await getDocs(transQ);
-            const total = transSnap.docs.reduce((acc, doc) => acc + (doc.data().amount || 0), 0);
+            const { data: transData, error: transError } = await supabase
+                .from('financial_transactions')
+                .select('amount')
+                .eq('school_id', schoolId);
 
-            // Assuming default fee of 150k per student for now
-            const totalExpected = allUsers.filter((u: any) => u.role === 'student').length * 150000;
+            if (transError) {
+                console.error("Financial fetch error", transError);
+            }
+
+            const total = (transData || []).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+            // Assuming default fee of 150k per student
+            const totalExpected = mappedUsers.filter((u: any) => u.role === 'student').length * 150000;
             setFinancials({
                 totalRevenue: total,
                 outstanding: totalExpected - total
@@ -178,6 +202,21 @@ export const AdminDashboard = () => {
         );
     }
 
+    // Staff Creation Modal
+    if (showStaffCreation) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <StaffCreationModal
+                    onSuccess={() => {
+                        fetchData();
+                        // Don't close immediately so they can see credentials
+                    }}
+                    onClose={() => setShowStaffCreation(false)}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-8">
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -200,7 +239,15 @@ export const AdminDashboard = () => {
                         </button>
                         {showAddMenu && (
                             <div className="absolute right-0 mt-2 w-48 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                                <button className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors border-b border-white/5">Single Registration</button>
+                                <button
+                                    onClick={() => {
+                                        setShowStaffCreation(true);
+                                        setShowAddMenu(false);
+                                    }}
+                                    className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors border-b border-white/5"
+                                >
+                                    Add Staff Member
+                                </button>
                                 <button
                                     onClick={() => {
                                         setShowBulkImport(true);
@@ -234,6 +281,51 @@ export const AdminDashboard = () => {
                     <TabButton active={activeTab === 'subjects'} onClick={() => setActiveTab('subjects')} label="Subjects" />
                 </div>
 
+                {/* Quick Access Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 p-6">
+                    <div className="bg-dark-card border border-white/5 rounded-2xl p-6 hover:border-teal-500/30 transition-colors">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                <TrendingUp className="w-6 h-6 text-orange-400" />
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-bold text-white mb-1">
+                            ₦{financials.outstanding.toLocaleString()}
+                        </h3>
+                        <p className="text-gray-400 text-sm">Outstanding Fees</p>
+                    </div>
+
+                    {/* Quick Access Cards */}
+                    <div
+                        onClick={() => window.location.href = '/admin/terms'}
+                        className="bg-dark-card border border-white/5 rounded-2xl p-6 hover:border-teal-500/30 transition-colors cursor-pointer"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center">
+                                <Calendar className="w-6 h-6 text-teal-400" />
+                            </div>
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-1">
+                            Term Management
+                        </h3>
+                        <p className="text-gray-400 text-sm">Manage academic terms</p>
+                    </div>
+
+                    <div
+                        onClick={() => window.location.href = '/admin/audit-logs'}
+                        className="bg-dark-card border border-white/5 rounded-2xl p-6 hover:border-teal-500/30 transition-colors cursor-pointer"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                <FileText className="w-6 h-6 text-purple-400" />
+                            </div>
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-1">
+                            Audit Logs
+                        </h3>
+                        <p className="text-gray-400 text-sm">View system activity</p>
+                    </div>
+                </div>
                 <div className="p-8">
                     {loading ? (
                         <div className="flex items-center justify-center py-20">

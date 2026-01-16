@@ -8,19 +8,11 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
-import {
-    collection,
-    query,
-    where,
-    getDocs,
-    serverTimestamp,
-    doc,
-    setDoc
-} from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
+import { logAction } from '../lib/auditService';
 
 export const GradeEntry = () => {
-    const { schoolId, user } = useAuth();
+    const { schoolId, user, profile } = useAuth();
     const [classes, setClasses] = useState<any[]>([]);
     const [subjects, setSubjects] = useState<any[]>([]);
     const [selectedClass, setSelectedClass] = useState<string | null>(null);
@@ -38,14 +30,22 @@ export const GradeEntry = () => {
             setLoading(true);
             try {
                 // Fetch classes
-                const classQ = query(collection(db, 'classes'), where('schoolId', '==', schoolId));
-                const classSnap = await getDocs(classQ);
-                setClasses(classSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                const { data: classData, error: classError } = await supabase
+                    .from('classes')
+                    .select('*')
+                    .eq('school_id', schoolId);
+
+                if (classError) throw classError;
+                setClasses(classData.map(c => ({ id: c.id, ...c })));
 
                 // Fetch subjects
-                const subjectQ = query(collection(db, 'subjects'), where('schoolId', '==', schoolId));
-                const subjectSnap = await getDocs(subjectQ);
-                setSubjects(subjectSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                const { data: subjectData, error: subjectError } = await supabase
+                    .from('subjects')
+                    .select('*')
+                    .eq('school_id', schoolId);
+
+                if (subjectError) throw subjectError;
+                setSubjects(subjectData.map(s => ({ id: s.id, ...s })));
             } catch (err) {
                 console.error("Error fetching metadata:", err);
             } finally {
@@ -57,18 +57,27 @@ export const GradeEntry = () => {
     }, [schoolId]);
 
     useEffect(() => {
-        if (!selectedClass || !selectedSubject) return;
+        if (!selectedClass || !selectedSubject || !schoolId) return;
 
         const fetchStudents = async () => {
             setLoading(true);
             try {
-                const q = query(
-                    collection(db, 'users'),
-                    where('schoolId', '==', schoolId),
-                    where('role', '==', 'student')
-                );
-                const snap = await getDocs(q);
-                const studentsList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Fetch students
+                const { data: studentData, error: studentError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('role', 'student');
+
+                if (studentError) throw studentError;
+
+                const studentsList = studentData.map(doc => ({
+                    id: doc.id,
+                    fullName: doc.full_name,
+                    admissionNumber: doc.admission_number,
+                    ...doc
+                }));
+                // In real app, filter by classId via junction table
                 setStudents(studentsList);
 
                 // Initialize scores
@@ -76,20 +85,22 @@ export const GradeEntry = () => {
                 studentsList.forEach(s => initial[s.id] = { ca: '', exam: '' });
                 setScores(initial);
 
-                // Fetch existing scores if any for this term/session (simplified)
-                const scoreQ = query(
-                    collection(db, 'results'),
-                    where('schoolId', '==', schoolId),
-                    where('classId', '==', selectedClass),
-                    where('subjectId', '==', selectedSubject)
-                );
-                const scoreSnap = await getDocs(scoreQ);
+                // Fetch existing scores
+                const { data: scoreData, error: scoreError } = await supabase
+                    .from('results')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('class_id', selectedClass)
+                    .eq('subject_id', selectedSubject);
+
+                if (scoreError) throw scoreError;
+
                 const existingScores: Record<string, { ca: string; exam: string }> = { ...initial };
-                scoreSnap.docs.forEach(doc => {
-                    const data = doc.data();
-                    existingScores[data.studentId] = {
-                        ca: data.caScore?.toString() || '',
-                        exam: data.examScore?.toString() || ''
+                scoreData.forEach(data => {
+                    // Assuming scoreData uses snake_case from DB
+                    existingScores[data.student_id] = {
+                        ca: data.ca_score?.toString() || '',
+                        exam: data.exam_score?.toString() || ''
                     };
                 });
                 setScores(existingScores);
@@ -115,27 +126,57 @@ export const GradeEntry = () => {
     };
 
     const handleSave = async () => {
-        if (!selectedClass || !selectedSubject || !user) return;
+        if (!selectedClass || !selectedSubject || !user || !profile || !schoolId) return;
         setSaving(true);
         setSuccess(false);
         try {
             const batch = Object.entries(scores).map(([studentId, data]) => {
                 const resultId = `${selectedClass}_${selectedSubject}_${studentId}`;
-                return setDoc(doc(db, 'results', resultId), {
-                    schoolId,
-                    studentId,
-                    classId: selectedClass,
-                    subjectId: selectedSubject,
-                    teacherId: user.uid,
-                    caScore: parseFloat(data.ca) || 0,
-                    examScore: parseFloat(data.exam) || 0,
-                    totalScore: (parseFloat(data.ca) || 0) + (parseFloat(data.exam) || 0),
+                const caScore = parseFloat(data.ca) || 0;
+                const examScore = parseFloat(data.exam) || 0;
+
+                return {
+                    id: resultId,
+                    school_id: schoolId,
+                    student_id: studentId,
+                    class_id: selectedClass,
+                    subject_id: selectedSubject,
+                    teacher_id: user.id,
+                    ca_score: caScore,
+                    exam_score: examScore,
+                    total_score: caScore + examScore,
                     term: '1st Term', // Should be dynamic
                     session: '2025/2026', // Should be dynamic
-                    updatedAt: serverTimestamp()
-                }, { merge: true });
+                    updated_at: new Date().toISOString()
+                };
             });
-            await Promise.all(batch);
+
+            const { error } = await supabase
+                .from('results')
+                .upsert(batch);
+
+            if (error) throw error;
+
+            // Log grade entry action
+            try {
+                await logAction(
+                    schoolId,
+                    user.id,
+                    profile.fullName || 'Unknown User',
+                    'update',
+                    'result',
+                    `${selectedClass}_${selectedSubject}`,
+                    undefined,
+                    {
+                        classId: selectedClass,
+                        subjectId: selectedSubject,
+                        studentsCount: students.length
+                    }
+                );
+            } catch (error) {
+                console.error('Failed to log grade entry:', error);
+            }
+
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
         } catch (err) {

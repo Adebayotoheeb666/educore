@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '../../hooks/useAuth';
+import { logAction } from '../../lib/auditService';
 
 // Zod Schema
 const fundWalletSchema = z.object({
@@ -21,6 +23,7 @@ const fundWalletSchema = z.object({
 type FundWalletForm = z.infer<typeof fundWalletSchema>;
 
 export const FundParentWallet = () => {
+    const { schoolId, user, profile } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -51,7 +54,7 @@ export const FundParentWallet = () => {
     };
 
     const onSubmit = async (data: FundWalletForm) => {
-        if (!selectedStudent) return;
+        if (!selectedStudent || !schoolId || !user || !profile) return;
 
         setLoading(true);
         try {
@@ -63,8 +66,29 @@ export const FundParentWallet = () => {
                 date: serverTimestamp(),
                 status: 'completed',
                 studentId: selectedStudent.id,
-                parentId: selectedStudent.parentId
+                parentId: selectedStudent.parentId,
+                schoolId
             });
+
+            // Log wallet funding action
+            try {
+                await logAction(
+                    schoolId,
+                    user.uid,
+                    profile.fullName || 'Unknown User',
+                    'create',
+                    'financial',
+                    selectedStudent.id,
+                    undefined,
+                    {
+                        amount: data.amount,
+                        category: 'Wallet Funding',
+                        studentName: selectedStudent.name
+                    }
+                );
+            } catch (error) {
+                console.error('Failed to log wallet funding:', error);
+            }
 
             alert('Wallet funded successfully!');
             reset();

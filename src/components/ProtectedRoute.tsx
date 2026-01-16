@@ -1,51 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { useAuth } from '../hooks/useAuth';
 
 export const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
-    const [authorized, setAuthorized] = useState(false);
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            if (currentUser) {
-                setUser(currentUser);
-
-                // If roles are specified, check user role from Firestore
-                if (allowedRoles && allowedRoles.length > 0) {
-                    try {
-                        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-                        if (userDoc.exists()) {
-                            const userData = userDoc.data();
-                            if (allowedRoles.includes(userData.role)) {
-                                setAuthorized(true);
-                            } else {
-                                setAuthorized(false);
-                            }
-                        } else {
-                            // User has no role doc? Deny access if roles required
-                            setAuthorized(false);
-                        }
-                    } catch (err) {
-                        console.error("Error fetching user role:", err);
-                        setAuthorized(false);
-                    }
-                } else {
-                    // No roles required, just need to be logged in
-                    setAuthorized(true);
-                }
-            } else {
-                setUser(null);
-                setAuthorized(false);
-            }
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [allowedRoles]);
+    const { user, role, loading } = useAuth();
 
     if (loading) {
         return (
@@ -59,7 +16,7 @@ export const ProtectedRoute = ({ children, allowedRoles }: { children: React.Rea
         return <Navigate to="/login" replace />;
     }
 
-    if (!authorized && allowedRoles) {
+    if (allowedRoles && role && !allowedRoles.includes(role)) {
         return (
             <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4">
                 <div className="text-center">

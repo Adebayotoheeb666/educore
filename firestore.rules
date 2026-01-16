@@ -2,145 +2,348 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to get user data
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    // Check if user is authenticated
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    
     function isAuthenticated() {
       return request.auth != null;
     }
-
-    // Check if user belongs to the specified school
-    function isFromSchool(schoolId) {
-      return isAuthenticated() && getUserData().schoolId == schoolId;
+    
+    function getUserRole() {
+      return request.auth.token.role;
     }
-
-    // Check if user has a specific role in their school
-    function hasRole(role) {
-      return isAuthenticated() && getUserData().role == role;
+    
+    function getUserSchoolId() {
+      return request.auth.token.schoolId;
     }
-
+    
     function isAdmin() {
-      return hasRole('admin');
+      return getUserRole() == 'admin';
     }
-
-    // Check if parent is linked to a specific student
-    function isParentOf(studentId) {
-      return hasRole('parent') && exists(/databases/$(database)/documents/parent_student_links/$(request.auth.uid)_$(studentId));
+    
+    function isStaff() {
+      return getUserRole() == 'staff';
     }
-
-    // Users: Can read/write their own profile. Admin can manage school users. Parents can see their child's profile.
-    match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isFromSchool(resource.data.schoolId) || isParentOf(userId));
-      allow write: if isAuthenticated() && (request.auth.uid == userId || (isAdmin() && request.resource.data.schoolId == getUserData().schoolId));
+    
+    function isStudent() {
+      return getUserRole() == 'student';
     }
-
-    // Schools: Public read for basic info (signup), Admin write
+    
+    function isParent() {
+      return getUserRole() == 'parent';
+    }
+    
+    function isBursar() {
+      return getUserRole() == 'bursar';
+    }
+    
+    function belongsToSchool(schoolId) {
+      return getUserSchoolId() == schoolId;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // ============================================
+    // SCHOOLS COLLECTION
+    // ============================================
+    
     match /schools/{schoolId} {
-      allow read: if true;
-      allow write: if isAdmin() && isFromSchool(schoolId);
-      // Only allow school creation if:
-      // 1. User is not authenticated (new signup), OR
-      // 2. User is admin and schoolId matches their school, OR
-      // 3. User is attempting to create their own school for the first time (validated via Cloud Function)
-      allow create: if !request.auth || (isAdmin() && request.resource.data.adminUid == request.auth.uid && !exists(/databases/$(database)/documents/schools/$(schoolId)));
+      // Anyone can create a new school (for registration)
+      allow create: if isAuthenticated();
+      
+      // Only school admin can read their school
+      allow read: if isAuthenticated() && belongsToSchool(schoolId);
+      
+      // Only school admin can update their school
+      allow update: if isAuthenticated() && belongsToSchool(schoolId) && isAdmin();
+      
+      // Never allow school deletion
+      allow delete: if false;
     }
-
-    // Classes & Subjects: School-isolated
+    
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
+    
+    match /users/{userId} {
+      // Users can read:
+      // 1. Their own profile
+      // 2. Admins can read all users in their school
+      // 3. Staff can read students in their school
+      // 4. Parents can read their children (enforced in app)
+      allow read: if isAuthenticated() && (
+        isOwner(userId) ||
+        (belongsToSchool(resource.data.schoolId) && isAdmin()) ||
+        (belongsToSchool(resource.data.schoolId) && isStaff() && resource.data.role == 'student') ||
+        (belongsToSchool(resource.data.schoolId) && isParent())
+      );
+      
+      // Only admins can create users in their school
+      allow create: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(request.resource.data.schoolId);
+      
+      // Users can update their own profile, admins can update all
+      allow update: if isAuthenticated() && (
+        isOwner(userId) ||
+        (isAdmin() && belongsToSchool(resource.data.schoolId))
+      );
+      
+      // Only admins can delete users
+      allow delete: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+    }
+    
+    // ============================================
+    // CLASSES COLLECTION
+    // ============================================
+    
     match /classes/{classId} {
-      allow read, write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId);
+      // Anyone in the school can read classes
+      allow read: if isAuthenticated() && belongsToSchool(resource.data.schoolId);
+      
+      // Only admins can create/update/delete classes
+      allow create: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(request.resource.data.schoolId);
+      allow update: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+      allow delete: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
     }
+    
+    // ============================================
+    // SUBJECTS COLLECTION
+    // ============================================
+    
     match /subjects/{subjectId} {
-      allow read, write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId);
+      // Anyone in the school can read subjects
+      allow read: if isAuthenticated() && belongsToSchool(resource.data.schoolId);
+      
+      // Only admins can create/update/delete subjects
+      allow create: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(request.resource.data.schoolId);
+      allow update: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+      allow delete: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
     }
-
-    // Parent-Student Links: School-isolated, admin-managed
+    
+    // ============================================
+    // STAFF ASSIGNMENTS COLLECTION
+    // ============================================
+    
+    match /staff_assignments/{assignmentId} {
+      // Anyone in the school can read assignments
+      allow read: if isAuthenticated() && belongsToSchool(resource.data.schoolId);
+      
+      // Only admins can manage assignments
+      allow create: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(request.resource.data.schoolId);
+      allow update: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+      allow delete: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+    }
+    
+    // ============================================
+    // STUDENT CLASSES (ENROLLMENTS) COLLECTION
+    // ============================================
+    
+    match /student_classes/{enrollmentId} {
+      // Anyone in the school can read enrollments
+      allow read: if isAuthenticated() && belongsToSchool(resource.data.schoolId);
+      
+      // Only admins can manage enrollments
+      allow create: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(request.resource.data.schoolId);
+      allow update: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+      allow delete: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+    }
+    
+    // ============================================
+    // ATTENDANCE COLLECTION
+    // ============================================
+    
+    match /attendance/{attendanceId} {
+      // Can read if:
+      // 1. Admin in the school
+      // 2. Staff in the school
+      // 3. Student viewing their own attendance
+      // 4. Parent (filtered by child in app)
+      allow read: if isAuthenticated() && belongsToSchool(resource.data.schoolId) && (
+        isAdmin() ||
+        isStaff() ||
+        (isStudent() && resource.data.studentId == request.auth.uid) ||
+        isParent()
+      );
+      
+      // Only admins and staff can create/update attendance
+      allow create: if isAuthenticated() && 
+        belongsToSchool(request.resource.data.schoolId) && 
+        (isAdmin() || isStaff());
+      
+      allow update: if isAuthenticated() && 
+        belongsToSchool(resource.data.schoolId) && 
+        (isAdmin() || isStaff());
+      
+      // Only admins can delete attendance records
+      allow delete: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+    }
+    
+    // ============================================
+    // RESULTS COLLECTION
+    // ============================================
+    
+    match /results/{resultId} {
+      // Can read if:
+      // 1. Admin in the school
+      // 2. Staff in the school
+      // 3. Student viewing their own results
+      // 4. Parent (filtered by child in app)
+      allow read: if isAuthenticated() && belongsToSchool(resource.data.schoolId) && (
+        isAdmin() ||
+        isStaff() ||
+        (isStudent() && resource.data.studentId == request.auth.uid) ||
+        isParent()
+      );
+      
+      // Only admins and staff can create/update results
+      allow create: if isAuthenticated() && 
+        belongsToSchool(request.resource.data.schoolId) && 
+        (isAdmin() || isStaff());
+      
+      allow update: if isAuthenticated() && 
+        belongsToSchool(resource.data.schoolId) && 
+        (isAdmin() || isStaff());
+      
+      // Only admins can delete results
+      allow delete: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+    }
+    
+    // ============================================
+    // TERMS COLLECTION
+    // ============================================
+    
+    match /terms/{termId} {
+      // Anyone in the school can read terms
+      allow read: if isAuthenticated() && belongsToSchool(resource.data.schoolId);
+      
+      // Only admins can manage terms
+      allow create: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(request.resource.data.schoolId);
+      allow update: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+      allow delete: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+    }
+    
+    // ============================================
+    // PARENT-STUDENT LINKS COLLECTION
+    // ============================================
+    
     match /parent_student_links/{linkId} {
-      allow read: if isAuthenticated() && (request.auth.uid in resource.data.parentIds || (isAdmin() && isFromSchool(resource.data.schoolId)));
-      allow write: if isAdmin() && isFromSchool(request.resource.data.schoolId);
-      allow create: if isAdmin() && isFromSchool(request.resource.data.schoolId);
-      allow delete: if isAdmin() && isFromSchool(resource.data.schoolId);
+      // Anyone in the school can read links
+      allow read: if isAuthenticated() && belongsToSchool(resource.data.schoolId);
+      
+      // Only admins can manage parent-student links
+      allow create: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(request.resource.data.schoolId);
+      allow update: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+      allow delete: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+    }
+    
+    // ============================================
+    // FINANCIAL TRANSACTIONS COLLECTION
+    // ============================================
+    
+    match /financial_transactions/{transactionId} {
+      // Only admins and bursars can read financial data
+      allow read: if isAuthenticated() && 
+        belongsToSchool(resource.data.schoolId) && 
+        (isAdmin() || isBursar());
+      
+      // Only admins and bursars can create transactions
+      allow create: if isAuthenticated() && 
+        belongsToSchool(request.resource.data.schoolId) && 
+        (isAdmin() || isBursar());
+      
+      // Only admins can update/delete transactions
+      allow update: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+      allow delete: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+    }
+    
+    // ============================================
+    // NOTES COLLECTION (LESSON PLANS)
+    // ============================================
+    
+    match /notes/{noteId} {
+      // Teachers can read/write their own notes
+      // Admins can read all notes in their school
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        (isAdmin() && belongsToSchool(resource.data.schoolId))
+      );
+      
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (isAdmin() && belongsToSchool(resource.data.schoolId))
+      );
     }
 
-    // Attendance & Results: School-isolated, with parent-student validation
-    match /attendance/{id} {
-      allow read: if isFromSchool(resource.data.schoolId) && (resource.data.studentId == request.auth.uid || isAdmin() || isParentOf(resource.data.studentId));
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && (isAdmin() || hasRole('staff'));
+    // ============================================
+    // EXAMS COLLECTION
+    // ============================================
+    
+    match /exams/{examId} {
+      // Teachers can read/write their own exams
+      // Admins can read all exams in their school
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        (isAdmin() && belongsToSchool(resource.data.schoolId))
+      );
+      
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (isAdmin() && belongsToSchool(resource.data.schoolId))
+      );
     }
-
-    // Exam Results: School-isolated teacher/staff write, student/parent read own results
-    match /results/{id} {
-      allow read: if isFromSchool(resource.data.schoolId) && (resource.data.studentId == request.auth.uid || isAdmin() || hasRole('staff') || isParentOf(resource.data.studentId));
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && (isAdmin() || hasRole('staff'));
-    }
-
-    // AI Scan Results: School-isolated staff write, admin/student/parent read
-    match /ai_scan_results/{id} {
-      allow read: if isFromSchool(resource.data.schoolId) && (hasRole('staff') || hasRole('admin') || (hasRole('student') && resource.data.studentId == request.auth.uid) || (hasRole('parent') && exists(/databases/$(database)/documents/parent_student_links/$(request.auth.uid)_$(resource.data.studentId))));
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && (isAdmin() || hasRole('staff'));
-      allow create: if isFromSchool(request.resource.data.schoolId) && (isAdmin() || hasRole('staff'));
-    }
-
-    // Lesson Notes: School-isolated staff write, staff/admin read
-    match /notes/{id} {
-      allow read: if isFromSchool(resource.data.schoolId) && (hasRole('staff') || isAdmin());
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && (request.auth.uid == resource.data.staffId || isAdmin());
-      allow create: if isFromSchool(request.resource.data.schoolId) && (hasRole('staff') || isAdmin());
-    }
-
-    // Exams & Questions: School-isolated staff write, staff/admin read
-    match /exams/{id} {
-      allow read: if isFromSchool(resource.data.schoolId) && (hasRole('staff') || isAdmin());
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && (request.auth.uid == resource.data.staffId || isAdmin());
-      allow create: if isFromSchool(request.resource.data.schoolId) && (hasRole('staff') || isAdmin());
-    }
-
-    // Terms: School-isolated admin write, all school members read
-    match /terms/{id} {
-      allow read: if isFromSchool(resource.data.schoolId);
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && isAdmin();
-      allow create: if isFromSchool(request.resource.data.schoolId) && isAdmin();
-    }
-
-    // Staff Assignments: School-isolated admin write, staff/admin read
-    match /staff_assignments/{id} {
-      allow read: if isFromSchool(resource.data.schoolId) && (hasRole('staff') || isAdmin());
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && isAdmin();
-      allow create: if isFromSchool(request.resource.data.schoolId) && isAdmin();
-    }
-
-    // Student Classes: School-isolated admin write, staff/admin read
-    match /student_classes/{id} {
-      allow read: if isFromSchool(resource.data.schoolId) && (hasRole('staff') || isAdmin());
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && isAdmin();
-      allow create: if isFromSchool(request.resource.data.schoolId) && isAdmin();
-    }
-
-    // Student Wallets: School-isolated, student/parent/admin access
-    match /student_wallets/{id} {
-      allow read: if isFromSchool(resource.data.schoolId) && (resource.data.studentId == request.auth.uid || isAdmin() || hasRole('bursar') || isParentOf(resource.data.studentId));
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && (isAdmin() || hasRole('bursar'));
-    }
-
-    // Financial Module: School-isolated bursar/admin access
-    match /financial_transactions/{id} {
-      allow read: if isFromSchool(resource.data.schoolId) && (isAdmin() || hasRole('bursar') || (resource.data.parentId == request.auth.uid) || isParentOf(resource.data.studentId));
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && (isAdmin() || hasRole('bursar'));
-      allow create: if isFromSchool(request.resource.data.schoolId) && (isAdmin() || hasRole('bursar'));
-    }
-
-    // Chat Sessions: Student/parent read/write own, admin read all
-    match /chat_sessions/{id} {
-      allow read: if isFromSchool(resource.data.schoolId) && (resource.data.studentId == request.auth.uid || isAdmin() || isParentOf(resource.data.studentId));
-      allow write: if isFromSchool(resource.data.schoolId || request.resource.data.schoolId) && (resource.data.studentId == request.auth.uid || isAdmin());
-      allow create: if isFromSchool(request.resource.data.schoolId) && (hasRole('student') || hasRole('parent') || isAdmin());
-    }
-
-    // Default: Deny everything else
-    match /{document=**} {
-      allow read, write: if false;
+    
+    // ============================================
+    // AUDIT LOGS COLLECTION (IMMUTABLE)
+    // ============================================
+    
+    match /audit_logs/{logId} {
+      // Only admins can read audit logs
+      allow read: if isAuthenticated() && isAdmin() && 
+        belongsToSchool(resource.data.schoolId);
+      
+      // Anyone authenticated can create audit logs
+      allow create: if isAuthenticated() && 
+        belongsToSchool(request.resource.data.schoolId);
+      
+      // Audit logs are immutable - no updates or deletes
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
