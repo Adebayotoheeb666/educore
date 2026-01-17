@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { signInWithPhone, confirmPhoneOTP, registerSchool, loginWithAdmissionNumber, loginWithStaffId, loginWithParentCredentials } from '../lib/authService';
 import { Sparkles, Mail, Lock, ArrowRight, User, AlertCircle, Building2, UserCircle2, Phone, ShieldCheck, BadgeCheck } from 'lucide-react';
@@ -7,7 +7,9 @@ import { Sparkles, Mail, Lock, ArrowRight, User, AlertCircle, Building2, UserCir
 type AuthMode = 'login' | 'signup' | 'school-reg' | 'student-login' | 'parent-login' | 'staff-login';
 
 export const Login = () => {
-    const [mode, setMode] = useState<AuthMode>('login');
+    const [searchParams] = useSearchParams();
+    const initialMode = searchParams.get('mode') as AuthMode || 'login';
+    const [mode, setMode] = useState<AuthMode>(initialMode);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
@@ -125,12 +127,12 @@ export const Login = () => {
                         {mode === 'student-login' && 'Student Portal'}
                         {mode === 'parent-login' && 'Parent Portal'}
                     </h1>
-                    <p className="text-gray-400">
-                        {mode === 'login' && 'Access the School Administration Panel'}
-                        {mode === 'staff-login' && 'Enter your Staff ID to log in'}
-                        {mode === 'school-reg' && 'Set up your school on Educore'}
-                        {mode === 'student-login' && 'Login with your Admission ID'}
-                        {mode === 'parent-login' && 'Login with your registered phone number'}
+                    <p className="text-gray-400 text-sm">
+                        {mode === 'login' && 'Authorized administrators only'}
+                        {mode === 'staff-login' && 'Login with the ID provided by your school administrator'}
+                        {mode === 'school-reg' && 'Establish your institutional tenant on EduCore'}
+                        {mode === 'student-login' && 'Enter your unique admission number and PIN'}
+                        {mode === 'parent-login' && 'Access children\'s data via child ID or phone'}
                     </p>
                 </div>
 
@@ -390,13 +392,13 @@ export const Login = () => {
                             onClick={() => { setMode('student-login'); setError(null); }}
                             className={`p-2 rounded-lg text-xs font-bold transition-colors ${mode === 'student-login' ? 'bg-teal-500/20 text-teal-400' : 'bg-white/5 text-gray-400 hover:text-white'}`}
                         >
-                            Student Login
+                            Student (Admission #)
                         </button>
                         <button
                             onClick={() => { setMode('parent-login'); setError(null); }}
                             className={`p-2 rounded-lg text-xs font-bold transition-colors ${mode === 'parent-login' ? 'bg-teal-500/20 text-teal-400' : 'bg-white/5 text-gray-400 hover:text-white'}`}
                         >
-                            Parent Login
+                            Parent (Phone/Email)
                         </button>
                         <button
                             onClick={() => { setMode('school-reg'); setError(null); }}

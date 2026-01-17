@@ -55,7 +55,7 @@ export const StudentPortal = () => {
 
     // AI Study Assistant States
     const [isChatOpen, setIsChatOpen] = useState(false);
-    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'model', parts: string }[]>([]);
+    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
     const [inputMessage, setInputMessage] = useState('');
     const [isChatting, setIsChatting] = useState(false);
 
@@ -149,14 +149,14 @@ export const StudentPortal = () => {
 
         const userMsg = inputMessage;
         setInputMessage('');
-        const newMessages = [...chatMessages, { role: 'user' as const, parts: userMsg }];
+        const newMessages = [...chatMessages, { role: 'user' as const, content: userMsg }];
         setChatMessages(newMessages);
         setIsChatting(true);
 
         try {
             const context = `Average Score: ${stats.averageScore}%. Subjects: ${results.map(r => `${r.subjectId} (${r.totalScore})`).join(', ')}. Weakest: ${results.sort((a, b) => a.totalScore - b.totalScore).slice(0, 2).map(r => r.subjectId).join(', ')}`;
             const response = await geminiService.chatWithStudyAssistant(userMsg, chatMessages, context);
-            setChatMessages([...newMessages, { role: 'model' as const, parts: response }]);
+            setChatMessages([...newMessages, { role: 'model' as const, content: response }]);
         } catch (err) {
             console.error("Chat Error:", err);
         } finally {
@@ -401,7 +401,7 @@ export const StudentPortal = () => {
                                         "max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed",
                                         msg.role === 'user' ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white/5 text-gray-200 rounded-tl-none border border-white/5"
                                     )}>
-                                        {msg.parts}
+                                        {msg.content}
                                     </div>
                                 </div>
                             ))}

@@ -19,7 +19,7 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [createdCredentials, setCreatedCredentials] = useState<{ staffId: string; tempPassword: string } | null>(null);
+    const [createdCredentials, setCreatedCredentials] = useState<{ staffId: string } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -34,8 +34,7 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
         try {
             const result = await createStaffAccount(schoolId, user.id, formData);
             setCreatedCredentials({
-                staffId: result.staffId,
-                tempPassword: result.tempPassword
+                staffId: result.staffId
             });
         } catch (err) {
             console.error(err);
@@ -57,25 +56,16 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
                     <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                         <CheckCircle2 className="w-8 h-8 text-green-500" />
                     </div>
-                    <h2 className="text-2xl font-bold text-white">Account Created!</h2>
-                    <p className="text-gray-400">Please share these credentials with the staff member immediately. The password is temporary.</p>
+                    <h2 className="text-2xl font-bold text-white">Staff Invited!</h2>
+                    <p className="text-gray-400">An invitation email has been sent to the staff member. They can set their password using the link in the email.</p>
                 </div>
 
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
                     <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Staff ID</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Staff ID (For Reference)</label>
                         <div className="flex items-center gap-2 mt-1">
                             <code className="flex-1 bg-black/30 p-3 rounded-lg text-teal-400 font-mono text-lg">{createdCredentials.staffId}</code>
                             <button onClick={() => handleCopy(createdCredentials.staffId)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white">
-                                <Copy className="w-5 h-5" />
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Temporary Password</label>
-                        <div className="flex items-center gap-2 mt-1">
-                            <code className="flex-1 bg-black/30 p-3 rounded-lg text-orange-400 font-mono text-lg">{createdCredentials.tempPassword}</code>
-                            <button onClick={() => handleCopy(createdCredentials.tempPassword)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white">
                                 <Copy className="w-5 h-5" />
                             </button>
                         </div>

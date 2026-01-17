@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { z } from 'zod';
 import {
     ShoppingBag,
     Search,
     CheckCircle,
-    Share2,
     Download,
     AlertCircle,
     Loader
@@ -14,7 +13,7 @@ import { supabase } from '../../lib/supabase';
 import { sendFeeNotification } from '../../lib/notificationService';
 
 // Stripe Elements
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_YOUR_STRIPE_PUBLISHABLE_KEY'; // Will be set via env
+// const STRIPE_PUBLISHABLE_KEY = 'pk_test_YOUR_STRIPE_PUBLISHABLE_KEY'; // Will be set via env
 
 // Zod Schema for Payment Validation
 const paymentDetailsSchema = z.object({
@@ -39,7 +38,7 @@ interface StudentInfo {
 }
 
 export const PayForStudents = () => {
-    const { user, schoolId, profile } = useAuth();
+    const { schoolId, profile } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [step, setStep] = useState(1); // 1: Search, 2: Select Fees, 3: Payment, 4: Success
     const [selectedStudent, setSelectedStudent] = useState<StudentInfo | null>(null);
@@ -189,11 +188,11 @@ export const PayForStudents = () => {
                 throw new Error(createIntentResponse.error.message);
             }
 
-            const { clientSecret, paymentIntentId } = createIntentResponse.data;
+            const { paymentIntentId } = createIntentResponse.data;
 
             // Step 2: Initialize Stripe (would use @stripe/react-stripe-js in production)
             // For now, we'll store the payment intent and show instructions
-            
+
             // Step 3: Record transaction in database
             const { error: insertError } = await supabase
                 .from('financial_transactions')
@@ -217,7 +216,7 @@ export const PayForStudents = () => {
                 .eq('student_id', selectedStudent.id)
                 .single();
 
-            if (parentData?.parent_ids?.length > 0) {
+            if (parentData && parentData.parent_ids && parentData.parent_ids.length > 0) {
                 const parentId = parentData.parent_ids[0];
                 const { data: parentProfile } = await supabase
                     .from('users')
@@ -227,15 +226,14 @@ export const PayForStudents = () => {
 
                 if (parentProfile?.email) {
                     await sendFeeNotification(
-                        schoolId,
+                        schoolId || '',
                         selectedStudent.id,
                         selectedStudent.name,
                         parentProfile.email,
                         parentProfile.full_name,
                         totalAmount,
                         new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
-                        `School Fees Payment`,
-                        profile?.schoolId?.toString()
+                        profile?.schoolId ? profile.schoolId.toString() : undefined
                     );
                 }
             }
@@ -356,11 +354,10 @@ export const PayForStudents = () => {
                                 <div
                                     key={fee.id}
                                     onClick={() => toggleFee(fee.id)}
-                                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                        selectedFees.includes(fee.id)
-                                            ? 'border-teal-500 bg-teal-500/10'
-                                            : 'border-white/10 bg-white/5 hover:border-white/20'
-                                    }`}
+                                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedFees.includes(fee.id)
+                                        ? 'border-teal-500 bg-teal-500/10'
+                                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                                        }`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex-1">
@@ -369,11 +366,10 @@ export const PayForStudents = () => {
                                         </div>
                                         <div className="text-right">
                                             <p className="font-bold text-white">{formatCurrency(fee.amount)}</p>
-                                            <div className={`w-5 h-5 rounded border-2 mt-2 flex items-center justify-center transition-all ${
-                                                selectedFees.includes(fee.id)
-                                                    ? 'bg-teal-500 border-teal-500'
-                                                    : 'border-white/20'
-                                            }`}>
+                                            <div className={`w-5 h-5 rounded border-2 mt-2 flex items-center justify-center transition-all ${selectedFees.includes(fee.id)
+                                                ? 'bg-teal-500 border-teal-500'
+                                                : 'border-white/20'
+                                                }`}>
                                                 {selectedFees.includes(fee.id) && <CheckCircle className="w-5 h-5 text-dark-bg" />}
                                             </div>
                                         </div>

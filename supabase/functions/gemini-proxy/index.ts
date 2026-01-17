@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================
 // GEMINI PROXY EDGE FUNCTION
 // ============================================
@@ -28,24 +29,60 @@ interface RateLimitError {
   retryAfter?: number;
 }
 
-// Simple in-memory rate limiter (in production, use Redis)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-function checkRateLimit(userId: string, schoolId: string, limit: number = 10, windowMs: number = 60000): boolean {
-  const key = `${schoolId}:${userId}`;
-  const now = Date.now();
-  const existing = rateLimitStore.get(key);
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-  if (!existing || now > existing.resetTime) {
-    rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+async function checkRateLimitDB(
+  userId: string,
+  schoolId: string,
+  limit: number = 10,
+  windowMs: number = 60000
+): Promise<boolean> {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const now = new Date();
+  const windowEnd = new Date(now.getTime() + windowMs);
+
+  // 1. Find or create rate limit record
+  const { data: existing, error: fetchError } = await supabase
+    .from("api_rate_limits")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("endpoint", "gemini-proxy")
+    .gt("window_end", now.toISOString())
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error("Rate limit fetch error:", fetchError);
+    return true; // Fail open if DB error
+  }
+
+  if (!existing) {
+    // Create new window
+    const { error: insertError } = await supabase.from("api_rate_limits").insert({
+      user_id: userId,
+      school_id: schoolId,
+      endpoint: "gemini-proxy",
+      request_count: 1,
+      window_start: now.toISOString(),
+      window_end: windowEnd.toISOString(),
+    });
+    if (insertError) console.error("Rate limit insert error:", insertError);
     return true;
   }
 
-  if (existing.count >= limit) {
+  // 2. Check if limit exceeded
+  if (existing.request_count >= limit) {
     return false;
   }
 
-  existing.count++;
+  // 3. Increment count
+  await supabase
+    .from("api_rate_limits")
+    .update({ request_count: existing.request_count + 1 })
+    .eq("id", existing.id);
+
   return true;
 }
 
@@ -314,10 +351,11 @@ serve(async (req) => {
       });
     }
 
-    // Rate limiting
-    if (!checkRateLimit(userId, schoolId, 10, 60000)) {
+    // Rate limiting (Distributed via DB)
+    const allowed = await checkRateLimitDB(userId, schoolId, 15, 60000); // Slightly higher limit
+    if (!allowed) {
       const response: RateLimitError = {
-        error: "Rate limit exceeded. Maximum 10 requests per minute.",
+        error: "Rate limit exceeded. Maximum 15 requests per minute.",
         retryAfter: 60,
       };
       return new Response(JSON.stringify(response), {
@@ -325,6 +363,7 @@ serve(async (req) => {
         headers: {
           "Content-Type": "application/json",
           "Retry-After": "60",
+          "Access-Control-Allow-Origin": "*",
         },
       });
     }

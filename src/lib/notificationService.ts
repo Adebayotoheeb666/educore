@@ -199,7 +199,6 @@ export const sendFeeNotification = async (
     parentName: string,
     amount: number,
     dueDate: string,
-    description: string,
     schoolName?: string
 ) => {
     try {

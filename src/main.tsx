@@ -29,6 +29,11 @@ const PasswordReset = lazy(() => import('./pages/PasswordReset').then(module => 
 const TermManagement = lazy(() => import('./pages/TermManagement').then(module => ({ default: module.TermManagement })));
 const AuditLogViewer = lazy(() => import('./pages/AuditLogViewer').then(module => ({ default: module.AuditLogViewer })));
 const StudentAssignment = lazy(() => import('./pages/StudentAssignment').then(module => ({ default: module.StudentAssignment })));
+const About = lazy(() => import('./pages/About').then(module => ({ default: module.About })));
+const Blog = lazy(() => import('./pages/Blog').then(module => ({ default: module.Blog })));
+const Contact = lazy(() => import('./pages/Contact').then(module => ({ default: module.Contact })));
+const Careers = lazy(() => import('./pages/Careers').then(module => ({ default: module.Careers })));
+const BlogPost = lazy(() => import('./pages/BlogPost').then(module => ({ default: module.BlogPost })));
 
 const LoadingSpinner = () => (
   <div className="min-h-screen bg-dark-bg flex items-center justify-center">
@@ -129,6 +134,26 @@ const router = createBrowserRouter([
   {
     path: "/admin/audit-logs",
     element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><AuditLogViewer /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/about",
+    element: <Suspense fallback={<LoadingSpinner />}><About /></Suspense>,
+  },
+  {
+    path: "/blog",
+    element: <Suspense fallback={<LoadingSpinner />}><Blog /></Suspense>,
+  },
+  {
+    path: "/contact",
+    element: <Suspense fallback={<LoadingSpinner />}><Contact /></Suspense>,
+  },
+  {
+    path: "/careers",
+    element: <Suspense fallback={<LoadingSpinner />}><Careers /></Suspense>,
+  },
+  {
+    path: "/blog/:slug",
+    element: <Suspense fallback={<LoadingSpinner />}><BlogPost /></Suspense>,
   },
 ]);
 
