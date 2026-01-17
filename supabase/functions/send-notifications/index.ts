@@ -286,7 +286,7 @@ serve(async (req) => {
 
     // Send email using Resend
     const response = await resend.emails.send({
-      from: `${requestBody.schoolName} <notifications@edugemini.app>`,
+      from: `${requestBody.schoolName} <notifications@educore.app>`,
       to: requestBody.recipient.email,
       subject: subject,
       html: html,

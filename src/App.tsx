@@ -1,5 +1,5 @@
 /**
- * EduGemini - Teacher's AI Assistant Platform
+ * EduCore - Teacher's AI Assistant Platform
  * 
  * This is a router-based application. All routing configuration
  * is handled in main.tsx with react-router-dom.

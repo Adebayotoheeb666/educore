@@ -1,4 +1,3 @@
-
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, BookOpen, FileText, Camera, BarChart2, Settings, LogOut, DollarSign, CheckCircle2, Calculator, Users } from 'lucide-react';
@@ -107,7 +106,7 @@ export const Layout = ({ children }: LayoutProps) => {
                         <BookOpen className="text-white w-5 h-5" />
                     </div>
                     <span className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                        EduGemini
+                        EduCore
                     </span>
                 </div>
 
