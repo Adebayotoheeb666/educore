@@ -1,6 +1,9 @@
 import { supabase } from './supabase';
 import type { Notification, DocWithId } from './types';
 
+/**
+ * Send an in-app notification
+ */
 export const sendNotification = async (
     schoolId: string,
     userId: string,
@@ -22,6 +25,261 @@ export const sendNotification = async (
         });
     } catch (error) {
         console.error('Failed to send notification:', error);
+    }
+};
+
+/**
+ * Send an email notification using the Resend edge function
+ */
+export const sendEmailNotification = async (
+    recipientEmail: string,
+    recipientName: string,
+    notificationType: 'attendance' | 'result' | 'message' | 'fee-payment' | 'general',
+    data: {
+        studentName?: string;
+        studentClass?: string;
+        teacherName?: string;
+        subject?: string;
+        reason?: string;
+        date?: string;
+        score?: number;
+        totalScore?: number;
+        term?: string;
+        amount?: number;
+        dueDate?: string;
+        message?: string;
+        link?: string;
+    },
+    schoolName: string,
+    schoolEmail?: string,
+    senderInfo?: { name: string; role: string }
+): Promise<{ success: boolean; emailId?: string; error?: string }> => {
+    try {
+        const response = await supabase.functions.invoke('send-notifications', {
+            body: {
+                type: notificationType,
+                recipient: {
+                    email: recipientEmail,
+                    name: recipientName,
+                },
+                sender: senderInfo,
+                data,
+                schoolName,
+                schoolEmail: schoolEmail || `noreply@${schoolName.toLowerCase().replace(/\s+/g, '')}.edugemini.app`,
+            },
+        });
+
+        if (response.error) {
+            console.error('Failed to send email notification:', response.error);
+            return {
+                success: false,
+                error: response.error.message || 'Failed to send email',
+            };
+        }
+
+        return {
+            success: true,
+            emailId: response.data?.emailId,
+        };
+    } catch (error) {
+        console.error('Email notification error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+        };
+    }
+};
+
+/**
+ * Send attendance alert to parent (email + in-app)
+ */
+export const sendAttendanceAlert = async (
+    schoolId: string,
+    studentId: string,
+    studentName: string,
+    studentClass: string,
+    parentEmail: string,
+    parentName: string,
+    date: string,
+    reason?: string,
+    schoolName?: string
+) => {
+    try {
+        // Send in-app notification
+        await sendNotification(
+            schoolId,
+            studentId,
+            '📋 Attendance Alert',
+            `${studentName} was marked absent on ${date}`,
+            'info',
+            `/student/attendance`
+        );
+
+        // Send email notification
+        await sendEmailNotification(
+            parentEmail,
+            parentName,
+            'attendance',
+            {
+                studentName,
+                studentClass,
+                date,
+                reason: reason || 'Not specified',
+                link: `https://edugemini.app/parent/attendance`,
+            },
+            schoolName || 'School',
+            undefined,
+            { name: schoolName || 'School', role: 'admin' }
+        );
+
+        return { success: true };
+    } catch (error) {
+        console.error('Attendance alert error:', error);
+        return { success: false, error };
+    }
+};
+
+/**
+ * Send result publication notification to parent (email + in-app)
+ */
+export const sendResultNotification = async (
+    schoolId: string,
+    studentId: string,
+    studentName: string,
+    parentEmail: string,
+    parentName: string,
+    subject: string,
+    score: number,
+    totalScore: number,
+    term: string,
+    schoolName?: string
+) => {
+    try {
+        // Send in-app notification
+        await sendNotification(
+            schoolId,
+            studentId,
+            '📊 Results Published',
+            `Results for ${subject} (${score}/${totalScore}) - ${term}`,
+            'success',
+            `/student/results`
+        );
+
+        // Send email notification
+        await sendEmailNotification(
+            parentEmail,
+            parentName,
+            'result',
+            {
+                studentName,
+                subject,
+                score,
+                totalScore,
+                term,
+                link: `https://edugemini.app/parent/results`,
+            },
+            schoolName || 'School'
+        );
+
+        return { success: true };
+    } catch (error) {
+        console.error('Result notification error:', error);
+        return { success: false, error };
+    }
+};
+
+/**
+ * Send fee payment due notification to parent (email + in-app)
+ */
+export const sendFeeNotification = async (
+    schoolId: string,
+    studentId: string,
+    studentName: string,
+    parentEmail: string,
+    parentName: string,
+    amount: number,
+    dueDate: string,
+    description: string,
+    schoolName?: string
+) => {
+    try {
+        // Send in-app notification
+        await sendNotification(
+            schoolId,
+            studentId,
+            '💰 Fee Payment Due',
+            `₦${amount.toLocaleString()} due on ${dueDate}`,
+            'warning',
+            `/parent/finances`
+        );
+
+        // Send email notification
+        await sendEmailNotification(
+            parentEmail,
+            parentName,
+            'fee-payment',
+            {
+                studentName,
+                amount,
+                dueDate,
+                link: `https://edugemini.app/parent/pay`,
+            },
+            schoolName || 'School',
+            undefined,
+            { name: schoolName || 'School', role: 'bursar' }
+        );
+
+        return { success: true };
+    } catch (error) {
+        console.error('Fee notification error:', error);
+        return { success: false, error };
+    }
+};
+
+/**
+ * Send new message notification to recipient (email + in-app)
+ */
+export const sendMessageNotification = async (
+    schoolId: string,
+    recipientId: string,
+    recipientEmail: string,
+    recipientName: string,
+    senderName: string,
+    senderRole: string,
+    messageSubject: string,
+    messagePreview: string,
+    schoolName?: string
+) => {
+    try {
+        // Send in-app notification
+        await sendNotification(
+            schoolId,
+            recipientId,
+            '💬 New Message',
+            `${senderName} sent you a message: "${messagePreview}"`,
+            'info',
+            `/messages`
+        );
+
+        // Send email notification
+        await sendEmailNotification(
+            recipientEmail,
+            recipientName,
+            'message',
+            {
+                subject: messageSubject,
+                message: messagePreview,
+                link: `https://edugemini.app/messages`,
+            },
+            schoolName || 'School',
+            undefined,
+            { name: senderName, role: senderRole }
+        );
+
+        return { success: true };
+    } catch (error) {
+        console.error('Message notification error:', error);
+        return { success: false, error };
     }
 };
 
