@@ -179,7 +179,7 @@ export const FinancialInvoicing = ({ childId }: { childId: string }) => {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
           <div>
             <h3 style="margin: 0 0 10px 0; color: #009688;">School</h3>
-            <p style="margin: 5px 0;">EduGemini School Management</p>
+            <p style="margin: 5px 0;">EduCore School Management</p>
             <p style="margin: 5px 0; font-size: 12px; color: #666;">School Details Address</p>
           </div>
           <div>

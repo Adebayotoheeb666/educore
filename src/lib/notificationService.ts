@@ -125,7 +125,7 @@ export const sendAttendanceAlert = async (
                 studentClass,
                 date,
                 reason: reason || 'Not specified',
-                link: `https://edugemini.app/parent/attendance`,
+                link: `https://educore.app/parent/attendance`,
             },
             schoolName || 'School',
             undefined,
@@ -176,7 +176,7 @@ export const sendResultNotification = async (
                 score,
                 totalScore,
                 term,
-                link: `https://edugemini.app/parent/results`,
+                link: `https://educore.app/parent/results`,
             },
             schoolName || 'School'
         );
@@ -222,7 +222,7 @@ export const sendFeeNotification = async (
                 studentName,
                 amount,
                 dueDate,
-                link: `https://edugemini.app/parent/pay`,
+                link: `https://educore.app/parent/pay`,
             },
             schoolName || 'School',
             undefined,
@@ -269,7 +269,7 @@ export const sendMessageNotification = async (
             {
                 subject: messageSubject,
                 message: messagePreview,
-                link: `https://edugemini.app/messages`,
+                link: `https://educore.app/messages`,
             },
             schoolName || 'School',
             undefined,
