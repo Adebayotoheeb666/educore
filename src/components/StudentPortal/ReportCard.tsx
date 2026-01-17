@@ -52,22 +52,6 @@ export function ReportCard({
     return 'F';
   };
 
-  const getGradeColor = (grade: string): string => {
-    switch (grade) {
-      case 'A':
-        return 'text-green-400';
-      case 'B':
-        return 'text-blue-400';
-      case 'C':
-        return 'text-yellow-400';
-      case 'D':
-        return 'text-orange-400';
-      case 'F':
-        return 'text-red-400';
-      default:
-        return 'text-gray-400';
-    }
-  };
 
   const handlePrint = () => {
     if (reportRef.current) {
@@ -187,7 +171,7 @@ export function ReportCard({
                 const grade = getGrade(result.totalScore);
                 return (
                   <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-50' : ''}>
-                    <td className="border border-gray-400 p-2 font-semibold">{result.subject}</td>
+                    <td className="border border-gray-400 p-2 font-semibold">{(result as any).subject || result.subjectId}</td>
                     <td className="border border-gray-400 p-2 text-center">{result.caScore}/40</td>
                     <td className="border border-gray-400 p-2 text-center">{result.examScore}/60</td>
                     <td className="border border-gray-400 p-2 text-center font-bold">

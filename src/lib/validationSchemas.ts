@@ -201,7 +201,7 @@ export const TermCreationSchema = z.object({
   name: z.string().min(2, "Term name required").max(100),
   startDate: z.string().date("Invalid start date"),
   endDate: z.string().date("Invalid end date"),
-  gradeScale: z.record(z.array(z.number()).length(2)).optional(),
+  gradeScale: z.record(z.string(), z.array(z.number()).length(2)).optional(),
 });
 
 export const TermUpdateSchema = z.object({
@@ -257,7 +257,7 @@ export async function validateInput<T>(schema: z.ZodSchema, data: unknown): Prom
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors: Record<string, string> = {};
-      error.errors.forEach((err) => {
+      error.issues.forEach((err) => {
         const path = err.path.join(".");
         errors[path] = err.message;
       });

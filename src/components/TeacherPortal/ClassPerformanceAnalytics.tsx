@@ -3,16 +3,12 @@ import {
   TrendingUp,
   TrendingDown,
   Award,
-  AlertCircle,
-  BookOpen,
   Users,
   Target,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   XAxis,
@@ -21,15 +17,8 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ScatterChart,
-  Scatter,
 } from 'recharts';
 
-interface Student {
-  id: string;
-  name: string;
-  admissionNumber: string;
-}
 
 interface StudentPerformance {
   studentId: string;
@@ -58,7 +47,6 @@ export const ClassPerformanceAnalytics = ({ classId }: { classId?: string }) => 
   const [students, setStudents] = useState<StudentPerformance[]>([]);
   const [subjects, setSubjects] = useState<SubjectPerformance[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedStudent, setSelectedStudent] = useState<StudentPerformance | null>(null);
   const [sortBy, setSortBy] = useState<'score' | 'trend' | 'name'>('score');
 
   useEffect(() => {
@@ -78,7 +66,7 @@ export const ClassPerformanceAnalytics = ({ classId }: { classId?: string }) => 
 
         const studentIds = studentData?.map((s: any) => s.student_id) || [];
         const studentMap = new Map();
-        
+
         studentData?.forEach((s: any) => {
           if (s.students) {
             studentMap.set(s.student_id, {
@@ -200,7 +188,7 @@ export const ClassPerformanceAnalytics = ({ classId }: { classId?: string }) => 
           ([subject, data]) => ({
             subject,
             averageScore: Math.round(
-              data.scores.reduce((a, b) => a + b, 0) / data.scores.length
+              data.scores.reduce((a: number, b: number) => a + b, 0) / data.scores.length
             ),
             highestScore: Math.max(...data.scores),
             lowestScore: Math.min(...data.scores),
@@ -274,7 +262,7 @@ export const ClassPerformanceAnalytics = ({ classId }: { classId?: string }) => 
           </div>
           <div className="text-3xl font-bold text-teal-400">
             {students.length > 0
-              ? Math.round(students.reduce((sum, s) => sum + s.totalScore, 0) / students.length)
+              ? Math.round(students.reduce((sum: number, s: StudentPerformance) => sum + s.totalScore, 0) / students.length)
               : 0}
           </div>
         </div>
@@ -287,8 +275,8 @@ export const ClassPerformanceAnalytics = ({ classId }: { classId?: string }) => 
           <div className="text-3xl font-bold text-emerald-400">
             {students.length > 0
               ? Math.round(
-                  (students.filter((s) => s.totalScore >= 50).length / students.length) * 100
-                )
+                (students.filter((s) => s.totalScore >= 50).length / students.length) * 100
+              )
               : 0}
             %
           </div>
@@ -378,7 +366,6 @@ export const ClassPerformanceAnalytics = ({ classId }: { classId?: string }) => 
                 <tr
                   key={student.studentId}
                   className="hover:bg-white/5 transition-colors cursor-pointer"
-                  onClick={() => setSelectedStudent(student)}
                 >
                   <td className="px-6 py-4 text-white font-medium">
                     <div>{student.studentName}</div>
@@ -391,13 +378,12 @@ export const ClassPerformanceAnalytics = ({ classId }: { classId?: string }) => 
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span
-                      className={`font-bold ${
-                        student.totalScore >= 70
-                          ? 'text-emerald-400'
-                          : student.totalScore >= 60
-                            ? 'text-teal-400'
-                            : 'text-orange-400'
-                      }`}
+                      className={`font-bold ${student.totalScore >= 70
+                        ? 'text-emerald-400'
+                        : student.totalScore >= 60
+                          ? 'text-teal-400'
+                          : 'text-orange-400'
+                        }`}
                     >
                       {student.grade}
                     </span>

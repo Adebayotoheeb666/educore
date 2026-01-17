@@ -2,12 +2,10 @@ import { useState, useEffect } from 'react';
 import {
   DollarSign,
   Download,
-  Eye,
   Calendar,
   AlertCircle,
   CheckCircle2,
   Clock,
-  TrendingDown,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
@@ -51,7 +49,6 @@ export const FinancialInvoicing = ({ childId }: { childId: string }) => {
   const { schoolId } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'paid' | 'overdue'>('all');
 
@@ -209,15 +206,15 @@ export const FinancialInvoicing = ({ childId }: { childId: string }) => {
           </thead>
           <tbody>
             ${invoice.items
-              .map(
-                (item) => `
+        .map(
+          (item) => `
               <tr style="border-bottom: 1px solid #ddd;">
                 <td style="padding: 10px;">${item.description}</td>
                 <td style="padding: 10px; text-align: right;">₦${item.amount.toLocaleString()}</td>
               </tr>
             `
-              )
-              .join('')}
+        )
+        .join('')}
           </tbody>
         </table>
 
@@ -312,11 +309,10 @@ export const FinancialInvoicing = ({ childId }: { childId: string }) => {
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg font-bold transition-colors capitalize ${
-              filter === status
-                ? 'bg-teal-500 text-dark-bg'
-                : 'bg-dark-card text-gray-400 hover:text-white border border-white/10'
-            }`}
+            className={`px-4 py-2 rounded-lg font-bold transition-colors capitalize ${filter === status
+              ? 'bg-teal-500 text-dark-bg'
+              : 'bg-dark-card text-gray-400 hover:text-white border border-white/10'
+              }`}
           >
             {status}
           </button>

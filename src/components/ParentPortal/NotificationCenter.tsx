@@ -5,8 +5,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Info,
-  TrendingDown,
-  Calendar,
   Award,
   CreditCard,
   X,
@@ -33,7 +31,7 @@ interface Notification {
   };
 }
 
-export const NotificationCenter = ({ childId }: { childId?: string }) => {
+export const NotificationCenter = () => {
   const { user, schoolId } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -251,11 +249,10 @@ export const NotificationCenter = ({ childId }: { childId?: string }) => {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors capitalize ${
-                  filter === f
+                className={`px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors capitalize ${filter === f
                     ? 'bg-teal-500 text-dark-bg'
                     : 'text-gray-400 hover:text-white border border-white/10'
-                }`}
+                  }`}
               >
                 {f}
               </button>
@@ -288,9 +285,8 @@ export const NotificationCenter = ({ childId }: { childId?: string }) => {
                 {filteredNotifications.map((notif) => (
                   <div
                     key={notif.id}
-                    className={`p-4 border-l-4 transition-all ${
-                      notif.read ? 'opacity-60' : 'border-teal-500'
-                    } ${getNotificationColor(notif.type)} cursor-pointer hover:bg-white/5`}
+                    className={`p-4 border-l-4 transition-all ${notif.read ? 'opacity-60' : 'border-teal-500'
+                      } ${getNotificationColor(notif.type)} cursor-pointer hover:bg-white/5`}
                     onClick={() => !notif.read && handleMarkAsRead(notif.id)}
                   >
                     <div className="flex gap-3">

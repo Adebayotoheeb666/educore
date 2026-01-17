@@ -3,7 +3,6 @@ import {
   Send,
   MessageSquare,
   Clock,
-  Users,
   Search,
   FileText,
 } from 'lucide-react';
@@ -43,7 +42,6 @@ interface Conversation {
 
 export const ParentTeacherMessaging = ({ childId }: { childId: string }) => {
   const { user, schoolId } = useAuth();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState('');
@@ -106,7 +104,7 @@ export const ParentTeacherMessaging = ({ childId }: { childId: string }) => {
             id: staff.id,
             fullName: staff.full_name,
             email: staff.email,
-            subjectName: assignment?.subjects?.name,
+            subjectName: (assignment as any)?.subjects?.[0]?.name,
             profileImage: staff.profile_image,
           };
         }) || [];
@@ -140,7 +138,6 @@ export const ParentTeacherMessaging = ({ childId }: { childId: string }) => {
           unreadCount: 0,
         }));
 
-        setConversations(conversationsList);
         if (conversationsList.length > 0) {
           setSelectedTeacherId(conversationsList[0].teacherId);
         }
@@ -290,11 +287,10 @@ export const ParentTeacherMessaging = ({ childId }: { childId: string }) => {
               <button
                 key={teacher.id}
                 onClick={() => setSelectedTeacherId(teacher.id)}
-                className={`w-full text-left p-4 border-b border-white/5 transition-colors ${
-                  selectedTeacherId === teacher.id
-                    ? 'bg-teal-500/20 border-l-2 border-l-teal-500'
-                    : 'hover:bg-white/5'
-                }`}
+                className={`w-full text-left p-4 border-b border-white/5 transition-colors ${selectedTeacherId === teacher.id
+                  ? 'bg-teal-500/20 border-l-2 border-l-teal-500'
+                  : 'hover:bg-white/5'
+                  }`}
               >
                 <p className="font-bold text-white text-sm">{teacher.fullName}</p>
                 {teacher.subjectName && (
@@ -336,11 +332,10 @@ export const ParentTeacherMessaging = ({ childId }: { childId: string }) => {
                       className={`flex ${msg.senderRole === 'parent' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-xs lg:max-w-md rounded-lg p-3 ${
-                          msg.senderRole === 'parent'
-                            ? 'bg-teal-500 text-white'
-                            : 'bg-white/10 text-gray-100'
-                        }`}
+                        className={`max-w-xs lg:max-w-md rounded-lg p-3 ${msg.senderRole === 'parent'
+                          ? 'bg-teal-500 text-white'
+                          : 'bg-white/10 text-gray-100'
+                          }`}
                       >
                         <p className="text-sm">{msg.content}</p>
                         <p className="text-xs mt-2 opacity-70">

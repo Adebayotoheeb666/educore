@@ -1,4 +1,4 @@
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ExamResult } from '../../lib/types';
@@ -21,7 +21,7 @@ interface TermData {
   [key: string]: number | string;
 }
 
-export function PerformanceChart({ results, terms = [] }: PerformanceChartProps) {
+export function PerformanceChart({ results }: PerformanceChartProps) {
   const [chartData, setChartData] = useState<TermData[]>([]);
   const [subjectTrends, setSubjectTrends] = useState<SubjectTrend[]>([]);
   const [termScores, setTermScores] = useState<TermData[]>([]);
@@ -93,7 +93,7 @@ export function PerformanceChart({ results, terms = [] }: PerformanceChartProps)
         }
 
         // Get subject name from first result
-        const subjectName = latestResults[0]?.subject || subjectId.slice(0, 10);
+        const subjectName = (latestResults[0] as any)?.subject || subjectId;
 
         trends.push({
           subject: subjectName,
@@ -120,7 +120,8 @@ export function PerformanceChart({ results, terms = [] }: PerformanceChartProps)
     Object.entries(subjectMap).forEach(([subjectId, results]) => {
       const avg = results.reduce((sum, r) => sum + r.totalScore, 0) / results.length;
       subjectScores.push({
-        subject: results[0]?.subject || subjectId,
+        term: latestTerm,
+        subject: (results[0] as any)?.subject || subjectId,
         score: Math.round(avg),
       });
     });
@@ -242,8 +243,8 @@ export function PerformanceChart({ results, terms = [] }: PerformanceChartProps)
                   <div className={`w-full h-full rounded-full border-4 flex items-center justify-center font-bold text-sm
                     ${trend.currentScore >= 80 ? 'border-green-400 text-green-400' :
                       trend.currentScore >= 70 ? 'border-blue-400 text-blue-400' :
-                      trend.currentScore >= 60 ? 'border-yellow-400 text-yellow-400' :
-                      'border-red-400 text-red-400'}`}>
+                        trend.currentScore >= 60 ? 'border-yellow-400 text-yellow-400' :
+                          'border-red-400 text-red-400'}`}>
                     {trend.currentScore}
                   </div>
                 </div>
@@ -252,12 +253,11 @@ export function PerformanceChart({ results, terms = [] }: PerformanceChartProps)
               {/* Progress Bar */}
               <div className="mt-3 w-full bg-dark-bg rounded-full h-2 overflow-hidden">
                 <div
-                  className={`h-full transition-all ${
-                    trend.currentScore >= 80 ? 'bg-green-400' :
+                  className={`h-full transition-all ${trend.currentScore >= 80 ? 'bg-green-400' :
                     trend.currentScore >= 70 ? 'bg-blue-400' :
-                    trend.currentScore >= 60 ? 'bg-yellow-400' :
-                    'bg-red-400'
-                  }`}
+                      trend.currentScore >= 60 ? 'bg-yellow-400' :
+                        'bg-red-400'
+                    }`}
                   style={{ width: `${trend.currentScore}%` }}
                 />
               </div>

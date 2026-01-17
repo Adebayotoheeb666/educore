@@ -2,21 +2,19 @@ import { useState, useEffect } from 'react';
 import {
     CreditCard,
     TrendingUp,
-    Users,
     AlertCircle,
     Eye,
     EyeOff,
     Download,
     Filter,
     Search,
-    Calendar,
     BarChart3,
     ArrowUpRight,
     ArrowDownLeft,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface TransactionSummary {
     totalRevenue: number;
@@ -306,7 +304,7 @@ export const PaymentTrackingDashboard = () => {
                                     cx="50%"
                                     cy="50%"
                                     labelLine={false}
-                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                                     outerRadius={80}
                                     fill="#8884d8"
                                     dataKey="value"
@@ -407,13 +405,12 @@ export const PaymentTrackingDashboard = () => {
                                     <td className="py-4 px-4 text-gray-400 capitalize">{txn.paymentMethod}</td>
                                     <td className="py-4 px-4">
                                         <span
-                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                                txn.status === 'completed'
-                                                    ? 'bg-green-500/20 text-green-400'
-                                                    : txn.status === 'pending'
-                                                      ? 'bg-yellow-500/20 text-yellow-400'
-                                                      : 'bg-red-500/20 text-red-400'
-                                            }`}
+                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${txn.status === 'completed'
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : txn.status === 'pending'
+                                                    ? 'bg-yellow-500/20 text-yellow-400'
+                                                    : 'bg-red-500/20 text-red-400'
+                                                }`}
                                         >
                                             {txn.status}
                                         </span>

@@ -234,7 +234,7 @@ export const ParentPortal = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <NotificationCenter childId={selectedChildId} />
+                    <NotificationCenter />
 
                     {children.length > 1 && (
                         <div className="relative">
@@ -292,7 +292,7 @@ export const ParentPortal = () => {
                             className={`px-4 py-3 font-bold transition-colors flex items-center gap-2 border-b-2 whitespace-nowrap ${activeTab === tab.id
                                 ? 'border-teal-500 text-teal-400'
                                 : 'border-transparent text-gray-400 hover:text-white'
-                            }`}
+                                }`}
                         >
                             <Icon className="w-4 h-4" />
                             {tab.label}

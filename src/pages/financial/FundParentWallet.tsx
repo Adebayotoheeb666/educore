@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import {
     Wallet,
-    Plus,
     TrendingUp,
     History,
     Loader,
@@ -15,7 +14,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import { getWalletBalance, fundWallet, getWalletTransactions, WalletTransaction } from '../../lib/walletService';
+import { getWalletBalance, fundWallet, getWalletTransactions } from '../../lib/walletService';
+import type { WalletTransaction } from '../../lib/walletService';
 import type { DocWithId } from '../../lib/types';
 
 // Zod Schema for wallet funding
@@ -23,8 +23,6 @@ const walletFundingSchema = z.object({
     amount: z.number().positive('Amount must be greater than 0').min(1000, 'Minimum amount is ₦1,000'),
     paymentMethod: z.enum(['card', 'bank_transfer']),
 });
-
-type FundingFormData = z.infer<typeof walletFundingSchema>;
 
 const QUICK_AMOUNTS = [5000, 10000, 25000, 50000, 100000];
 
@@ -136,7 +134,7 @@ export const FundParentWallet = () => {
                 throw new Error(createIntentResponse.error.message);
             }
 
-            const { clientSecret, paymentIntentId } = createIntentResponse.data;
+            const { paymentIntentId } = createIntentResponse.data;
 
             // Step 2: Process payment (in production, use Stripe Payment Element)
             // For now, simulate successful payment after 2 seconds
@@ -236,11 +234,10 @@ export const FundParentWallet = () => {
                                             <button
                                                 key={quickAmount}
                                                 onClick={() => selectQuickAmount(quickAmount)}
-                                                className={`p-3 rounded-lg font-semibold transition-all text-sm ${
-                                                    amount === quickAmount.toString()
+                                                className={`p-3 rounded-lg font-semibold transition-all text-sm ${amount === quickAmount.toString()
                                                         ? 'bg-teal-500 text-dark-bg'
                                                         : 'bg-white/5 text-white hover:bg-white/10'
-                                                }`}
+                                                    }`}
                                             >
                                                 ₦{(quickAmount / 1000).toFixed(0)}K
                                             </button>
@@ -261,11 +258,10 @@ export const FundParentWallet = () => {
                                             <button
                                                 key={id}
                                                 onClick={() => setPaymentMethod(id as typeof paymentMethod)}
-                                                className={`p-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                                                    paymentMethod === id
+                                                className={`p-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${paymentMethod === id
                                                         ? 'border-teal-500 bg-teal-500/10'
                                                         : 'border-white/10 bg-white/5 hover:border-white/20'
-                                                }`}
+                                                    }`}
                                             >
                                                 <Icon className="w-5 h-5" />
                                                 <span>{label}</span>

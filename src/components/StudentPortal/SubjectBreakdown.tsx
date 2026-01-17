@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle, Trophy, TrendingDown } from 'lucide-react';
+import { AlertCircle, CheckCircle, Trophy } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import type { ExamResult } from '../../lib/types';
 
@@ -43,7 +43,7 @@ function getPerformanceStatus(score: number): 'excellent' | 'good' | 'average' |
   return 'poor';
 }
 
-export function SubjectBreakdown({ results, currentTermId }: SubjectBreakdownProps) {
+export function SubjectBreakdown({ results }: SubjectBreakdownProps) {
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
 
   const subjectPerformances = useMemo<SubjectPerformance[]>(() => {
@@ -83,12 +83,12 @@ export function SubjectBreakdown({ results, currentTermId }: SubjectBreakdownPro
 
         return {
           subjectId,
-          subjectName: currentTerm.subject || subjectId,
+          subjectName: (currentTerm as any).subject || subjectId,
           caScore: currentTerm.caScore,
           examScore: currentTerm.examScore,
           totalScore: currentTerm.totalScore,
           grade,
-          teacher: currentTerm.teacher_id, // Assuming teacher_id is available
+          teacher: currentTerm.teacherId, // Assuming teacherId is available
           performanceStatus: status,
           trend,
           previousScore: previousTerm ? previousTerm.totalScore : undefined,
@@ -142,7 +142,7 @@ export function SubjectBreakdown({ results, currentTermId }: SubjectBreakdownPro
             label="Average Score"
             value={`${Math.round(
               subjectPerformances.reduce((sum, s) => sum + s.totalScore, 0) /
-                subjectPerformances.length
+              subjectPerformances.length
             )}%`}
             icon="📊"
           />
@@ -178,11 +178,10 @@ function SubjectCard({
 
   return (
     <div
-      className={`p-4 bg-dark-card rounded-lg border transition-all cursor-pointer ${
-        isExpanded
+      className={`p-4 bg-dark-card rounded-lg border transition-all cursor-pointer ${isExpanded
           ? 'border-teal-500 ring-1 ring-teal-500/30'
           : 'border-teal-500/20 hover:border-teal-500/50'
-      }`}
+        }`}
       onClick={onToggle}
     >
       {/* Header */}
@@ -240,13 +239,12 @@ function SubjectCard({
           {/* Trend */}
           {subject.trend && subject.previousScore !== undefined && (
             <div
-              className={`ml-auto text-sm font-semibold ${
-                subject.trend === 'improving'
+              className={`ml-auto text-sm font-semibold ${subject.trend === 'improving'
                   ? 'text-green-400'
                   : subject.trend === 'declining'
-                  ? 'text-red-400'
-                  : 'text-yellow-400'
-              }`}
+                    ? 'text-red-400'
+                    : 'text-yellow-400'
+                }`}
             >
               {subject.trend === 'improving' && '↗ Improving'}
               {subject.trend === 'declining' && '↘ Declining'}
@@ -259,15 +257,14 @@ function SubjectCard({
         {/* Progress Bar */}
         <div className="w-full bg-dark-bg rounded-full h-2 overflow-hidden">
           <div
-            className={`h-full transition-all ${
-              subject.performanceStatus === 'excellent'
+            className={`h-full transition-all ${subject.performanceStatus === 'excellent'
                 ? 'bg-green-400'
                 : subject.performanceStatus === 'good'
-                ? 'bg-blue-400'
-                : subject.performanceStatus === 'average'
-                ? 'bg-yellow-400'
-                : 'bg-red-400'
-            }`}
+                  ? 'bg-blue-400'
+                  : subject.performanceStatus === 'average'
+                    ? 'bg-yellow-400'
+                    : 'bg-red-400'
+              }`}
             style={{ width: `${subject.totalScore}%` }}
           />
         </div>
@@ -337,11 +334,10 @@ function ScoreBox({
 
   return (
     <div
-      className={`p-3 rounded text-center border ${
-        highlight
+      className={`p-3 rounded text-center border ${highlight
           ? 'bg-teal-500/10 border-teal-500/30'
           : 'bg-dark-bg border-teal-500/10'
-      }`}
+        }`}
     >
       <p className="text-xs text-dark-text/70 font-semibold uppercase">{label}</p>
       <p className={`text-xl font-bold ${color}`}>

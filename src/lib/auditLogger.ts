@@ -440,7 +440,7 @@ export async function getAuditStatistics(schoolId: string): Promise<{
   try {
     const { data, error } = await supabase
       .from('audit_logs')
-      .select('action, user_name')
+      .select('*')
       .eq('school_id', schoolId)
       .order('timestamp', { ascending: false })
       .limit(1000);
@@ -449,7 +449,7 @@ export async function getAuditStatistics(schoolId: string): Promise<{
       throw error;
     }
 
-    const logs = data || [];
+    const logs = (data as any[]) || [];
     const actionsByType: Record<string, number> = {};
     const userActions: Record<string, number> = {};
 

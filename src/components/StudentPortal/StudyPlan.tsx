@@ -27,7 +27,7 @@ interface ParsedStudyPlan {
   motivationalMessage: string;
 }
 
-export function StudyPlan({ results, attendanceRate, studentName = 'Student', userId }: StudyPlanProps) {
+export function StudyPlan({ results, attendanceRate, userId }: StudyPlanProps) {
   const [plan, setPlan] = useState<ParsedStudyPlan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function StudyPlan({ results, attendanceRate, studentName = 'Student', us
   // Calculate attendance data
   const getStudentContext = (): string => {
     const avgScore = Math.round(results.reduce((sum, r) => sum + r.totalScore, 0) / results.length);
-    const subjects = [...new Set(results.map((r) => r.subject))].length;
+    const subjects = [...new Set(results.map((r) => r.subjectId))].length;
     return `${subjects} subjects with average score ${avgScore}% and ${attendanceRate}% attendance`;
   };
 

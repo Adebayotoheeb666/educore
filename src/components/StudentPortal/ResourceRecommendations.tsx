@@ -237,10 +237,10 @@ export function ResourceRecommendations({
     // Calculate average score per subject
     const scoreBySubject: Record<string, number[]> = {};
     results.forEach((result) => {
-      if (!scoreBySubject[result.subject]) {
-        scoreBySubject[result.subject] = [];
+      if (!scoreBySubject[result.subjectId]) {
+        scoreBySubject[result.subjectId] = [];
       }
-      scoreBySubject[result.subject].push(result.totalScore);
+      scoreBySubject[result.subjectId].push(result.totalScore);
     });
 
     // Find weak subjects

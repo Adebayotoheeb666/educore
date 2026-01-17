@@ -46,6 +46,16 @@ BEGIN
     VALUES (v_student1_id, 'student1@legacyintl.edu.ng', crypt('Password123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"John Doe"}', 'authenticated', 'authenticated', now(), now())
     ON CONFLICT (id) DO NOTHING;
 
+    -- Student 2
+    INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, aud, role, created_at, updated_at)
+    VALUES (v_student2_id, 'student2@legacyintl.edu.ng', crypt('Password123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Jane Smith"}', 'authenticated', 'authenticated', now(), now())
+    ON CONFLICT (id) DO NOTHING;
+
+    -- Student 3
+    INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, aud, role, created_at, updated_at)
+    VALUES (v_student3_id, 'student3@legacyintl.edu.ng', crypt('Password123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Chidi Obi"}', 'authenticated', 'authenticated', now(), now())
+    ON CONFLICT (id) DO NOTHING;
+
     -- Parent 1
     INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, aud, role, created_at, updated_at)
     VALUES (v_parent1_id, 'parent1@legacyintl.edu.ng', crypt('Password123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Parent Doe"}', 'authenticated', 'authenticated', now(), now())
@@ -129,10 +139,6 @@ BEGIN
     VALUES (v_school_id, v_student1_id, v_class1_id, v_staff1_id, current_date, 'present')
     ON CONFLICT DO NOTHING;
 
-    INSERT INTO attendance (school_id, student_id, class_id, teacher_id, date, status)
-    VALUES (v_school_id, v_student2_id, v_class1_id, v_staff1_id, current_date, 'absent')
-    ON CONFLICT DO NOTHING;
-
     -- 11. SEED RESULTS
     INSERT INTO results (school_id, student_id, class_id, subject_id, teacher_id, term, session, ca_score, exam_score, total_score, grade)
     VALUES (v_school_id, v_student1_id, v_class1_id, v_subject1_id, v_staff1_id, 'First Term', '2025/2026', 25, 60, 85, 'A')
@@ -143,7 +149,6 @@ BEGIN
     ON CONFLICT DO NOTHING;
 
     -- 12. SEED WALLETS (Note: parent_wallets table is created in 007 migration)
-    -- We wrap this in a sub-block to handle potential missing table gracefully
     BEGIN
         INSERT INTO parent_wallets (school_id, parent_id, balance)
         VALUES (v_school_id, v_parent1_id, 250000.00)

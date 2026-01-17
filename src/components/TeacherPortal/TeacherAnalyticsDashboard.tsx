@@ -2,19 +2,13 @@ import { useState, useEffect } from 'react';
 import {
   BarChart3,
   Users,
-  TrendingUp,
   AlertCircle,
-  BookOpen,
   Target,
-  Award,
-  Clock,
   Activity,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   XAxis,
@@ -59,8 +53,6 @@ export const TeacherAnalyticsDashboard = () => {
     atRiskStudents: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'term'>('month');
 
   // Fetch class analytics
   useEffect(() => {
@@ -370,7 +362,6 @@ export const TeacherAnalyticsDashboard = () => {
                   <tr
                     key={stat.classId}
                     className="hover:bg-white/5 transition-colors cursor-pointer"
-                    onClick={() => setSelectedClass(stat.classId)}
                   >
                     <td className="px-6 py-4 text-white font-medium">{stat.className}</td>
                     <td className="px-6 py-4 text-center text-gray-400">{stat.studentCount}</td>

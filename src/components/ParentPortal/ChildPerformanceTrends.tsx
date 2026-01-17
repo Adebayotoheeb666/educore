@@ -6,7 +6,6 @@ import {
   ArrowDownRight,
   Calendar,
   BarChart3,
-  Target,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
@@ -21,8 +20,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ScatterChart,
-  Scatter,
 } from 'recharts';
 
 interface TermData {
@@ -188,11 +185,10 @@ export const ChildPerformanceTrends = ({ childId }: { childId: string }) => {
           <button
             key={view}
             onClick={() => setShowChart(view)}
-            className={`px-4 py-2 rounded-lg font-bold transition-colors capitalize flex items-center gap-2 ${
-              showChart === view
-                ? 'bg-teal-500 text-dark-bg'
-                : 'bg-dark-card text-gray-400 hover:text-white border border-white/10'
-            }`}
+            className={`px-4 py-2 rounded-lg font-bold transition-colors capitalize flex items-center gap-2 ${showChart === view
+              ? 'bg-teal-500 text-dark-bg'
+              : 'bg-dark-card text-gray-400 hover:text-white border border-white/10'
+              }`}
           >
             {view === 'overall' ? <TrendingUp className="w-4 h-4" /> : <BarChart3 className="w-4 h-4" />}
             {view} Performance
@@ -288,11 +284,10 @@ export const ChildPerformanceTrends = ({ childId }: { childId: string }) => {
                 <button
                   key={subject.subject}
                   onClick={() => setSelectedSubject(subject.subject)}
-                  className={`px-3 py-2 rounded-lg text-sm font-bold transition-colors ${
-                    selectedSubject === subject.subject
-                      ? 'bg-teal-500 text-dark-bg'
-                      : 'bg-white/5 text-gray-400 hover:text-white border border-white/10'
-                  }`}
+                  className={`px-3 py-2 rounded-lg text-sm font-bold transition-colors ${selectedSubject === subject.subject
+                    ? 'bg-teal-500 text-dark-bg'
+                    : 'bg-white/5 text-gray-400 hover:text-white border border-white/10'
+                    }`}
                 >
                   {subject.subject}
                 </button>
