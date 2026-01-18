@@ -172,8 +172,29 @@ const router = createBrowserRouter([
   },
 ]);
 
+// Error boundary fallback UI
+const ErrorFallback = () => (
+  <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4">
+    <div className="bg-dark-card border border-red-500/20 rounded-lg p-8 max-w-md text-center">
+      <div className="text-6xl mb-4">⚠️</div>
+      <h1 className="text-2xl font-bold text-red-500 mb-2">Something Went Wrong</h1>
+      <p className="text-gray-400 mb-6">
+        We've been notified about this issue and our team is looking into it.
+      </p>
+      <button
+        onClick={() => window.location.href = '/'}
+        className="w-full px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 transition font-medium"
+      >
+        Go to Home
+      </button>
+    </div>
+  </div>
+);
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <ErrorBoundary fallback={<ErrorFallback />} showDialog={true}>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
   </StrictMode>,
 )
