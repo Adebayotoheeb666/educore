@@ -68,10 +68,21 @@ export const StaffAuthAudit = () => {
       setResults(result);
 
       // Log action
-      await logAction('BULK_CREATE_STAFF_AUTH', 'staff', 'bulk', {
-        success: result.success,
-        failed: result.failed,
-      });
+      if (user) {
+        await logAction(
+          schoolId || '',
+          user.id,
+          user.email || 'system',
+          'BULK_CREATE_STAFF_AUTH',
+          'staff',
+          'bulk',
+          {},
+          {
+            success: result.success,
+            failed: result.failed,
+          }
+        );
+      }
 
       // Re-audit after fix
       setTimeout(async () => {
