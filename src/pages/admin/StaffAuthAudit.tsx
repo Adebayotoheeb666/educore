@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   Users,
   Shield,
-  RefreshCw,
   Zap,
   Download,
 } from 'lucide-react';
@@ -69,10 +68,21 @@ export const StaffAuthAudit = () => {
       setResults(result);
 
       // Log action
-      await logAction('BULK_CREATE_STAFF_AUTH', 'staff', 'bulk', {
-        success: result.success,
-        failed: result.failed,
-      });
+      if (user) {
+        await logAction(
+          schoolId || '',
+          user.id,
+          user.email || 'system',
+          'bulk_create',
+          'staff',
+          'bulk',
+          {},
+          {
+            success: result.success,
+            failed: result.failed,
+          }
+        );
+      }
 
       // Re-audit after fix
       setTimeout(async () => {
@@ -102,10 +112,21 @@ export const StaffAuthAudit = () => {
         }));
 
         // Log action
-        await logAction('CREATE_STAFF_AUTH', 'staff', staff.id, {
-          staff_name: staff.name,
-          staff_email: staff.email,
-        });
+        if (user) {
+          await logAction(
+            schoolId || '',
+            user.id,
+            user.email || 'system',
+            'create',
+            'staff',
+            staff.id,
+            {},
+            {
+              staff_name: staff.name,
+              staff_email: staff.email,
+            }
+          );
+        }
       }
     } catch (err) {
       console.error('Create auth error:', err);

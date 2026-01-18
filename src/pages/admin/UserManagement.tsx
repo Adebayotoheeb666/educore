@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { adminResetUserPassword } from '../../lib/passwordResetService';
 import { logAction } from '../../lib/auditService';
-import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle, Mail } from 'lucide-react';
+import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 interface User {
@@ -133,10 +133,21 @@ export const UserManagement = () => {
       const result = await adminResetUserPassword(user.email || '', selectedUser.id, newPassword);
 
       // Log the action
-      await logAction('PASSWORD_RESET', 'user', selectedUser.id, {
-        target_user: selectedUser.email,
-        target_name: selectedUser.full_name,
-      });
+      if (user) {
+        await logAction(
+          schoolId || '',
+          user.id,
+          user.email || 'system',
+          'password_reset',
+          'user',
+          selectedUser.id,
+          {},
+          {
+            target_user: selectedUser.email,
+            target_name: selectedUser.full_name,
+          }
+        );
+      }
 
       setResetStatus({
         type: 'success',

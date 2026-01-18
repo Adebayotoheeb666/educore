@@ -326,8 +326,8 @@ export interface AuditLog {
   userId: string;
   userEmail?: string;
   userName: string;
-  action: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'export' | 'import';
-  resourceType: 'student' | 'staff' | 'result' | 'attendance' | 'financial' | 'term' | 'class' | 'subject' | 'parent';
+  action: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'export' | 'import' | 'bulk_create' | 'password_reset';
+  resourceType: 'student' | 'staff' | 'result' | 'attendance' | 'financial' | 'term' | 'class' | 'subject' | 'parent' | 'user';
   resourceId?: string;
   changes?: Record<string, any>;
   metadata?: Record<string, any>;

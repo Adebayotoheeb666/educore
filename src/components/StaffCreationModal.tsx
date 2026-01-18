@@ -19,7 +19,7 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [createdCredentials, setCreatedCredentials] = useState<{ staffId: string } | null>(null);
+    const [createdCredentials, setCreatedCredentials] = useState<{ staffId: string; message: string } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -34,7 +34,8 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
         try {
             const result = await createStaffAccount(schoolId, user.id, formData);
             setCreatedCredentials({
-                staffId: result.staffId
+                staffId: result.staffId,
+                message: result.message
             });
         } catch (err) {
             console.error(err);
@@ -50,19 +51,29 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
     };
 
     if (createdCredentials) {
+        const isDevelopmentFallback = createdCredentials.message.includes('development mode');
+
         return (
             <div className="bg-dark-card p-6 w-full max-w-md space-y-6">
                 <div className="text-center space-y-2">
-                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle2 className="w-8 h-8 text-green-500" />
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                        isDevelopmentFallback ? 'bg-yellow-500/20' : 'bg-green-500/20'
+                    }`}>
+                        <CheckCircle2 className={`w-8 h-8 ${isDevelopmentFallback ? 'text-yellow-500' : 'text-green-500'}`} />
                     </div>
-                    <h2 className="text-2xl font-bold text-white">Staff Invited!</h2>
-                    <p className="text-gray-400">An invitation email has been sent to the staff member. They can set their password using the link in the email.</p>
+                    <h2 className={`text-2xl font-bold ${isDevelopmentFallback ? 'text-yellow-500' : 'text-green-500'}`}>
+                        {isDevelopmentFallback ? 'Staff Created (Dev Mode)' : 'Staff Invited!'}
+                    </h2>
+                    <p className="text-gray-400 text-sm">{createdCredentials.message}</p>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
+                <div className={`border rounded-xl p-6 space-y-4 ${
+                    isDevelopmentFallback
+                        ? 'bg-yellow-500/10 border-yellow-500/30'
+                        : 'bg-white/5 border-white/10'
+                }`}>
                     <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Staff ID (For Reference)</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Staff ID</label>
                         <div className="flex items-center gap-2 mt-1">
                             <code className="flex-1 bg-black/30 p-3 rounded-lg text-teal-400 font-mono text-lg">{createdCredentials.staffId}</code>
                             <button onClick={() => handleCopy(createdCredentials.staffId)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white">
@@ -70,6 +81,18 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
                             </button>
                         </div>
                     </div>
+
+                    {isDevelopmentFallback && (
+                        <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/30 text-sm text-yellow-100">
+                            <p className="font-semibold mb-2">⚠️ Development Mode</p>
+                            <ul className="list-disc list-inside space-y-1 text-xs text-yellow-100/80">
+                                <li>Staff profile created in database</li>
+                                <li>Auth account <strong>not created</strong> (Edge Function not deployed)</li>
+                                <li>Staff cannot log in yet</li>
+                                <li>Deploy functions to enable authentication</li>
+                            </ul>
+                        </div>
+                    )}
                 </div>
 
                 <button
