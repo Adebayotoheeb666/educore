@@ -263,16 +263,24 @@ export const captureUserFeedback = (
 };
 
 /**
- * Start a performance transaction
+ * Start a performance transaction/span
  * Useful for tracking long-running operations
  */
 export const startTransaction = (
   op: string,
   name: string
 ) => {
-  return Sentry.startTransaction({
+  // Use the modern Sentry API for performance monitoring
+  return Sentry.startSpan({
     op,
     name,
+  }, () => {
+    // Return a dummy transaction object for backwards compatibility
+    return {
+      finish: () => {},
+      setTag: () => {},
+      setData: () => {},
+    };
   });
 };
 
