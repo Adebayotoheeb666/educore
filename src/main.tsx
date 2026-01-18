@@ -142,6 +142,10 @@ const router = createBrowserRouter([
     element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><UserManagement /></Suspense></Layout></ProtectedRoute>,
   },
   {
+    path: "/admin/staff-auth",
+    element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><StaffAuthAudit /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
     path: "/about",
     element: <Suspense fallback={<LoadingSpinner />}><About /></Suspense>,
   },
