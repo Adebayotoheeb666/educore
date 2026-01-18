@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import type { UserProfile } from '../lib/types';
+import { setUserContext, clearUserContext } from '../lib/sentry';
 
 export const useAuth = () => {
     const [user, setUser] = useState<User | null>(null);
