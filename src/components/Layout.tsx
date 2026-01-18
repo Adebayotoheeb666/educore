@@ -117,6 +117,8 @@ export const Layout = ({ children }: LayoutProps) => {
                     {profile?.role === 'admin' && (
                         <>
                             <SidebarItem to="/admin" icon={ShieldCheck} label="School Admin" />
+                            <SidebarItem to="/admin/users" icon={Users} label="User Management" />
+                            <SidebarItem to="/admin/audit-logs" icon={FileText} label="Audit Logs" />
                         </>
                     )}
 
