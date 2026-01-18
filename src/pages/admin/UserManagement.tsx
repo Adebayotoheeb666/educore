@@ -133,10 +133,21 @@ export const UserManagement = () => {
       const result = await adminResetUserPassword(user.email || '', selectedUser.id, newPassword);
 
       // Log the action
-      await logAction('PASSWORD_RESET', 'user', selectedUser.id, {
-        target_user: selectedUser.email,
-        target_name: selectedUser.full_name,
-      });
+      if (user) {
+        await logAction(
+          schoolId || '',
+          user.id,
+          user.email || 'system',
+          'PASSWORD_RESET',
+          'user',
+          selectedUser.id,
+          {},
+          {
+            target_user: selectedUser.email,
+            target_name: selectedUser.full_name,
+          }
+        );
+      }
 
       setResetStatus({
         type: 'success',
