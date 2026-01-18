@@ -22,7 +22,7 @@ import { supabase } from '../lib/supabase';
 import type { ImportResult } from '../lib/bulkImportService';
 
 export const AdminDashboard = () => {
-    const { schoolId, role } = useAuth();
+    const { schoolId, role, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState<'staff' | 'students' | 'classes' | 'subjects'>('staff');
     const [staff, setStaff] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
@@ -157,6 +157,14 @@ export const AdminDashboard = () => {
             fetchData();
         }
     }, [schoolId]);
+
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     if (role !== 'admin') {
         return <div className="p-8 text-white">Access Denied: Admins Only</div>;

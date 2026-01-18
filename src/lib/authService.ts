@@ -41,34 +41,24 @@ export const registerSchool = async (adminData: any, schoolData: any) => {
 
     const uid = authData.user.id;
 
-    // 2. Create School Document
-    const { data: school, error: schoolError } = await supabase
-        .from('schools')
-        .insert({
-            name,
-            address,
-            contact_email: email,
-            admin_uid: uid // explicitly link admin
-        })
-        .select()
-        .single();
+    // 2. Call RPC to create School and Admin Profile securely
+    // This bypasses RLS issues if the user is not yet confirmed/logged in
+    const { data: rpcData, error: rpcError } = await supabase.rpc('register_school_and_admin', {
+        admin_uid: uid,
+        admin_email: email,
+        admin_full_name: fullName,
+        school_name: name,
+        school_address: address,
+        school_contact_email: email
+    });
 
-    if (schoolError) throw schoolError;
+    if (rpcError) {
+        // Cleanup auth user if RPC fails (optional but good practice)
+        // await supabase.auth.admin.deleteUser(uid); 
+        throw rpcError;
+    }
 
-    // 3. Create Admin Profile in public.users
-    const { error: profileError } = await supabase
-        .from('users')
-        .insert({
-            id: uid,
-            school_id: school.id,
-            role: 'admin',
-            email,
-            full_name: fullName
-        });
-
-    if (profileError) throw profileError;
-
-    return { schoolId: school.id, uid };
+    return { schoolId: rpcData.school_id, uid };
 };
 
 /**

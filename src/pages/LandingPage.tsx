@@ -22,6 +22,8 @@ import {
 export const LandingPage = () => {
     const navigate = useNavigate();
 
+    // Auto-logout removed to allow authenticated access
+
     return (
         <div className="min-h-screen bg-dark-bg text-white selection:bg-teal-500/30">
             {/* Navigation */}

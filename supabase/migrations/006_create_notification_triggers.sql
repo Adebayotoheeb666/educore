@@ -15,10 +15,9 @@ DECLARE
   v_class_id UUID;
   v_class_name TEXT;
   v_school_id UUID;
-  v_parent_ids UUID[];
+  v_parent_id UUID;
   v_parent_email TEXT;
   v_parent_name TEXT;
-  v_parent_id UUID;
 BEGIN
   -- Only trigger for absent records
   IF NEW.status = 'absent' THEN
@@ -31,35 +30,23 @@ BEGIN
     WHERE u.id = NEW.student_id AND sc.id = NEW.class_id
     LIMIT 1;
 
-    -- Get parent(s) linked to student
-    SELECT parent_ids INTO v_parent_ids
-    FROM parent_student_links
-    WHERE student_id = v_student_id AND school_id = v_school_id;
-
-    -- Send notification to each parent
-    IF v_parent_ids IS NOT NULL AND array_length(v_parent_ids, 1) > 0 THEN
-      FOREACH v_parent_id IN ARRAY v_parent_ids LOOP
-        -- Get parent details
-        SELECT email, full_name INTO v_parent_email, v_parent_name
-        FROM users
-        WHERE id = v_parent_id;
-
-        -- Insert notification record
-        INSERT INTO notifications (school_id, user_id, title, message, type, link, read)
-        VALUES (
-          v_school_id,
-          v_parent_id,
-          '📋 Attendance Alert',
-          v_student_name || ' was marked absent on ' || NEW.date::TEXT,
-          'warning',
-          '/parent/attendance',
-          false
-        );
-
-        -- Note: Email trigger would be handled by separate function
-        -- This is for database-level notifications
-      END LOOP;
-    END IF;
+    -- Send notification to each parent linked to student
+    FOR v_parent_id IN 
+      SELECT parent_id FROM parent_student_links 
+      WHERE student_id = v_student_id AND school_id = v_school_id
+    LOOP
+      -- Insert notification record
+      INSERT INTO notifications (school_id, user_id, title, message, type, link, read)
+      VALUES (
+        v_school_id,
+        v_parent_id,
+        '📋 Attendance Alert',
+        v_student_name || ' was marked absent on ' || NEW.date::TEXT,
+        'warning',
+        '/parent/attendance',
+        false
+      );
+    END LOOP;
   END IF;
 
   RETURN NEW;
@@ -85,10 +72,7 @@ DECLARE
   v_subject_id UUID;
   v_subject_name TEXT;
   v_school_id UUID;
-  v_parent_ids UUID[];
   v_parent_id UUID;
-  v_parent_email TEXT;
-  v_parent_name TEXT;
 BEGIN
   -- Get student, subject, and school info
   SELECT u.id, u.full_name, s.id, s.name, r.school_id
@@ -98,18 +82,11 @@ BEGIN
   JOIN results r ON r.id = NEW.id
   WHERE u.id = NEW.student_id;
 
-  -- Get parent(s)
-  SELECT parent_ids INTO v_parent_ids
-  FROM parent_student_links
-  WHERE student_id = v_student_id AND school_id = v_school_id;
-
   -- Send notification to each parent
-  IF v_parent_ids IS NOT NULL AND array_length(v_parent_ids, 1) > 0 THEN
-    FOREACH v_parent_id IN ARRAY v_parent_ids LOOP
-      SELECT email, full_name INTO v_parent_email, v_parent_name
-      FROM users
-      WHERE id = v_parent_id;
-
+  FOR v_parent_id IN 
+      SELECT parent_id FROM parent_student_links 
+      WHERE student_id = v_student_id AND school_id = v_school_id
+  LOOP
       -- Insert notification
       INSERT INTO notifications (school_id, user_id, title, message, type, link, read)
       VALUES (
@@ -121,8 +98,7 @@ BEGIN
         '/parent/results',
         false
       );
-    END LOOP;
-  END IF;
+  END LOOP;
 
   RETURN NEW;
 END;
@@ -145,10 +121,7 @@ DECLARE
   v_student_id UUID;
   v_student_name TEXT;
   v_school_id UUID;
-  v_parent_ids UUID[];
   v_parent_id UUID;
-  v_parent_email TEXT;
-  v_parent_name TEXT;
 BEGIN
   v_student_id := NEW.student_id;
   v_school_id := NEW.school_id;
@@ -157,18 +130,11 @@ BEGIN
   SELECT full_name INTO v_student_name
   FROM users WHERE id = v_student_id;
 
-  -- Get parent(s)
-  SELECT parent_ids INTO v_parent_ids
-  FROM parent_student_links
-  WHERE student_id = v_student_id AND school_id = v_school_id;
-
   -- Send notification to each parent
-  IF v_parent_ids IS NOT NULL AND array_length(v_parent_ids, 1) > 0 THEN
-    FOREACH v_parent_id IN ARRAY v_parent_ids LOOP
-      SELECT email, full_name INTO v_parent_email, v_parent_name
-      FROM users
-      WHERE id = v_parent_id;
-
+  FOR v_parent_id IN 
+      SELECT parent_id FROM parent_student_links 
+      WHERE student_id = v_student_id AND school_id = v_school_id
+  LOOP
       -- Insert notification
       INSERT INTO notifications (school_id, user_id, title, message, type, link, read)
       VALUES (
@@ -180,8 +146,7 @@ BEGIN
         '/parent/finances',
         false
       );
-    END LOOP;
-  END IF;
+  END LOOP;
 
   RETURN NEW;
 END;
@@ -291,7 +256,6 @@ DECLARE
   v_subject_name TEXT;
   v_school_id UUID;
   v_teacher_id UUID;
-  v_parent_ids UUID[];
   v_parent_id UUID;
   v_total_score NUMERIC;
   v_passing_score NUMERIC := 40; -- Default passing score
@@ -306,14 +270,11 @@ BEGIN
     SELECT full_name INTO v_student_name FROM users WHERE id = v_student_id;
     SELECT name INTO v_subject_name FROM subjects WHERE id = NEW.subject_id;
 
-    -- Get parent(s)
-    SELECT parent_ids INTO v_parent_ids
-    FROM parent_student_links
-    WHERE student_id = v_student_id AND school_id = v_school_id;
-
     -- Send alert to parents
-    IF v_parent_ids IS NOT NULL AND array_length(v_parent_ids, 1) > 0 THEN
-      FOREACH v_parent_id IN ARRAY v_parent_ids LOOP
+    FOR v_parent_id IN 
+      SELECT parent_id FROM parent_student_links 
+      WHERE student_id = v_student_id AND school_id = v_school_id
+    LOOP
         INSERT INTO notifications (school_id, user_id, title, message, type, link, read)
         VALUES (
           v_school_id,
@@ -324,8 +285,7 @@ BEGIN
           '/parent/results',
           false
         );
-      END LOOP;
-    END IF;
+    END LOOP;
 
     -- Notify teacher
     INSERT INTO notifications (school_id, user_id, title, message, type, link, read)
