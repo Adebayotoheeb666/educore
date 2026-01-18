@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { adminResetUserPassword } from '../../lib/passwordResetService';
 import { logAction } from '../../lib/auditService';
-import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle, Mail } from 'lucide-react';
+import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 interface User {
