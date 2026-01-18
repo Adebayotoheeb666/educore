@@ -92,18 +92,16 @@ export const initSentry = () => {
       // Don't send if it's a known ignoreable error
       if (hint.originalException instanceof Error) {
         const message = hint.originalException.message;
-        
+
         // Ignore specific error patterns
         if (message.includes("ResizeObserver")) {
           return null;
         }
       }
 
-      // Scrub request body if it contains passwords
-      if (event.request) {
-        if (event.request.url?.includes("password")) {
-          event.request.body = "[REDACTED]";
-        }
+      // Scrub request URL if it contains passwords
+      if (event.request && event.request.url?.includes("password")) {
+        event.request.url = "[REDACTED]";
       }
 
       // Scrub sensitive breadcrumbs
@@ -121,7 +119,7 @@ export const initSentry = () => {
       }
 
       // Don't send if event has no meaningful data
-      if (!event.exception && !event.message && !event.error) {
+      if (!event.exception && !event.message) {
         return null;
       }
 
