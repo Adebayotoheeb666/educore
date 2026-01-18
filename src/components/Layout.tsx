@@ -157,6 +157,7 @@ export const Layout = ({ children }: LayoutProps) => {
                             await supabase.auth.signOut();
                             localStorage.removeItem('isAuthenticated'); // Clear mock auth if any
                             localStorage.removeItem('user');
+                            clearUserContext(); // Clear Sentry user context
                             navigate('/login');
                         } catch (e) {
                             console.error("Logout failed", e);
