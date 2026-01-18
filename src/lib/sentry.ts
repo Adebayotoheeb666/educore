@@ -265,23 +265,38 @@ export const captureUserFeedback = (
 /**
  * Start a performance transaction/span
  * Useful for tracking long-running operations
+ * Note: Modern Sentry uses automatic span creation via integrations
  */
 export const startTransaction = (
   op: string,
   name: string
 ) => {
-  // Use the modern Sentry API for performance monitoring
-  return Sentry.startSpan({
-    op,
-    name,
-  }, () => {
-    // Return a dummy transaction object for backwards compatibility
-    return {
-      finish: () => {},
-      setTag: () => {},
-      setData: () => {},
-    };
+  // Add breadcrumb to track transaction start
+  Sentry.addBreadcrumb({
+    category: 'transaction',
+    message: name,
+    level: 'info',
+    data: { op },
   });
+
+  // Return a mock transaction object for backwards compatibility
+  // Modern Sentry handles performance monitoring automatically through BrowserTracing
+  return {
+    finish: () => {
+      Sentry.addBreadcrumb({
+        category: 'transaction',
+        message: `${name} (finished)`,
+        level: 'info',
+        data: { op },
+      });
+    },
+    setTag: (key: string, value: string) => {
+      Sentry.setTag(key, value);
+    },
+    setData: (key: string, value: unknown) => {
+      Sentry.setContext('transaction', { [key]: value });
+    },
+  };
 };
 
 /**
