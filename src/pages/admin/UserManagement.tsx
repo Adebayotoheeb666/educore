@@ -138,7 +138,7 @@ export const UserManagement = () => {
           schoolId || '',
           user.id,
           user.email || 'system',
-          'PASSWORD_RESET',
+          'password_reset',
           'user',
           selectedUser.id,
           {},
