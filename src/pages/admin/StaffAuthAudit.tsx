@@ -23,7 +23,7 @@ interface AuditResult {
 }
 
 export const StaffAuthAudit = () => {
-  const { user, role, schoolId } = useAuth();
+  const { role, schoolId } = useAuth();
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [fixing, setFixing] = useState(false);
