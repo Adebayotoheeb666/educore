@@ -67,9 +67,13 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
                     <p className="text-gray-400 text-sm">{createdCredentials.message}</p>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
+                <div className={`border rounded-xl p-6 space-y-4 ${
+                    isDevelopmentFallback
+                        ? 'bg-yellow-500/10 border-yellow-500/30'
+                        : 'bg-white/5 border-white/10'
+                }`}>
                     <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Staff ID (For Reference)</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Staff ID</label>
                         <div className="flex items-center gap-2 mt-1">
                             <code className="flex-1 bg-black/30 p-3 rounded-lg text-teal-400 font-mono text-lg">{createdCredentials.staffId}</code>
                             <button onClick={() => handleCopy(createdCredentials.staffId)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white">
@@ -77,6 +81,18 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
                             </button>
                         </div>
                     </div>
+
+                    {isDevelopmentFallback && (
+                        <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/30 text-sm text-yellow-100">
+                            <p className="font-semibold mb-2">⚠️ Development Mode</p>
+                            <ul className="list-disc list-inside space-y-1 text-xs text-yellow-100/80">
+                                <li>Staff profile created in database</li>
+                                <li>Auth account <strong>not created</strong> (Edge Function not deployed)</li>
+                                <li>Staff cannot log in yet</li>
+                                <li>Deploy functions to enable authentication</li>
+                            </ul>
+                        </div>
+                    )}
                 </div>
 
                 <button
