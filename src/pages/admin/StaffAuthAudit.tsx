@@ -73,7 +73,7 @@ export const StaffAuthAudit = () => {
           schoolId || '',
           user.id,
           user.email || 'system',
-          'BULK_CREATE_STAFF_AUTH',
+          'bulk_create',
           'staff',
           'bulk',
           {},
