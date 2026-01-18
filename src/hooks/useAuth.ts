@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import type { UserProfile } from '../lib/types';
+import { setUserContext, clearUserContext } from '../lib/sentry';
 
 export const useAuth = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -45,7 +46,7 @@ export const useAuth = () => {
                 console.error('Error fetching profile:', error);
             } else {
                 // Map database columns (snake_case) to typescript interface (camelCase)
-                setProfile({
+                const profile = {
                     id: data.id,
                     email: data.email,
                     role: data.role,
@@ -56,11 +57,21 @@ export const useAuth = () => {
                     staffId: data.staff_id,
                     assignedClasses: data.assigned_classes,
                     assignedSubjects: data.assigned_subjects,
-                    linkedStudents: data.linked_students, // Assuming snake_case in DB
+                    linkedStudents: data.linked_students,
                     profileImage: data.profile_image,
                     createdAt: data.created_at,
                     updatedAt: data.updated_at
-                });
+                };
+
+                setProfile(profile);
+
+                // Set Sentry user context for error tracking
+                setUserContext(
+                    data.id,
+                    data.email || 'unknown@school.app',
+                    data.school_id || 'unknown-school',
+                    data.role || 'unknown'
+                );
             }
         } catch (err) {
             console.error('Unexpected error fetching profile:', err);

@@ -46,14 +46,44 @@ export const confirmReset = async (_code: string, newPassword: string): Promise<
 };
 
 /**
- * Admin-assisted password reset for student accounts
+ * Admin-assisted password reset for user accounts
+ * Calls the reset-password edge function
  */
-export const adminResetStudentPassword = async (
-    _studentId: string,
-    _newPassword: string,
-    _adminUid: string
-): Promise<void> => {
-    // This requires Supabase Admin API (service role) which shouldn't be exposed on client.
-    // Alternatively, call an Edge Function.
-    throw new Error('Admin-assisted password reset requires backend implementation');
+export const adminResetUserPassword = async (
+    adminEmail: string,
+    targetUserId: string,
+    newPassword: string
+): Promise<{ success: boolean; message: string }> => {
+    try {
+        // Get auth session to get Bearer token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError || !session) {
+            throw new Error('Not authenticated. Please log in first.');
+        }
+
+        // Call edge function
+        const { data, error } = await supabase.functions.invoke('reset-password', {
+            body: {
+                email: adminEmail,
+                targetUserId: targetUserId,
+                newPassword: newPassword,
+            },
+            headers: {
+                'Authorization': `Bearer ${session.access_token}`
+            }
+        });
+
+        if (error) {
+            throw new Error(error.message || 'Failed to reset password');
+        }
+
+        return {
+            success: data.success,
+            message: data.message
+        };
+    } catch (err) {
+        console.error('Password reset error:', err);
+        throw err;
+    }
 };

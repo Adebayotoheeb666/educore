@@ -7,6 +7,7 @@ import { twMerge } from 'tailwind-merge';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { clearUserContext } from '../lib/sentry';
 import { ShieldCheck, Bell } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { getNotifications, markAsRead, markAllAsRead } from '../lib/notificationService';
@@ -117,6 +118,9 @@ export const Layout = ({ children }: LayoutProps) => {
                     {profile?.role === 'admin' && (
                         <>
                             <SidebarItem to="/admin" icon={ShieldCheck} label="School Admin" />
+                            <SidebarItem to="/admin/users" icon={Users} label="User Management" />
+                            <SidebarItem to="/admin/staff-auth" icon={ShieldCheck} label="Staff Auth Audit" />
+                            <SidebarItem to="/admin/audit-logs" icon={FileText} label="Audit Logs" />
                         </>
                     )}
 
@@ -153,6 +157,7 @@ export const Layout = ({ children }: LayoutProps) => {
                             await supabase.auth.signOut();
                             localStorage.removeItem('isAuthenticated'); // Clear mock auth if any
                             localStorage.removeItem('user');
+                            clearUserContext(); // Clear Sentry user context
                             navigate('/login');
                         } catch (e) {
                             console.error("Logout failed", e);
