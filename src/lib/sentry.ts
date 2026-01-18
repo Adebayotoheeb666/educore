@@ -253,11 +253,11 @@ export const captureUserFeedback = (
 ) => {
   const eventId = Sentry.lastEventId();
   if (eventId) {
-    Sentry.captureUserFeedback({
-      event_id: eventId,
+    Sentry.captureFeedback({
+      message: comments,
       email,
       name,
-      comments,
+      associatedEventId: eventId,
     });
   }
 };
