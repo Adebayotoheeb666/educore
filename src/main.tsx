@@ -30,6 +30,7 @@ const TermManagement = lazy(() => import('./pages/TermManagement').then(module =
 const AuditLogViewer = lazy(() => import('./pages/AuditLogViewer').then(module => ({ default: module.AuditLogViewer })));
 const StudentAssignment = lazy(() => import('./pages/StudentAssignment').then(module => ({ default: module.StudentAssignment })));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement').then(module => ({ default: module.UserManagement })));
+const StaffAuthAudit = lazy(() => import('./pages/admin/StaffAuthAudit').then(module => ({ default: module.StaffAuthAudit })));
 const About = lazy(() => import('./pages/About').then(module => ({ default: module.About })));
 const Blog = lazy(() => import('./pages/Blog').then(module => ({ default: module.Blog })));
 const Contact = lazy(() => import('./pages/Contact').then(module => ({ default: module.Contact })));
