@@ -28,10 +28,7 @@ export const initSentry = () => {
     dsn,
 
     // Integrations for advanced features
-    integrations: (integrations) => [
-      ...integrations.filter(
-        (integration) => integration.name !== 'Breadcrumbs'
-      ),
+    integrations: [
       new BrowserTracing({
         // Set tracingOrigins to control which URLs are traced for performance
         tracingOrigins: [
@@ -45,7 +42,7 @@ export const initSentry = () => {
         shouldCreateSpanForRequest: (url) => {
           return !url.includes("/healthcheck");
         },
-      }),
+      }) as any,
     ],
 
     // Sample rate for performance monitoring (10% of transactions)
