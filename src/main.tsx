@@ -1,9 +1,14 @@
 import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { ErrorBoundary } from "@sentry/react";
 import './index.css'
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { initSentry } from './lib/sentry';
+
+// Initialize Sentry error monitoring
+initSentry();
 
 // Lazy load pages
 const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
