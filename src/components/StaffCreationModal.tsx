@@ -51,14 +51,20 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
     };
 
     if (createdCredentials) {
+        const isDevelopmentFallback = createdCredentials.message.includes('development mode');
+
         return (
             <div className="bg-dark-card p-6 w-full max-w-md space-y-6">
                 <div className="text-center space-y-2">
-                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle2 className="w-8 h-8 text-green-500" />
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                        isDevelopmentFallback ? 'bg-yellow-500/20' : 'bg-green-500/20'
+                    }`}>
+                        <CheckCircle2 className={`w-8 h-8 ${isDevelopmentFallback ? 'text-yellow-500' : 'text-green-500'}`} />
                     </div>
-                    <h2 className="text-2xl font-bold text-white">Staff Invited!</h2>
-                    <p className="text-gray-400">An invitation email has been sent to the staff member. They can set their password using the link in the email.</p>
+                    <h2 className={`text-2xl font-bold ${isDevelopmentFallback ? 'text-yellow-500' : 'text-green-500'}`}>
+                        {isDevelopmentFallback ? 'Staff Created (Dev Mode)' : 'Staff Invited!'}
+                    </h2>
+                    <p className="text-gray-400 text-sm">{createdCredentials.message}</p>
                 </div>
 
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
