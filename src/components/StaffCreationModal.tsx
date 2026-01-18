@@ -19,7 +19,7 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [createdCredentials, setCreatedCredentials] = useState<{ staffId: string } | null>(null);
+    const [createdCredentials, setCreatedCredentials] = useState<{ staffId: string; message: string } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
