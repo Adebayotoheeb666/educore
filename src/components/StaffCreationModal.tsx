@@ -34,7 +34,8 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
         try {
             const result = await createStaffAccount(schoolId, user.id, formData);
             setCreatedCredentials({
-                staffId: result.staffId
+                staffId: result.staffId,
+                message: result.message
             });
         } catch (err) {
             console.error(err);
