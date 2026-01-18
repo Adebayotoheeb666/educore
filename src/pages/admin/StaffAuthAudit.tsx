@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   Users,
   Shield,
-  RefreshCw,
   Zap,
   Download,
 } from 'lucide-react';
