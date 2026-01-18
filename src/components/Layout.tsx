@@ -7,6 +7,7 @@ import { twMerge } from 'tailwind-merge';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { clearUserContext } from '../lib/sentry';
 import { ShieldCheck, Bell } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { getNotifications, markAsRead, markAllAsRead } from '../lib/notificationService';
