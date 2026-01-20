@@ -5,10 +5,18 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 
 export const Dashboard = () => {
-    const { user, profile, role } = useAuth();
+    const { user, profile, role, loading: authLoading } = useAuth();
     const displayName = profile?.fullName || user?.user_metadata?.full_name || 'Teacher';
     const [pendingCount, setPendingCount] = useState(0);
     const [loading, setLoading] = useState(true);
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     if (role === 'student' || role === 'parent') {
         return <Navigate to="/portal" replace />;

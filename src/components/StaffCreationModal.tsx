@@ -1,21 +1,33 @@
 import { useState } from 'react';
 import { X, Save, AlertCircle, CheckCircle2, Copy } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import type { User } from '@supabase/supabase-js';
+import type { UserProfile } from '../lib/types';
+import { supabase } from '../lib/supabase';
 import { createStaffAccount, type CreateStaffParams } from '../lib/staffService';
 
 interface StaffCreationModalProps {
     onClose: () => void;
     onSuccess: () => void;
+    initialData?: any;
+    user?: User | null;
+    profile?: UserProfile | null;
+    schoolId?: string | null;
 }
 
-export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalProps) => {
-    const { schoolId, user } = useAuth();
+export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: propUser, schoolId: propSchoolId }: StaffCreationModalProps) => {
+    const { schoolId: authSchoolId, user: authUser } = useAuth();
+
+    const user = propUser || authUser;
+    const schoolId = propSchoolId || authSchoolId;
+
     const [formData, setFormData] = useState<CreateStaffParams>({
-        fullName: '',
-        email: '',
-        role: 'staff',
-        specialization: '',
-        phoneNumber: ''
+        fullName: initialData?.fullName || '',
+        email: initialData?.email || '',
+        role: (initialData?.role as any) || 'staff',
+        specialization: '', // We can't easily fetch specialization here without more props or queries
+        phoneNumber: initialData?.phoneNumber || '',
+        staffId: initialData?.staffId || ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -32,14 +44,32 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
         setError('');
 
         try {
-            const result = await createStaffAccount(schoolId, user.id, formData);
-            setCreatedCredentials({
-                staffId: result.staffId,
-                message: result.message
-            });
+            if (initialData) {
+                // UPDATE flow
+                const { error: updateError } = await supabase
+                    .from('users')
+                    .update({
+                        full_name: formData.fullName,
+                        email: formData.email,
+                        role: formData.role,
+                        phone_number: formData.phoneNumber,
+                        staff_id: formData.staffId
+                    })
+                    .eq('id', initialData.id);
+
+                if (updateError) throw updateError;
+                onSuccess();
+            } else {
+                // CREATE flow
+                const result = await createStaffAccount(schoolId, user.id, formData);
+                setCreatedCredentials({
+                    staffId: result.staffId,
+                    message: result.message
+                });
+            }
         } catch (err) {
             console.error(err);
-            setError(err instanceof Error ? err.message : 'Failed to create staff account');
+            setError(err instanceof Error ? err.message : 'Failed to save staff account');
         } finally {
             setLoading(false);
         }
@@ -56,9 +86,8 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
         return (
             <div className="bg-dark-card p-6 w-full max-w-md space-y-6">
                 <div className="text-center space-y-2">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                        isDevelopmentFallback ? 'bg-yellow-500/20' : 'bg-green-500/20'
-                    }`}>
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isDevelopmentFallback ? 'bg-yellow-500/20' : 'bg-green-500/20'
+                        }`}>
                         <CheckCircle2 className={`w-8 h-8 ${isDevelopmentFallback ? 'text-yellow-500' : 'text-green-500'}`} />
                     </div>
                     <h2 className={`text-2xl font-bold ${isDevelopmentFallback ? 'text-yellow-500' : 'text-green-500'}`}>
@@ -67,11 +96,10 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
                     <p className="text-gray-400 text-sm">{createdCredentials.message}</p>
                 </div>
 
-                <div className={`border rounded-xl p-6 space-y-4 ${
-                    isDevelopmentFallback
-                        ? 'bg-yellow-500/10 border-yellow-500/30'
-                        : 'bg-white/5 border-white/10'
-                }`}>
+                <div className={`border rounded-xl p-6 space-y-4 ${isDevelopmentFallback
+                    ? 'bg-yellow-500/10 border-yellow-500/30'
+                    : 'bg-white/5 border-white/10'
+                    }`}>
                     <div>
                         <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Staff ID</label>
                         <div className="flex items-center gap-2 mt-1">
@@ -108,7 +136,9 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
     return (
         <div className="bg-dark-card w-full max-w-md space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-white">Create Staff Account</h2>
+                <h2 className="text-xl font-bold text-white">
+                    {initialData ? 'Edit Staff Account' : 'Create Staff Account'}
+                </h2>
                 <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg text-gray-400">
                     <X className="w-6 h-6" />
                 </button>
@@ -162,6 +192,16 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
                         className="w-full px-4 py-2 bg-dark-input border border-white/10 rounded-lg text-white focus:border-teal-500 focus:outline-none"
                     />
                 </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Staff ID (Optional)</label>
+                    <input
+                        type="text"
+                        value={formData.staffId}
+                        onChange={e => setFormData({ ...formData, staffId: e.target.value })}
+                        placeholder="Leave blank to auto-generate"
+                        className="w-full px-4 py-2 bg-dark-input border border-white/10 rounded-lg text-white focus:border-teal-500 focus:outline-none font-mono"
+                    />
+                </div>
 
                 <div className="pt-4">
                     <button
@@ -174,7 +214,7 @@ export const StaffCreationModal = ({ onClose, onSuccess }: StaffCreationModalPro
                         ) : (
                             <>
                                 <Save className="w-5 h-5" />
-                                <span>Create Account</span>
+                                <span>{initialData ? 'Save Changes' : 'Create Account'}</span>
                             </>
                         )}
                     </button>

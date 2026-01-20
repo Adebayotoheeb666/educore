@@ -5,13 +5,14 @@ import {
     GraduationCap,
     Plus,
     Search,
-    MoreVertical,
     TrendingUp,
     Download,
     X,
     Calendar,
     FileText,
-    Library
+    Library,
+    Trash2,
+    Edit2
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { BulkStudentImport } from '../components/BulkStudentImport';
@@ -20,9 +21,11 @@ import { ParentStudentLinkModal } from '../components/ParentStudentLinkModal';
 import { StaffCreationModal } from '../components/StaffCreationModal';
 import { supabase } from '../lib/supabase';
 import type { ImportResult } from '../lib/bulkImportService';
+import { ToastContainer, type ToastProps } from '../components/common/Toast';
+import { ConfirmationModal } from '../components/common/ConfirmationModal';
 
 export const AdminDashboard = () => {
-    const { schoolId, role, loading: authLoading } = useAuth();
+    const { schoolId, role, user, profile, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState<'staff' | 'students' | 'classes' | 'subjects'>('staff');
     const [staff, setStaff] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
@@ -44,6 +47,34 @@ export const AdminDashboard = () => {
     // Form States
     const [newSubject, setNewSubject] = useState({ name: '', code: '' });
     const [newClass, setNewClass] = useState({ name: '', level: '' });
+    const [editingSubject, setEditingSubject] = useState<any | null>(null);
+    const [editingClass, setEditingClass] = useState<any | null>(null);
+    const [editingStaff, setEditingStaff] = useState<any | null>(null);
+
+    // Toast/Notification state
+    const [toasts, setToasts] = useState<Omit<ToastProps, 'onClose'>[]>([]);
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        type: 'danger' | 'warning' | 'info';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        type: 'info'
+    });
+
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        const id = Math.random().toString(36).substr(2, 9);
+        setToasts(prev => [...prev, { id, message, type }]);
+    };
+
+    const removeToast = (id: string) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    };
 
     const fetchData = async () => {
         if (!schoolId) return;
@@ -119,17 +150,35 @@ export const AdminDashboard = () => {
     const handleCreateSubject = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const { error } = await supabase.from('subjects').insert({
-                school_id: schoolId,
-                name: newSubject.name,
-                code: newSubject.code
-            });
-            if (error) throw error;
+            if (editingSubject) {
+                const { error, count } = await supabase
+                    .from('subjects')
+                    .update({
+                        name: newSubject.name,
+                        code: newSubject.code
+                    }, { count: 'exact' })
+                    .eq('id', editingSubject.id);
+                if (error) throw error;
+                if (count === 0) {
+                    showToast('Update failed: access denied (RLS) or record not found.', 'error');
+                    return;
+                }
+                showToast('Subject updated successfully!', 'success');
+            } else {
+                const { error } = await supabase.from('subjects').insert({
+                    school_id: schoolId,
+                    name: newSubject.name,
+                    code: newSubject.code
+                });
+                if (error) throw error;
+                showToast('Subject created successfully!', 'success');
+            }
             setShowSubjectModal(false);
+            setEditingSubject(null);
             setNewSubject({ name: '', code: '' });
             fetchData();
         } catch (err) {
-            alert('Failed to create subject');
+            showToast(`Failed to ${editingSubject ? 'update' : 'create'} subject`, 'error');
             console.error(err);
         }
     };
@@ -137,19 +186,115 @@ export const AdminDashboard = () => {
     const handleCreateClass = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const { error } = await supabase.from('classes').insert({
-                school_id: schoolId,
-                name: newClass.name,
-                level: newClass.level
-            });
-            if (error) throw error;
+            if (editingClass) {
+                const { error, count } = await supabase
+                    .from('classes')
+                    .update({
+                        name: newClass.name,
+                        level: newClass.level
+                    }, { count: 'exact' })
+                    .eq('id', editingClass.id);
+                if (error) throw error;
+                if (count === 0) {
+                    showToast('Update failed: access denied (RLS) or record not found.', 'error');
+                    return;
+                }
+                showToast('Class updated successfully!', 'success');
+            } else {
+                const { error } = await supabase.from('classes').insert({
+                    school_id: schoolId,
+                    name: newClass.name,
+                    level: newClass.level
+                });
+                if (error) throw error;
+                showToast('Class created successfully!', 'success');
+            }
             setShowClassModal(false);
+            setEditingClass(null);
             setNewClass({ name: '', level: '' });
             fetchData();
         } catch (err) {
-            alert('Failed to create class');
+            showToast(`Failed to ${editingClass ? 'update' : 'create'} class`, 'error');
             console.error(err);
         }
+    };
+
+    const handleDeleteSubject = async (id: string, name: string) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Subject',
+            message: `Are you sure you want to delete the subject "${name}"? This action cannot be undone.`,
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    const { error, count } = await supabase.from('subjects').delete({ count: 'exact' }).eq('id', id);
+                    if (error) throw error;
+                    if (count === 0) {
+                        showToast('Delete failed: access denied (RLS) or record not found.', 'error');
+                    } else {
+                        showToast('Subject deleted successfully', 'success');
+                        fetchData();
+                    }
+                } catch (err) {
+                    showToast('Failed to delete subject', 'error');
+                    console.error(err);
+                } finally {
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }
+            }
+        });
+    };
+
+    const handleDeleteClass = async (id: string, name: string) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Class',
+            message: `Are you sure you want to delete the class "${name}"? This action cannot be undone.`,
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    const { error, count } = await supabase.from('classes').delete({ count: 'exact' }).eq('id', id);
+                    if (error) throw error;
+                    if (count === 0) {
+                        showToast('Delete failed: access denied (RLS) or record not found.', 'error');
+                    } else {
+                        showToast('Class deleted successfully', 'success');
+                        fetchData();
+                    }
+                } catch (err) {
+                    showToast('Failed to delete class', 'error');
+                    console.error(err);
+                } finally {
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }
+            }
+        });
+    };
+
+    const handleDeleteStaff = async (id: string, name: string) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Staff Member',
+            message: `Are you sure you want to delete "${name}"? This will remove their profile and access to the school.`,
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    const { error, count } = await supabase.from('users').delete({ count: 'exact' }).eq('id', id);
+                    if (error) throw error;
+                    if (count === 0) {
+                        showToast('Delete failed: access denied (RLS) or record not found.', 'error');
+                    } else {
+                        showToast('Staff member deleted successfully', 'success');
+                        fetchData();
+                    }
+                } catch (err) {
+                    showToast('Failed to delete staff member', 'error');
+                    console.error(err);
+                } finally {
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }
+            }
+        });
     };
 
     useEffect(() => {
@@ -226,7 +371,13 @@ export const AdminDashboard = () => {
                         <button onClick={() => setShowBulkImport(false)} className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white"><X className="w-6 h-6" /></button>
                     </div>
                     <div className="p-6">
-                        <BulkStudentImport onSuccess={handleBulkImportSuccess} onClose={() => setShowBulkImport(false)} />
+                        <BulkStudentImport
+                            user={user}
+                            profile={profile}
+                            schoolId={schoolId}
+                            onSuccess={handleBulkImportSuccess}
+                            onClose={() => setShowBulkImport(false)}
+                        />
                     </div>
                 </div>
             </div>
@@ -237,7 +388,14 @@ export const AdminDashboard = () => {
     if (showStaffCreation) {
         return (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                <StaffCreationModal onSuccess={() => { fetchData(); }} onClose={() => setShowStaffCreation(false)} />
+                <StaffCreationModal
+                    initialData={editingStaff}
+                    user={user}
+                    profile={profile}
+                    schoolId={schoolId}
+                    onSuccess={() => { fetchData(); setShowStaffCreation(false); setEditingStaff(null); }}
+                    onClose={() => { setShowStaffCreation(false); setEditingStaff(null); }}
+                />
             </div>
         );
     }
@@ -249,8 +407,8 @@ export const AdminDashboard = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                     <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md p-6">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-white">Create New Subject</h2>
-                            <button onClick={() => setShowSubjectModal(false)} className="text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                            <h2 className="text-xl font-bold text-white">{editingSubject ? 'Edit Subject' : 'Create New Subject'}</h2>
+                            <button onClick={() => { setShowSubjectModal(false); setEditingSubject(null); setNewSubject({ name: '', code: '' }); }} className="text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
                         </div>
                         <form onSubmit={handleCreateSubject} className="space-y-4">
                             <div>
@@ -261,7 +419,9 @@ export const AdminDashboard = () => {
                                 <label className="text-sm text-gray-400">Subject Code (Optional)</label>
                                 <input type="text" className="w-full bg-dark-bg border border-white/10 rounded-lg p-3 text-white mt-1" value={newSubject.code} onChange={e => setNewSubject({ ...newSubject, code: e.target.value })} placeholder="e.g. MTH101" />
                             </div>
-                            <button type="submit" className="w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl">Create Subject</button>
+                            <button type="submit" className="w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl">
+                                {editingSubject ? 'Update Subject' : 'Create Subject'}
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -272,8 +432,8 @@ export const AdminDashboard = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                     <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md p-6">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-white">Create New Class</h2>
-                            <button onClick={() => setShowClassModal(false)} className="text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                            <h2 className="text-xl font-bold text-white">{editingClass ? 'Edit Class' : 'Create New Class'}</h2>
+                            <button onClick={() => { setShowClassModal(false); setEditingClass(null); setNewClass({ name: '', level: '' }); }} className="text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
                         </div>
                         <form onSubmit={handleCreateClass} className="space-y-4">
                             <div>
@@ -290,7 +450,9 @@ export const AdminDashboard = () => {
                                     <option value="Nursery">Nursery</option>
                                 </select>
                             </div>
-                            <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl">Create Class</button>
+                            <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl">
+                                {editingClass ? 'Update Class' : 'Create Class'}
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -316,7 +478,7 @@ export const AdminDashboard = () => {
                         </button>
                         {showAddMenu && (
                             <div className="absolute right-0 mt-2 w-56 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                                <button onClick={() => { setShowStaffCreation(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Add Staff Member</button>
+                                <button onClick={() => { setEditingStaff(null); setShowStaffCreation(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Add Staff Member</button>
                                 <button onClick={() => { setShowClassModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create New Class</button>
                                 <button onClick={() => { setShowSubjectModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create Subject</button>
                                 <button onClick={() => { setShowBulkImport(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 flex items-center justify-between">
@@ -410,7 +572,33 @@ export const AdminDashboard = () => {
                                             <td className="py-4 px-4 text-gray-400 font-mono text-sm">{u.staffId || 'N/A'}</td>
                                             <td className="py-4 px-4 text-gray-400 text-sm">{u.email}</td>
                                             <td className="py-4 px-4">
-                                                <button onClick={() => setSelectedStaffForAssignment({ id: u.id, name: u.fullName })} className="px-4 py-2 bg-teal-600/20 hover:bg-teal-600/40 text-teal-400 rounded-lg transition-colors text-sm font-bold">Assign</button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingStaff({
+                                                                id: u.id,
+                                                                fullName: u.fullName,
+                                                                email: u.email,
+                                                                role: u.role,
+                                                                phoneNumber: u.phoneNumber,
+                                                                staffId: u.staffId
+                                                            });
+                                                            setShowStaffCreation(true);
+                                                        }}
+                                                        className="p-2 hover:bg-teal-500/10 rounded-lg text-gray-500 hover:text-teal-400 transition-colors"
+                                                        title="Edit Staff"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteStaff(u.id, u.fullName || u.email)}
+                                                        className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+                                                        title="Delete Staff"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => setSelectedStaffForAssignment({ id: u.id, name: u.fullName })} className="px-4 py-2 bg-teal-600/20 hover:bg-teal-600/40 text-teal-400 rounded-lg transition-colors text-sm font-bold">Assign</button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -440,7 +628,26 @@ export const AdminDashboard = () => {
                                             <td className="py-4 px-4 text-gray-400 text-sm">{c.level || 'N/A'}</td>
                                             <td className="py-4 px-4 text-gray-400 text-sm">{c.studentCount || 0} Students</td>
                                             <td className="py-4 px-4">
-                                                <button className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition-colors"><MoreVertical className="w-4 h-4" /></button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingClass(c);
+                                                            setNewClass({ name: c.name, level: c.level || '' });
+                                                            setShowClassModal(true);
+                                                        }}
+                                                        className="p-2 hover:bg-blue-500/10 rounded-lg text-gray-500 hover:text-blue-400 transition-colors"
+                                                        title="Edit Class"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteClass(c.id, c.name)}
+                                                        className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+                                                        title="Delete Class"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -455,7 +662,26 @@ export const AdminDashboard = () => {
                                             <td className="py-4 px-4 text-gray-400 font-mono text-sm">{s.code || 'N/A'}</td>
                                             <td className="py-4 px-4 text-gray-400 text-sm">Active</td>
                                             <td className="py-4 px-4">
-                                                <button className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition-colors"><MoreVertical className="w-4 h-4" /></button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingSubject(s);
+                                                            setNewSubject({ name: s.name, code: s.code || '' });
+                                                            setShowSubjectModal(true);
+                                                        }}
+                                                        className="p-2 hover:bg-blue-500/10 rounded-lg text-gray-500 hover:text-blue-400 transition-colors"
+                                                        title="Edit Subject"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteSubject(s.id, s.name)}
+                                                        className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+                                                        title="Delete Subject"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -471,6 +697,14 @@ export const AdminDashboard = () => {
                     )}
                 </div>
             </div>
+
+            {/* Feedback UI */}
+            <ToastContainer toasts={toasts} onClose={removeToast} />
+            <ConfirmationModal
+                {...confirmModal}
+                confirmLabel="Delete"
+                onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 };

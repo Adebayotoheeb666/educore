@@ -191,10 +191,14 @@ const ErrorFallback = () => (
   </div>
 );
 
+import { AuthProvider } from './context/AuthContext';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary fallback={<ErrorFallback />} showDialog={true}>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </ErrorBoundary>
   </StrictMode>,
 )

@@ -7,6 +7,7 @@ export interface CreateStaffParams {
     role: 'staff' | 'bursar';
     specialization?: string;
     phoneNumber?: string;
+    staffId?: string;
 }
 
 /**
@@ -32,7 +33,7 @@ const createStaffAccountFallback = async (
         'To use the full feature, deploy functions with: supabase functions deploy'
     );
 
-    const staffId = generateStaffId(schoolId);
+    const staffId = data.staffId || generateStaffId(schoolId);
 
     // Create user profile directly in database
     // Note: This doesn't create an Auth account, which is a limitation in development
@@ -65,7 +66,7 @@ const createStaffAccountFallback = async (
         staffId,
         docId: userData.id,
         message: `Staff profile created in development mode. ` +
-                 `Note: Deploy Supabase functions for Auth account creation and email notifications.`
+            `Note: Deploy Supabase functions for Auth account creation and email notifications.`
     };
 };
 
@@ -92,7 +93,8 @@ export const createStaffAccount = async (
                 role: data.role,
                 specialization: data.specialization,
                 phoneNumber: data.phoneNumber,
-                adminId
+                adminId,
+                staffId: data.staffId
             })
         });
 

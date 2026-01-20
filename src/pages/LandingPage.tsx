@@ -18,6 +18,7 @@ import {
     Clock,
     Lock
 } from 'lucide-react';
+import aiHero from '../assets/ai_hero.png';
 
 export const LandingPage = () => {
     const navigate = useNavigate();
@@ -50,30 +51,57 @@ export const LandingPage = () => {
                 </div>
             </nav>
 
+
+
             {/* Hero Section */}
             <section className="relative pt-40 pb-20 overflow-hidden">
                 <div className="max-w-7xl mx-auto px-6 relative z-10">
-                    <div className="max-w-3xl">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-sm font-bold mb-8 animate-fade-in">
-                            <Zap className="w-4 h-4" />
-                            <span>v2.0 powered by Google Gemini AI</span>
+                    <div className="grid lg:grid-cols-2 gap-12 items-center">
+                        {/* Left Column: Text Content */}
+                        <div>
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-sm font-bold mb-8 animate-fade-in">
+                                <Zap className="w-4 h-4" />
+                                <span>v2.0 powered by Google Gemini AI</span>
+                            </div>
+                            <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] mb-8">
+                                The Future of <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-blue-500">School Admin.</span>
+                            </h1>
+                            <p className="text-xl text-gray-400 leading-relaxed mb-10">
+                                The most advanced multi-tenant educational ecosystem. Integrated AI lesson planning,
+                                smart paper marking, and real-time student performance analytics for modern schools.
+                            </p>
+                            <div className="flex flex-col sm:flex-row items-center gap-4">
+                                <button onClick={() => navigate('/login')} className="w-full sm:w-auto px-10 py-5 bg-teal-500 hover:bg-teal-400 text-dark-bg text-lg font-black rounded-2xl transition-all shadow-2xl shadow-teal-500/20 flex items-center justify-center gap-3 group">
+                                    <span>Get Started Now</span>
+                                    <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                                </button>
+                                <button className="w-full sm:w-auto px-10 py-5 border border-white/10 hover:bg-white/5 text-lg font-bold rounded-2xl transition-all">
+                                    Request Demo
+                                </button>
+                            </div>
                         </div>
-                        <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-8">
-                            The Future of <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-blue-500">School Admin.</span>
-                        </h1>
-                        <p className="text-xl text-gray-400 leading-relaxed mb-10 max-w-2xl">
-                            The most advanced multi-tenant educational ecosystem. Integrated AI lesson planning,
-                            smart paper marking, and real-time student performance analytics for modern schools.
-                        </p>
-                        <div className="flex flex-col sm:flex-row items-center gap-4">
-                            <button onClick={() => navigate('/login')} className="w-full sm:w-auto px-10 py-5 bg-teal-500 hover:bg-teal-400 text-dark-bg text-lg font-black rounded-2xl transition-all shadow-2xl shadow-teal-500/20 flex items-center justify-center gap-3 group">
-                                <span>Get Started Now</span>
-                                <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                            </button>
-                            <button className="w-full sm:w-auto px-10 py-5 border border-white/10 hover:bg-white/5 text-lg font-bold rounded-2xl transition-all">
-                                Request Demo
-                            </button>
+
+                        {/* Right Column: AI Image */}
+                        <div className="relative animate-fade-in-up max-w-lg mx-auto">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 to-blue-500 rounded-[32px] blur-2xl opacity-30 animate-pulse" />
+                            <div className="relative rounded-[32px] overflow-hidden border border-white/10 shadow-2xl shadow-teal-900/50">
+                                <img
+                                    src={aiHero}
+                                    alt="AI in Education"
+                                    className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
+                                />
+                                {/* Floating Badge */}
+                                <div className="absolute bottom-8 left-8 bg-dark-bg/80 backdrop-blur-xl border border-white/10 p-4 rounded-xl flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-teal-500/20 rounded-lg flex items-center justify-center">
+                                        <Sparkles className="w-5 h-5 text-teal-400" />
+                                    </div>
+                                    <div>
+                                        <div className="text-white font-bold text-sm">AI-Powered</div>
+                                        <div className="text-teal-400 text-xs">Excellence</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

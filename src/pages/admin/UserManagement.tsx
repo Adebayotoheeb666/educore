@@ -30,6 +30,14 @@ export const UserManagement = () => {
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak');
 
   // Only admins can access this page
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
@@ -278,11 +286,10 @@ export const UserManagement = () => {
             </p>
 
             {resetStatus && (
-              <div className={`mb-4 p-4 rounded-lg flex gap-3 ${
-                resetStatus.type === 'success'
+              <div className={`mb-4 p-4 rounded-lg flex gap-3 ${resetStatus.type === 'success'
                   ? 'bg-green-500/10 border border-green-500/20'
                   : 'bg-red-500/10 border border-red-500/20'
-              }`}>
+                }`}>
                 {resetStatus.type === 'success' ? (
                   <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                 ) : (
@@ -315,11 +322,10 @@ export const UserManagement = () => {
                   </button>
                 </div>
                 {newPassword && (
-                  <p className={`text-xs mt-1 font-medium ${
-                    passwordStrength === 'weak' ? 'text-red-500' :
-                    passwordStrength === 'medium' ? 'text-yellow-500' :
-                    'text-green-500'
-                  }`}>
+                  <p className={`text-xs mt-1 font-medium ${passwordStrength === 'weak' ? 'text-red-500' :
+                      passwordStrength === 'medium' ? 'text-yellow-500' :
+                        'text-green-500'
+                    }`}>
                     Strength: {passwordStrength}
                   </p>
                 )}
