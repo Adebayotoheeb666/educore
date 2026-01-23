@@ -49,20 +49,29 @@ serve(async (req) => {
         }
 
         // Initialize admin client with service role (server-only)
+        if (!supabaseUrl || !supabaseServiceKey) {
+            throw new Error("Missing Supabase environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
+        }
+
         const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-        // 1. Check if user already exists in Auth
-        const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
-        const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === requestBody.email.toLowerCase().trim());
-
-        let authId = existingUser?.id;
-
-        // 2. Generate or use provided staff ID
+        // 1. Generate or use provided staff ID FIRST (so it's always available)
         const staffId = requestBody.staffId || (() => {
             const staffPrefix = requestBody.schoolId.substring(0, 3).toUpperCase();
             const randomSuffix = Math.floor(1000 + Math.random() * 9000);
             return `STF-${staffPrefix}-${randomSuffix}`;
         })();
+
+        // 2. Check if user already exists in Auth
+        const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
+        if (listError) {
+            console.error("Error listing users:", listError);
+            throw new Error(`Failed to check existing users: ${listError.message}`);
+        }
+
+        const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === requestBody.email.toLowerCase().trim());
+
+        let authId = existingUser?.id;
 
         if (!existingUser) {
             // 3. Verify admin creating this staff is actually admin of the school
