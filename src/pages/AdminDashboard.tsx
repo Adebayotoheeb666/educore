@@ -26,6 +26,7 @@ import { ToastContainer, type ToastProps } from '../components/common/Toast';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 
 export const AdminDashboard = () => {
+    const navigate = useNavigate();
     const { schoolId, role, user, profile, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState<'staff' | 'students' | 'classes' | 'subjects'>('staff');
     const [staff, setStaff] = useState<any[]>([]);
