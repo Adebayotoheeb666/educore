@@ -44,7 +44,7 @@ export const StaffAuthAudit = () => {
     );
   }
 
-  if (role !== 'admin') {
+  if (role?.toLowerCase() !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -235,8 +235,8 @@ export const StaffAuthAudit = () => {
       {/* Bulk Fix Results */}
       {results && (
         <div className={`border rounded-lg p-4 ${results.failed === 0
-            ? 'bg-green-500/10 border-green-500/20'
-            : 'bg-orange-500/10 border-orange-500/20'
+          ? 'bg-green-500/10 border-green-500/20'
+          : 'bg-orange-500/10 border-orange-500/20'
           }`}>
           <div className="flex gap-3 mb-3">
             {results.failed === 0 ? (

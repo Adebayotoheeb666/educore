@@ -13,7 +13,8 @@ import {
     FileText,
     Library,
     Trash2,
-    Edit2
+    Edit2,
+    AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { BulkStudentImport } from '../components/BulkStudentImport';
@@ -347,6 +348,26 @@ export const AdminDashboard = () => {
 
     if (role !== 'admin') {
         return <div className="p-8 text-white">Access Denied: Admins Only</div>;
+    }
+
+    if (!schoolId && !authLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-dark-card border border-white/5 rounded-3xl m-8">
+                <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mb-6">
+                    <AlertCircle className="w-8 h-8 text-orange-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">School Context Missing</h2>
+                <p className="text-gray-400 max-w-sm mx-auto">
+                    We could not verify your school association. This can happen if your account setup is incomplete.
+                </p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="mt-6 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl transition-colors"
+                >
+                    Refresh Dashboard
+                </button>
+            </div>
+        );
     }
 
     // --- Modals ---

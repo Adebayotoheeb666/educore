@@ -26,7 +26,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
         }
         fetchingRef.current = true;
-        console.log('[AuthContext] Starting profile fetch for:', userId);
 
         const FETCH_TIMEOUT = 4000; // 4 seconds max wait
         let timeoutId: NodeJS.Timeout | null = null;
@@ -95,7 +94,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setLoading(false);
             fetchingRef.current = false;
-            console.log('[AuthContext] Profile fetch complete');
         }
     };
 
@@ -157,8 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         profile,
         loading,
-        role: profile?.role,
-        schoolId: profile?.schoolId
+        role: (profile?.role || user?.user_metadata?.role)?.toLowerCase(),
+        schoolId: profile?.schoolId || user?.user_metadata?.schoolId
     }), [user, profile, loading]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

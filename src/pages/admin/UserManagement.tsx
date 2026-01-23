@@ -38,7 +38,7 @@ export const UserManagement = () => {
     );
   }
 
-  if (role !== 'admin') {
+  if (role?.toLowerCase() !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -287,8 +287,8 @@ export const UserManagement = () => {
 
             {resetStatus && (
               <div className={`mb-4 p-4 rounded-lg flex gap-3 ${resetStatus.type === 'success'
-                  ? 'bg-green-500/10 border border-green-500/20'
-                  : 'bg-red-500/10 border border-red-500/20'
+                ? 'bg-green-500/10 border border-green-500/20'
+                : 'bg-red-500/10 border border-red-500/20'
                 }`}>
                 {resetStatus.type === 'success' ? (
                   <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
@@ -323,8 +323,8 @@ export const UserManagement = () => {
                 </div>
                 {newPassword && (
                   <p className={`text-xs mt-1 font-medium ${passwordStrength === 'weak' ? 'text-red-500' :
-                      passwordStrength === 'medium' ? 'text-yellow-500' :
-                        'text-green-500'
+                    passwordStrength === 'medium' ? 'text-yellow-500' :
+                      'text-green-500'
                     }`}>
                     Strength: {passwordStrength}
                   </p>
