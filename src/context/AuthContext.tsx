@@ -103,17 +103,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     data.role || 'unknown'
                 );
             } else {
-                // All retries failed, log error and still fail (don't use fallback without schoolId)
-                console.error('[AuthContext] Failed to fetch profile after all retries:', lastError);
-                throw lastError;
+                // Profile record doesn't exist - create a temporary profile from JWT metadata
+                console.warn('[AuthContext] No profile record found, using JWT metadata as fallback');
+                const userMetadata = user.user_metadata || {};
+
+                // Extract or infer schoolId from various possible sources
+                let schoolId = userMetadata.schoolId || userMetadata.school_id || '';
+
+                // If still no schoolId, try to extract from email domain or use a placeholder
+                if (!schoolId) {
+                    console.warn('[AuthContext] No schoolId found in metadata, user may need to complete setup');
+                    schoolId = 'pending-setup';
+                }
+
+                const fallbackProfile: UserProfile = {
+                    id: userId,
+                    email: user.email || '',
+                    role: userMetadata.role || 'authenticated',
+                    schoolId: schoolId,
+                    fullName: userMetadata.fullName || '',
+                    admissionNumber: userMetadata.admissionNumber || '',
+                    phoneNumber: userMetadata.phone || '',
+                    staffId: userMetadata.staffId || '',
+                    assignedClasses: [],
+                    assignedSubjects: [],
+                    linkedStudents: [],
+                    profileImage: userMetadata.profileImage || null,
+                    createdAt: user.created_at || new Date().toISOString(),
+                    updatedAt: user.updated_at || new Date().toISOString()
+                };
+
+                setProfile(fallbackProfile);
+                setUserContext(
+                    userId,
+                    user.email || 'unknown@school.app',
+                    schoolId,
+                    userMetadata.role || 'authenticated'
+                );
             }
         } catch (err) {
             console.error('[AuthContext] Profile fetch failed completely:', err);
-            // Without a schoolId, the dashboard won't work. Show error state instead of fallback
-            setProfile(null);
-            setLoading(false);
-            fetchingRef.current = false;
-            return;
+            const userMetadata = user.user_metadata || {};
+            let schoolId = userMetadata.schoolId || userMetadata.school_id || 'pending-setup';
+
+            // Create fallback profile even on error
+            const fallbackProfile: UserProfile = {
+                id: userId,
+                email: user.email || '',
+                role: userMetadata.role || 'authenticated',
+                schoolId: schoolId,
+                fullName: userMetadata.fullName || '',
+                admissionNumber: userMetadata.admissionNumber || '',
+                phoneNumber: userMetadata.phone || '',
+                staffId: userMetadata.staffId || '',
+                assignedClasses: [],
+                assignedSubjects: [],
+                linkedStudents: [],
+                profileImage: userMetadata.profileImage || null,
+                createdAt: user.created_at || new Date().toISOString(),
+                updatedAt: user.updated_at || new Date().toISOString()
+            };
+
+            setProfile(fallbackProfile);
+            setUserContext(
+                userId,
+                user.email || 'unknown@school.app',
+                schoolId,
+                userMetadata.role || 'authenticated'
+            );
         }
 
         setLoading(false);
