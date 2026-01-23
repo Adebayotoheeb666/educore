@@ -35,7 +35,19 @@ serve(async (req) => {
     }
 
     try {
-        const requestBody: InviteRequest = await req.json();
+        let requestBody: InviteRequest;
+        try {
+            requestBody = await req.json();
+        } catch (parseError) {
+            console.error("JSON parse error:", parseError);
+            return new Response(
+                JSON.stringify({ error: "Invalid JSON in request body" }),
+                {
+                    status: 400,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                }
+            );
+        }
 
         // Validate input
         if (!requestBody.email || !requestBody.schoolId || !requestBody.adminId) {
