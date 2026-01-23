@@ -311,7 +311,7 @@ export const AdminDashboard = () => {
         );
     }
 
-    if (!profile || !schoolId) {
+    if (!profile) {
         return (
             <div className="p-8 text-white">
                 <h2 className="text-2xl font-bold mb-4">Unable to Load Profile</h2>
@@ -322,6 +322,23 @@ export const AdminDashboard = () => {
                 >
                     Refresh Page
                 </button>
+            </div>
+        );
+    }
+
+    if (schoolId === 'pending-setup' || !schoolId) {
+        return (
+            <div className="p-8 text-white">
+                <div className="max-w-md bg-dark-card border border-white/10 rounded-2xl p-8">
+                    <h2 className="text-2xl font-bold mb-4">School Setup Required</h2>
+                    <p className="text-gray-400 mb-6">Your school hasn't been set up yet. Please contact your administrator or register your school to continue.</p>
+                    <button
+                        onClick={() => navigate('/login?mode=school-reg')}
+                        className="bg-teal-500 hover:bg-teal-400 text-dark-bg font-bold py-2 px-4 rounded w-full"
+                    >
+                        Register School
+                    </button>
+                </div>
             </div>
         );
     }
