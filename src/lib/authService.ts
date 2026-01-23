@@ -53,10 +53,14 @@ export const registerSchool = async (adminData: any, schoolData: any) => {
     });
 
     if (rpcError) {
-        // Cleanup auth user if RPC fails (optional but good practice)
-        // await supabase.auth.admin.deleteUser(uid); 
         throw rpcError;
     }
+
+    // 3. Update Auth User Metadata with the newly created school_id
+    // This allows the AuthContext to have schoolId even if the profile fetch fails or times out.
+    await supabase.auth.updateUser({
+        data: { schoolId: rpcData.school_id }
+    });
 
     return { schoolId: rpcData.school_id, uid };
 };

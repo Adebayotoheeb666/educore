@@ -125,7 +125,7 @@ export const TermManagement = () => {
         });
     };
 
-    if (role !== 'admin') {
+    if (role?.toLowerCase() !== 'admin') {
         return <div className="p-8 text-white">Access Denied: Admins Only</div>;
     }
 
@@ -181,8 +181,8 @@ export const TermManagement = () => {
                         <div
                             key={term.id}
                             className={`bg-dark-card border rounded-2xl p-6 transition-all ${term.isActive
-                                    ? 'border-teal-500/50 bg-teal-500/5'
-                                    : 'border-white/5 hover:border-white/10'
+                                ? 'border-teal-500/50 bg-teal-500/5'
+                                : 'border-white/5 hover:border-white/10'
                                 }`}
                         >
                             <div className="flex items-start justify-between mb-4">

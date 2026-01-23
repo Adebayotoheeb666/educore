@@ -16,7 +16,7 @@ export const ProtectedRoute = ({ children, allowedRoles }: { children: React.Rea
         return <Navigate to="/login" replace />;
     }
 
-    if (allowedRoles && role && !allowedRoles.includes(role)) {
+    if (allowedRoles && role && !allowedRoles.map(r => r.toLowerCase()).includes(role.toLowerCase())) {
         return (
             <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4">
                 <div className="text-center">

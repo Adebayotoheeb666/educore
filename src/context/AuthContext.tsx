@@ -21,24 +21,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchingRef = React.useRef(false);
 
     const fetchProfile = async (userId: string) => {
-        if (fetchingRef.current) {
-            console.log('[AuthContext] Already fetching profile, skipping...');
-            return;
-        }
+        if (fetchingRef.current) return;
         fetchingRef.current = true;
-        console.log('[AuthContext] Starting profile fetch for:', userId);
 
-        // Safety timeout to prevent infinite loading
+        const timeoutDuration = 7000;
+
         const timeoutId = setTimeout(() => {
-            if (loading) {
-                console.warn('[AuthContext] Profile fetch timed out after 10s');
-                setLoading(false);
-                fetchingRef.current = false;
-            }
-        }, 10000);
+            console.warn(`[AuthContext] Profile fetch timed out after ${timeoutDuration}ms. Using metadata fallback.`);
+            setLoading(false);
+            fetchingRef.current = false;
+        }, timeoutDuration);
 
         try {
-            console.log('[AuthContext] Executing Supabase query for:', userId);
             const { data, error } = await supabase
                 .from('users')
                 .select('*')
@@ -48,9 +42,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (error) {
                 console.error('[AuthContext] Error fetching profile:', error);
                 setProfile(null);
-                setLoading(false); // Immediate resolution on error
+                setLoading(false);
             } else if (data) {
-                console.log('[AuthContext] Profile fetched successfully:', data.role);
                 const mappedProfile: UserProfile = {
                     id: data.id,
                     email: data.email,
@@ -69,21 +62,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 };
 
                 setProfile(mappedProfile);
-                setUserContext(
-                    data.id,
-                    data.email || 'unknown@school.app',
-                    data.school_id || 'unknown-school',
-                    data.role || 'unknown'
-                );
-                setLoading(false); // Success
+                setUserContext(data.id, data.email || '', data.school_id || '', data.role || '');
+                setLoading(false);
             }
-        } catch (err) {
-            console.error('[AuthContext] Unexpected error fetching profile:', err);
+        } catch (err: any) {
+            console.error('[AuthContext] Unexpected fetch error:', err);
             setLoading(false);
         } finally {
             clearTimeout(timeoutId);
             fetchingRef.current = false;
-            console.log('[AuthContext] Profile fetch complete');
         }
     };
 
@@ -110,8 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         profile,
         loading,
-        role: profile?.role,
-        schoolId: profile?.schoolId
+        role: (profile?.role || user?.user_metadata?.role)?.toLowerCase(),
+        schoolId: profile?.schoolId || user?.user_metadata?.schoolId
     }), [user, profile, loading]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
