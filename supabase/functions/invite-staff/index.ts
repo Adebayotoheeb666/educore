@@ -200,11 +200,14 @@ serve(async (req) => {
             }
         );
     } catch (error) {
-        console.error("Unexpected error:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("Unexpected error in invite-staff function:", errorMessage, error);
+
         return new Response(
             JSON.stringify({
                 error: "Internal server error",
-                message: error instanceof Error ? error.message : String(error),
+                message: errorMessage || "Unknown error occurred",
+                details: error instanceof Error ? error.stack : undefined
             }),
             {
                 status: 500,
