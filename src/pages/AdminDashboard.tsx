@@ -311,6 +311,21 @@ export const AdminDashboard = () => {
         );
     }
 
+    if (!profile || !schoolId) {
+        return (
+            <div className="p-8 text-white">
+                <h2 className="text-2xl font-bold mb-4">Unable to Load Profile</h2>
+                <p className="text-gray-400 mb-4">We couldn't fetch your profile data. Please refresh the page or contact support.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="bg-teal-500 hover:bg-teal-400 text-dark-bg font-bold py-2 px-4 rounded"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
+
     if (role !== 'admin') {
         return <div className="p-8 text-white">Access Denied: Admins Only</div>;
     }
