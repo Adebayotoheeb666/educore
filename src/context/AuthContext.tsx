@@ -184,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(currentUser);
 
             if (currentUser) {
-                await fetchProfile(currentUser.id);
+                await fetchProfile(currentUser.id, currentUser);
             } else {
                 setProfile(null);
                 setLoading(false);
