@@ -28,13 +28,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchingRef.current = true;
         console.log('[AuthContext] Starting profile fetch for:', userId);
 
+        const FETCH_TIMEOUT = 4000; // 4 seconds max wait
+        let timeoutId: NodeJS.Timeout | null = null;
+        let timedOut = false;
+
         try {
             console.log('[AuthContext] Attempting to fetch profile from database');
-            const { data, error } = await supabase
+
+            // Wrap the fetch with a timeout
+            const fetchPromise = supabase
                 .from('users')
                 .select('*')
                 .eq('id', userId)
                 .single();
+
+            const timeoutPromise = new Promise((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    timedOut = true;
+                    reject(new Error('Profile fetch timeout'));
+                }, FETCH_TIMEOUT);
+            });
+
+            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+
+            if (timeoutId) clearTimeout(timeoutId);
 
             if (data) {
                 console.log('[AuthContext] Profile fetched successfully:', data.role);
@@ -68,76 +85,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return;
             }
 
-            // Profile record doesn't exist or error occurred - use fallback
-            console.warn('[AuthContext] Profile record not found or error:', error?.message);
-            const userMetadata = user.user_metadata || {};
-
-            // Extract schoolId from metadata
-            let schoolId = userMetadata.schoolId || userMetadata.school_id || '';
-            if (!schoolId) {
-                console.warn('[AuthContext] No schoolId in metadata, using pending-setup');
-                schoolId = 'pending-setup';
-            }
-
-            const fallbackProfile: UserProfile = {
-                id: userId,
-                email: user.email || '',
-                role: userMetadata.role || 'authenticated',
-                schoolId: schoolId,
-                fullName: userMetadata.fullName || '',
-                admissionNumber: userMetadata.admissionNumber || '',
-                phoneNumber: userMetadata.phone || '',
-                staffId: userMetadata.staffId || '',
-                assignedClasses: [],
-                assignedSubjects: [],
-                linkedStudents: [],
-                profileImage: userMetadata.profileImage || null,
-                createdAt: user.created_at || new Date().toISOString(),
-                updatedAt: user.updated_at || new Date().toISOString()
-            };
-
-            setProfile(fallbackProfile);
-            setUserContext(
-                userId,
-                user.email || 'unknown@school.app',
-                schoolId,
-                userMetadata.role || 'authenticated'
-            );
+            // No data or error - use fallback
+            console.warn('[AuthContext] Using fallback profile, timeout:', timedOut, 'error:', error?.message);
+            useFallbackProfile(userId, user);
         } catch (err) {
-            console.error('[AuthContext] Profile fetch exception:', err);
-            // Last resort fallback
-            const userMetadata = user.user_metadata || {};
-            let schoolId = userMetadata.schoolId || userMetadata.school_id || 'pending-setup';
-
-            const fallbackProfile: UserProfile = {
-                id: userId,
-                email: user.email || '',
-                role: userMetadata.role || 'authenticated',
-                schoolId: schoolId,
-                fullName: userMetadata.fullName || '',
-                admissionNumber: userMetadata.admissionNumber || '',
-                phoneNumber: userMetadata.phone || '',
-                staffId: userMetadata.staffId || '',
-                assignedClasses: [],
-                assignedSubjects: [],
-                linkedStudents: [],
-                profileImage: userMetadata.profileImage || null,
-                createdAt: user.created_at || new Date().toISOString(),
-                updatedAt: user.updated_at || new Date().toISOString()
-            };
-
-            setProfile(fallbackProfile);
-            setUserContext(
-                userId,
-                user.email || 'unknown@school.app',
-                schoolId,
-                userMetadata.role || 'authenticated'
-            );
+            console.warn('[AuthContext] Profile fetch failed, using fallback:', err instanceof Error ? err.message : err);
+            if (timeoutId) clearTimeout(timeoutId);
+            useFallbackProfile(userId, user);
         } finally {
             setLoading(false);
             fetchingRef.current = false;
             console.log('[AuthContext] Profile fetch complete');
         }
+    };
+
+    const useFallbackProfile = (userId: string, user: User) => {
+        const userMetadata = user.user_metadata || {};
+        let schoolId = userMetadata.schoolId || userMetadata.school_id || '';
+
+        if (!schoolId) {
+            console.warn('[AuthContext] No schoolId in metadata, using pending-setup');
+            schoolId = 'pending-setup';
+        }
+
+        const fallbackProfile: UserProfile = {
+            id: userId,
+            email: user.email || '',
+            role: userMetadata.role || 'authenticated',
+            schoolId: schoolId,
+            fullName: userMetadata.fullName || '',
+            admissionNumber: userMetadata.admissionNumber || '',
+            phoneNumber: userMetadata.phone || '',
+            staffId: userMetadata.staffId || '',
+            assignedClasses: [],
+            assignedSubjects: [],
+            linkedStudents: [],
+            profileImage: userMetadata.profileImage || null,
+            createdAt: user.created_at || new Date().toISOString(),
+            updatedAt: user.updated_at || new Date().toISOString()
+        };
+
+        setProfile(fallbackProfile);
+        setUserContext(
+            userId,
+            user.email || 'unknown@school.app',
+            schoolId,
+            userMetadata.role || 'authenticated'
+        );
     };
 
     useEffect(() => {
