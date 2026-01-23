@@ -28,89 +28,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchingRef.current = true;
         console.log('[AuthContext] Starting profile fetch for:', userId);
 
-        let timeoutOccurred = false;
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY = 1000; // 1 second between retries
+        const TIMEOUT_PER_ATTEMPT = 3000; // 3 seconds per attempt
 
-        // Safety timeout to prevent infinite loading - use JWT metadata as fallback
-        const timeoutId = setTimeout(() => {
-            timeoutOccurred = true;
-            console.warn('[AuthContext] Profile fetch timed out after 7s, using JWT metadata fallback');
+        const attemptFetch = async (attemptNumber: number): Promise<any> => {
+            return new Promise((resolve, reject) => {
+                const timeoutId = setTimeout(() => {
+                    reject(new Error('Fetch timeout'));
+                }, TIMEOUT_PER_ATTEMPT);
 
-            // Use JWT user_metadata as fallback
-            const userMetadata = user.user_metadata || {};
-            const fallbackProfile: UserProfile = {
-                id: userId,
-                email: user.email || '',
-                role: userMetadata.role || 'authenticated',
-                schoolId: userMetadata.schoolId || '',
-                fullName: userMetadata.fullName || '',
-                admissionNumber: userMetadata.admissionNumber || '',
-                phoneNumber: userMetadata.phone || '',
-                staffId: userMetadata.staffId || '',
-                assignedClasses: [],
-                assignedSubjects: [],
-                linkedStudents: [],
-                profileImage: userMetadata.profileImage || null,
-                createdAt: user.created_at || new Date().toISOString(),
-                updatedAt: user.updated_at || new Date().toISOString()
-            };
-
-            setProfile(fallbackProfile);
-            setUserContext(
-                userId,
-                user.email || 'unknown@school.app',
-                userMetadata.schoolId || 'unknown-school',
-                userMetadata.role || 'authenticated'
-            );
-            setLoading(false);
-            fetchingRef.current = false;
-        }, 7000);
+                supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', userId)
+                    .single()
+                    .then(({ data, error }) => {
+                        clearTimeout(timeoutId);
+                        if (error) reject(error);
+                        else resolve(data);
+                    })
+                    .catch(err => {
+                        clearTimeout(timeoutId);
+                        reject(err);
+                    });
+            });
+        };
 
         try {
-            if (timeoutOccurred) return;
+            console.log('[AuthContext] Attempting to fetch profile from database');
+            let data = null;
+            let lastError = null;
 
-            console.log('[AuthContext] Executing Supabase query for:', userId);
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', userId)
-                .single();
+            // Try up to MAX_RETRIES times
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    console.log(`[AuthContext] Fetch attempt ${attempt}/${MAX_RETRIES}`);
+                    data = await attemptFetch(attempt);
+                    console.log('[AuthContext] Profile fetched successfully:', data.role);
+                    break; // Success, exit retry loop
+                } catch (err) {
+                    lastError = err;
+                    console.warn(`[AuthContext] Attempt ${attempt} failed:`, err);
+                    if (attempt < MAX_RETRIES) {
+                        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                    }
+                }
+            }
 
-            clearTimeout(timeoutId);
-
-            if (timeoutOccurred) return; // Timeout already handled
-
-            if (error) {
-                console.error('[AuthContext] Error fetching profile:', error);
-
-                // Use JWT metadata as fallback
-                const userMetadata = user.user_metadata || {};
-                const fallbackProfile: UserProfile = {
-                    id: userId,
-                    email: user.email || '',
-                    role: userMetadata.role || 'authenticated',
-                    schoolId: userMetadata.schoolId || '',
-                    fullName: userMetadata.fullName || '',
-                    admissionNumber: userMetadata.admissionNumber || '',
-                    phoneNumber: userMetadata.phone || '',
-                    staffId: userMetadata.staffId || '',
-                    assignedClasses: [],
-                    assignedSubjects: [],
-                    linkedStudents: [],
-                    profileImage: userMetadata.profileImage || null,
-                    createdAt: user.created_at || new Date().toISOString(),
-                    updatedAt: user.updated_at || new Date().toISOString()
-                };
-
-                setProfile(fallbackProfile);
-                setUserContext(
-                    userId,
-                    user.email || 'unknown@school.app',
-                    userMetadata.schoolId || 'unknown-school',
-                    userMetadata.role || 'authenticated'
-                );
-                setLoading(false);
-            } else if (data) {
-                console.log('[AuthContext] Profile fetched successfully:', data.role);
+            if (data) {
+                // Successfully fetched from database
                 const mappedProfile: UserProfile = {
                     id: data.id,
                     email: data.email,
@@ -135,45 +102,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     data.school_id || 'unknown-school',
                     data.role || 'unknown'
                 );
-                setLoading(false);
+            } else {
+                // All retries failed, log error and still fail (don't use fallback without schoolId)
+                console.error('[AuthContext] Failed to fetch profile after all retries:', lastError);
+                throw lastError;
             }
         } catch (err) {
-            console.error('[AuthContext] Unexpected error fetching profile:', err);
-            clearTimeout(timeoutId);
-
-            if (!timeoutOccurred) {
-                // Use JWT metadata as fallback
-                const userMetadata = user.user_metadata || {};
-                const fallbackProfile: UserProfile = {
-                    id: userId,
-                    email: user.email || '',
-                    role: userMetadata.role || 'authenticated',
-                    schoolId: userMetadata.schoolId || '',
-                    fullName: userMetadata.fullName || '',
-                    admissionNumber: userMetadata.admissionNumber || '',
-                    phoneNumber: userMetadata.phone || '',
-                    staffId: userMetadata.staffId || '',
-                    assignedClasses: [],
-                    assignedSubjects: [],
-                    linkedStudents: [],
-                    profileImage: userMetadata.profileImage || null,
-                    createdAt: user.created_at || new Date().toISOString(),
-                    updatedAt: user.updated_at || new Date().toISOString()
-                };
-
-                setProfile(fallbackProfile);
-                setUserContext(
-                    userId,
-                    user.email || 'unknown@school.app',
-                    userMetadata.schoolId || 'unknown-school',
-                    userMetadata.role || 'authenticated'
-                );
-            }
+            console.error('[AuthContext] Profile fetch failed completely:', err);
+            // Without a schoolId, the dashboard won't work. Show error state instead of fallback
+            setProfile(null);
             setLoading(false);
-        } finally {
             fetchingRef.current = false;
-            console.log('[AuthContext] Profile fetch complete');
+            return;
         }
+
+        setLoading(false);
+        fetchingRef.current = false;
+        console.log('[AuthContext] Profile fetch complete');
     };
 
     useEffect(() => {
