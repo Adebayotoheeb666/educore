@@ -20,30 +20,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
     const fetchingRef = React.useRef(false);
 
-    const fetchProfile = async (userId: string) => {
-        if (fetchingRef.current) return;
+    const fetchProfile = async (userId: string, user: User) => {
+        if (fetchingRef.current) {
+            console.log('[AuthContext] Already fetching profile, skipping...');
+            return;
+        }
         fetchingRef.current = true;
 
-        const timeoutDuration = 7000;
-
-        const timeoutId = setTimeout(() => {
-            console.warn(`[AuthContext] Profile fetch timed out after ${timeoutDuration}ms. Using metadata fallback.`);
-            setLoading(false);
-            fetchingRef.current = false;
-        }, timeoutDuration);
+        const FETCH_TIMEOUT = 4000; // 4 seconds max wait
+        let timeoutId: NodeJS.Timeout | null = null;
+        let timedOut = false;
 
         try {
-            const { data, error } = await supabase
+            console.log('[AuthContext] Attempting to fetch profile from database');
+
+            // Wrap the fetch with a timeout
+            const fetchPromise = supabase
                 .from('users')
                 .select('*')
                 .eq('id', userId)
                 .single();
 
-            if (error) {
-                console.error('[AuthContext] Error fetching profile:', error);
-                setProfile(null);
-                setLoading(false);
-            } else if (data) {
+            const timeoutPromise = new Promise((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    timedOut = true;
+                    reject(new Error('Profile fetch timeout'));
+                }, FETCH_TIMEOUT);
+            });
+
+            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+
+            if (timeoutId) clearTimeout(timeoutId);
+
+            if (data) {
+                console.log('[AuthContext] Profile fetched successfully:', data.role);
+                // Successfully fetched from database
                 const mappedProfile: UserProfile = {
                     id: data.id,
                     email: data.email,
@@ -62,16 +73,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 };
 
                 setProfile(mappedProfile);
-                setUserContext(data.id, data.email || '', data.school_id || '', data.role || '');
+                setUserContext(
+                    data.id,
+                    data.email || 'unknown@school.app',
+                    data.school_id || 'unknown-school',
+                    data.role || 'unknown'
+                );
                 setLoading(false);
+                fetchingRef.current = false;
+                return;
             }
-        } catch (err: any) {
-            console.error('[AuthContext] Unexpected fetch error:', err);
-            setLoading(false);
+
+            // No data or error - use fallback
+            console.warn('[AuthContext] Using fallback profile, timeout:', timedOut, 'error:', error?.message);
+            useFallbackProfile(userId, user);
+        } catch (err) {
+            console.warn('[AuthContext] Profile fetch failed, using fallback:', err instanceof Error ? err.message : err);
+            if (timeoutId) clearTimeout(timeoutId);
+            useFallbackProfile(userId, user);
         } finally {
-            clearTimeout(timeoutId);
+            setLoading(false);
             fetchingRef.current = false;
         }
+    };
+
+    const useFallbackProfile = (userId: string, user: User) => {
+        const userMetadata = user.user_metadata || {};
+        let schoolId = userMetadata.schoolId || userMetadata.school_id || '';
+
+        if (!schoolId) {
+            console.warn('[AuthContext] No schoolId in metadata, using pending-setup');
+            schoolId = 'pending-setup';
+        }
+
+        const fallbackProfile: UserProfile = {
+            id: userId,
+            email: user.email || '',
+            role: userMetadata.role || 'authenticated',
+            schoolId: schoolId,
+            fullName: userMetadata.fullName || '',
+            admissionNumber: userMetadata.admissionNumber || '',
+            phoneNumber: userMetadata.phone || '',
+            staffId: userMetadata.staffId || '',
+            assignedClasses: [],
+            assignedSubjects: [],
+            linkedStudents: [],
+            profileImage: userMetadata.profileImage || null,
+            createdAt: user.created_at || new Date().toISOString(),
+            updatedAt: user.updated_at || new Date().toISOString()
+        };
+
+        setProfile(fallbackProfile);
+        setUserContext(
+            userId,
+            user.email || 'unknown@school.app',
+            schoolId,
+            userMetadata.role || 'authenticated'
+        );
     };
 
     useEffect(() => {
@@ -82,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(currentUser);
 
             if (currentUser) {
-                await fetchProfile(currentUser.id);
+                await fetchProfile(currentUser.id, currentUser);
             } else {
                 setProfile(null);
                 setLoading(false);

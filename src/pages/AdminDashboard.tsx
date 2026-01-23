@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Users,
     BookOpen,
@@ -26,6 +27,7 @@ import { ToastContainer, type ToastProps } from '../components/common/Toast';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 
 export const AdminDashboard = () => {
+    const navigate = useNavigate();
     const { schoolId, role, user, profile, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState<'staff' | 'students' | 'classes' | 'subjects'>('staff');
     const [staff, setStaff] = useState<any[]>([]);
@@ -312,7 +314,39 @@ export const AdminDashboard = () => {
         );
     }
 
-    if (role?.toLowerCase() !== 'admin') {
+    if (!profile) {
+        return (
+            <div className="p-8 text-white">
+                <h2 className="text-2xl font-bold mb-4">Unable to Load Profile</h2>
+                <p className="text-gray-400 mb-4">We couldn't fetch your profile data. Please refresh the page or contact support.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="bg-teal-500 hover:bg-teal-400 text-dark-bg font-bold py-2 px-4 rounded"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
+
+    if (schoolId === 'pending-setup' || !schoolId) {
+        return (
+            <div className="p-8 text-white">
+                <div className="max-w-md bg-dark-card border border-white/10 rounded-2xl p-8">
+                    <h2 className="text-2xl font-bold mb-4">School Setup Required</h2>
+                    <p className="text-gray-400 mb-6">Your school hasn't been set up yet. Please contact your administrator or register your school to continue.</p>
+                    <button
+                        onClick={() => navigate('/login?mode=school-reg')}
+                        className="bg-teal-500 hover:bg-teal-400 text-dark-bg font-bold py-2 px-4 rounded w-full"
+                    >
+                        Register School
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (role !== 'admin') {
         return <div className="p-8 text-white">Access Denied: Admins Only</div>;
     }
 
