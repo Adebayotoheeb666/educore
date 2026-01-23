@@ -35,7 +35,19 @@ serve(async (req) => {
     }
 
     try {
-        const requestBody: InviteRequest = await req.json();
+        let requestBody: InviteRequest;
+        try {
+            requestBody = await req.json();
+        } catch (parseError) {
+            console.error("JSON parse error:", parseError);
+            return new Response(
+                JSON.stringify({ error: "Invalid JSON in request body" }),
+                {
+                    status: 400,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                }
+            );
+        }
 
         // Validate input
         if (!requestBody.email || !requestBody.schoolId || !requestBody.adminId) {
@@ -49,20 +61,29 @@ serve(async (req) => {
         }
 
         // Initialize admin client with service role (server-only)
+        if (!supabaseUrl || !supabaseServiceKey) {
+            throw new Error("Missing Supabase environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
+        }
+
         const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-        // 1. Check if user already exists in Auth
-        const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
-        const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === requestBody.email.toLowerCase().trim());
-
-        let authId = existingUser?.id;
-
-        // 2. Generate or use provided staff ID
+        // 1. Generate or use provided staff ID FIRST (so it's always available)
         const staffId = requestBody.staffId || (() => {
             const staffPrefix = requestBody.schoolId.substring(0, 3).toUpperCase();
             const randomSuffix = Math.floor(1000 + Math.random() * 9000);
             return `STF-${staffPrefix}-${randomSuffix}`;
         })();
+
+        // 2. Check if user already exists in Auth
+        const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
+        if (listError) {
+            console.error("Error listing users:", listError);
+            throw new Error(`Failed to check existing users: ${listError.message}`);
+        }
+
+        const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === requestBody.email.toLowerCase().trim());
+
+        let authId = existingUser?.id;
 
         if (!existingUser) {
             // 3. Verify admin creating this staff is actually admin of the school
@@ -140,19 +161,25 @@ serve(async (req) => {
         }
 
         // 6. Log action (audit trail)
-        await adminClient.from("audit_logs").insert({
+        const { error: auditError } = await adminClient.from("audit_logs").insert({
             school_id: requestBody.schoolId,
-            user_id: requestBody.adminId, // Database uses user_id, function used actor_id (mismatch)
+            user_id: requestBody.adminId,
             action: "staff_invited",
             resource_type: "staff",
             resource_id: authId,
-            metadata: { // Database uses metadata, function used details (mismatch)
+            metadata: {
                 email: requestBody.email,
                 staff_id: staffId,
                 role: requestBody.role,
             },
-            timestamp: new Date().toISOString(), // Database uses timestamp, function used created_at (mismatch)
+            timestamp: new Date().toISOString(),
         });
+
+        if (auditError) {
+            console.error("Audit log error:", auditError);
+            // Don't fail the entire operation if audit logging fails
+            // Log the error but continue
+        }
 
         // 7. Success
         return new Response(
@@ -173,11 +200,14 @@ serve(async (req) => {
             }
         );
     } catch (error) {
-        console.error("Unexpected error:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("Unexpected error in invite-staff function:", errorMessage, error);
+
         return new Response(
             JSON.stringify({
                 error: "Internal server error",
-                message: error instanceof Error ? error.message : String(error),
+                message: errorMessage || "Unknown error occurred",
+                details: error instanceof Error ? error.stack : undefined
             }),
             {
                 status: 500,
