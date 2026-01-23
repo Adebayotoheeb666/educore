@@ -161,19 +161,25 @@ serve(async (req) => {
         }
 
         // 6. Log action (audit trail)
-        await adminClient.from("audit_logs").insert({
+        const { error: auditError } = await adminClient.from("audit_logs").insert({
             school_id: requestBody.schoolId,
-            user_id: requestBody.adminId, // Database uses user_id, function used actor_id (mismatch)
+            user_id: requestBody.adminId,
             action: "staff_invited",
             resource_type: "staff",
             resource_id: authId,
-            metadata: { // Database uses metadata, function used details (mismatch)
+            metadata: {
                 email: requestBody.email,
                 staff_id: staffId,
                 role: requestBody.role,
             },
-            timestamp: new Date().toISOString(), // Database uses timestamp, function used created_at (mismatch)
+            timestamp: new Date().toISOString(),
         });
+
+        if (auditError) {
+            console.error("Audit log error:", auditError);
+            // Don't fail the entire operation if audit logging fails
+            // Log the error but continue
+        }
 
         // 7. Success
         return new Response(
