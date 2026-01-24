@@ -95,7 +95,8 @@ export const ClassManager = () => {
             if (error) throw error;
             setSchoolStudents(data || []);
         } catch (err) {
-            console.error("Error fetching school students:", err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error("Error fetching school students:", errorMsg, err);
         }
     };
 
