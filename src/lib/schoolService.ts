@@ -5,18 +5,25 @@ import { supabase } from './supabase';
  * Returns the school ID (UUID) and other details
  */
 export const findSchoolByName = async (schoolName: string) => {
-    const { data, error } = await supabase
-        .from('schools')
-        .select('id, name, address')
-        .ilike('name', `%${schoolName}%`)
-        .limit(5);
+    try {
+        const { data, error } = await supabase
+            .from('schools')
+            .select('id, name, address')
+            .ilike('name', `%${schoolName}%`)
+            .limit(5);
 
-    if (error) {
-        console.error('Error finding school:', error);
+        if (error) {
+            console.error('Error finding school:', error);
+            // Return empty array on error - the caller will handle it
+            // This could be due to RLS restrictions on unauthenticated access
+            return [];
+        }
+
+        return data || [];
+    } catch (err) {
+        console.error('Exception finding school:', err);
         return [];
     }
-
-    return data || [];
 };
 
 /**
