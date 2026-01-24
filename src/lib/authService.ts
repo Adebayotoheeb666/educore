@@ -144,30 +144,52 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         return;
     }
 
-    // 3. Migrate Related Records (Partial Attempt)
+    // 3. Migrate Related Records
     if (placeholder.id) {
-        // Migrate Classes
-        await supabase
-            .from('student_classes')
-            .update({ student_id: authUid })
-            .eq('student_id', placeholder.id);
+        // Migrate Classes (Students)
+        if (role === 'student') {
+            const { error: classError } = await supabase
+                .from('student_classes')
+                .update({ student_id: authUid })
+                .eq('student_id', placeholder.id);
 
-        // Migrate Staff Assignments (if teacher)
-        if (role === 'staff') {
-            // Assuming table name is staff_assignments based on types.ts
-            const { error: assignError } = await supabase
-                .from('staff_assignments')
-                .update({ staff_id: authUid })
-                .eq('staff_id', placeholder.id);
-
-            if (assignError) console.warn("Staff assignment migration warning:", assignError);
+            if (classError) {
+                console.warn("Student class migration warning:", classError);
+            }
         }
 
-        // Finally, delete the old placeholder
-        await supabase.from('users').delete().eq('id', placeholder.id);
+        // Migrate Staff Assignments (if teacher) using RPC for secure migration
+        if (role === 'staff') {
+            try {
+                const { data, error: rpcError } = await supabase.rpc('link_staff_profile_after_activation', {
+                    school_id: schoolId,
+                    auth_uid: authUid,
+                    staff_id_identifier: identifier,
+                    auth_user_role: role
+                });
+
+                if (rpcError) {
+                    console.error("Staff profile linking RPC error:", rpcError);
+                } else if (data && !data.success) {
+                    console.warn("Staff profile linking failed:", data.message);
+                } else {
+                    console.log("Staff profile linked successfully:", data?.message);
+                }
+            } catch (err) {
+                console.error("Staff profile linking exception:", err);
+                // Fallback: Try direct update (may fail due to RLS)
+                await supabase
+                    .from('staff_assignments')
+                    .update({ staff_id: authUid })
+                    .eq('staff_id', placeholder.id);
+            }
+        } else {
+            // For other roles, just delete the old placeholder
+            await supabase.from('users').delete().eq('id', placeholder.id);
+        }
     }
 
-    // Special case for parents: If they logged in with student creds, 
+    // Special case for parents: If they logged in with student creds,
     // we might need to ensure they have the 'parent' role if they intended to be in the parent portal.
     // However, the current logic assumes Admission Number login is primarily for students.
     // If a parent uses it, they effectively "are" the student for that session.
