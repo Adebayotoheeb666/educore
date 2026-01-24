@@ -43,6 +43,7 @@ export const AdminDashboard = () => {
     const [showStaffCreation, setShowStaffCreation] = useState(false);
     const [showSubjectModal, setShowSubjectModal] = useState(false);
     const [showClassModal, setShowClassModal] = useState(false);
+    const [showSchoolSettings, setShowSchoolSettings] = useState(false);
 
     const [selectedStaffForAssignment, setSelectedStaffForAssignment] = useState<{ id: string; name: string } | null>(null);
     const [selectedStudentForLinking, setSelectedStudentForLinking] = useState<{ id: string; name: string } | null>(null);
