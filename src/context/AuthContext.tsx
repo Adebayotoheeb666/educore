@@ -55,6 +55,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (data) {
                 console.log('[AuthContext] Profile fetched successfully:', data.role);
+
+                // Check if profile has critical missing fields
+                const isBrokenProfile =
+                    !data.school_id ||
+                    (data.role === 'staff' && !data.staff_id) ||
+                    (data.role === 'student' && !data.admission_number);
+
+                // If profile is broken, attempt repair from Auth metadata
+                if (isBrokenProfile) {
+                    console.log('[AuthContext] Broken profile detected, attempting repair from Auth metadata...');
+                    await repairProfileFromAuthMetadata(userId, user);
+                    // Re-fetch after repair
+                    const { data: repairedData, error: refetchError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', userId)
+                        .single();
+
+                    if (!refetchError && repairedData) {
+                        console.log('[AuthContext] Profile repaired and re-fetched');
+                        data = repairedData;
+                    }
+                }
+
                 // Successfully fetched from database
                 const mappedProfile: UserProfile = {
                     id: data.id,
