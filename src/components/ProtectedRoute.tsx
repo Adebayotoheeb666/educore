@@ -17,15 +17,7 @@ export const ProtectedRoute = ({ children, allowedRoles }: { children: React.Rea
     }
 
     if (allowedRoles && role && !allowedRoles.includes(role)) {
-        return (
-            <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4">
-                <div className="text-center">
-                    <h1 className="text-3xl font-bold text-red-500 mb-2">Access Denied</h1>
-                    <p className="text-gray-400 mb-4">You do not have permission to view this page.</p>
-                    <Navigate to="/" replace />
-                </div>
-            </div>
-        );
+        return <Navigate to="/dashboard" replace />;
     }
 
     return <>{children}</>;
