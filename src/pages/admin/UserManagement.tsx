@@ -34,8 +34,8 @@ export const UserManagement = () => {
   const [fixingStaffId, setFixingStaffId] = useState(false);
   const [fixStatus, setFixStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Only admins can access this page
-  if (loading) {
+  // Handle auth loading first
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-dark-bg flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
@@ -43,6 +43,7 @@ export const UserManagement = () => {
     );
   }
 
+  // Check authorization
   if (role?.toLowerCase() !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
