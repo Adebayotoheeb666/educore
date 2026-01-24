@@ -14,6 +14,8 @@ import {
   Shield,
   Zap,
   Download,
+  RefreshCw,
+  Clock,
 } from 'lucide-react';
 
 interface AuditResult {
@@ -27,6 +29,8 @@ export const StaffAuthAudit = () => {
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [fixing, setFixing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastAuditTime, setLastAuditTime] = useState<Date | null>(null);
   const [results, setResults] = useState<{
     success: number;
     failed: number;
@@ -58,8 +62,10 @@ export const StaffAuthAudit = () => {
       try {
         const result = await auditStaffAuthAccounts(schoolId);
         setAuditResult(result);
+        setLastAuditTime(new Date());
       } catch (err) {
         console.error('Audit error:', err);
+        setErrorMessage('Failed to perform audit. Please try refreshing.');
       } finally {
         setLoading(false);
       }
@@ -67,6 +73,23 @@ export const StaffAuthAudit = () => {
 
     performAudit();
   }, [schoolId]);
+
+  const handleManualRefresh = async () => {
+    if (!schoolId || refreshing) return;
+
+    setRefreshing(true);
+    setErrorMessage(null);
+    try {
+      const result = await auditStaffAuthAccounts(schoolId);
+      setAuditResult(result);
+      setLastAuditTime(new Date());
+    } catch (err) {
+      console.error('Refresh error:', err);
+      setErrorMessage('Failed to refresh audit. Please try again.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleBulkFix = async () => {
     if (!schoolId) return;
@@ -163,9 +186,27 @@ export const StaffAuthAudit = () => {
   return (
     <div className="space-y-6 pb-20">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Shield className="w-6 h-6 text-teal-500" />
-        <h1 className="text-3xl font-bold text-white">Staff Authentication Audit</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Shield className="w-6 h-6 text-teal-500" />
+          <h1 className="text-3xl font-bold text-white">Staff Authentication Audit</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          {lastAuditTime && (
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <Clock className="w-4 h-4" />
+              <span>Last updated: {lastAuditTime.toLocaleTimeString()}</span>
+            </div>
+          )}
+          <button
+            onClick={handleManualRefresh}
+            disabled={loading || refreshing}
+            className="flex items-center gap-2 px-3 py-2 bg-dark-card border border-dark-input text-gray-300 rounded-lg hover:bg-dark-input transition disabled:opacity-50 text-sm"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -355,8 +396,22 @@ export const StaffAuthAudit = () => {
 
       {/* Loading State */}
       {loading && (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+        <div className="space-y-4">
+          {/* Loading Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-dark-card border border-dark-input rounded-lg p-6 animate-pulse">
+                <div className="h-4 bg-gray-700 rounded w-1/2 mb-3"></div>
+                <div className="h-8 bg-gray-700 rounded w-1/3"></div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-dark-card border border-dark-input rounded-lg p-8">
+            <div className="space-y-3">
+              <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+            </div>
+          </div>
         </div>
       )}
 

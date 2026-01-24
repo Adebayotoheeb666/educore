@@ -1,4 +1,4 @@
-import { X, Copy, Check, AlertCircle } from 'lucide-react';
+import { Copy, Check, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -125,7 +125,7 @@ export const SchoolSettingsModal = ({ schoolId, onClose }: SchoolSettingsModalPr
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
                 <h4 className="text-sm font-bold text-blue-400 mb-2">How to Share With Staff</h4>
                 <p className="text-blue-200 text-sm mb-3">
-                    When staff members log in, they should enter the School UUID above in the "School ID" field. 
+                    When staff members log in, they should enter the School UUID above in the "School ID" field.
                     They can also enter the school name if they don't know the UUID.
                 </p>
                 <ul className="text-blue-200 text-xs space-y-1 list-disc list-inside">

@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { adminResetUserPassword } from '../../lib/passwordResetService';
 import { logAction } from '../../lib/auditService';
-import { syncStaffIdFromMetadata } from '../../lib/staffService';
+
 import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle, Zap } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 

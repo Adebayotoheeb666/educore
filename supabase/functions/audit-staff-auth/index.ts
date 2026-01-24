@@ -48,41 +48,68 @@ serve(async (req) => {
 
     if (staffError) throw staffError;
 
-    // Get only the staff we found to check auth accounts more efficiently
-    // Try to look up auth users by email only (faster than listUsers)
-    const staffEmails = (allStaff || []).map(s => s.email).filter(Boolean);
+    // Early exit if no staff
+    if (!allStaff || allStaff.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          totalStaff: 0,
+          staffWithAuth: 0,
+          staffWithoutAuth: [],
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
 
-    let staffWithoutAuth = allStaff || [];
+    let staffWithoutAuth = allStaff;
+    let allAuthUsers: any[] = [];
 
-    // Only query auth if we have staff to check
-    if (staffEmails.length > 0) {
-      try {
-        // Use listUsers with an optional limit parameter if available
-        // Fall back to checking all users if needed
-        const { data: { users: authUsers }, error: authError } =
-          await adminClient.auth.admin.listUsers({
-            perPage: 10000, // Get more users per page
-            page: 0,
-          });
+    // Fetch auth users with pagination for better performance
+    try {
+      let page = 1;
+      let hasMore = true;
+      const perPage = 1000; // Reasonable page size
+
+      while (hasMore && page <= 20) { // Max 20 pages (20k users)
+        const { data, error: authError } = await adminClient.auth.admin.listUsers({
+          page,
+          perPage,
+        });
 
         if (authError) {
-          console.warn("Auth list error, assuming all staff need auth:", authError);
-          // If auth listing fails, assume all need auth (conservative)
-        } else if (authUsers) {
-          // Find staff without Auth accounts
-          staffWithoutAuth = (allStaff || []).filter((staff) => {
-            const hasAuth = authUsers.some(
-              (authUser) =>
-                authUser.user_metadata?.staffId === staff.id ||
-                authUser.email === staff.email
-            );
-            return !hasAuth;
-          });
+          console.warn(`Auth list error on page ${page}:`, authError);
+          break;
         }
-      } catch (e) {
-        console.warn("Auth check failed, assuming all staff need auth:", e);
-        // If anything fails, conservatively assume all need auth
+
+        if (data?.users && data.users.length > 0) {
+          allAuthUsers = allAuthUsers.concat(data.users);
+          hasMore = data.users.length === perPage;
+          page++;
+        } else {
+          hasMore = false;
+        }
       }
+
+      // Find staff without Auth accounts
+      if (allAuthUsers.length > 0) {
+        staffWithoutAuth = allStaff.filter((staff) => {
+          const hasAuth = allAuthUsers.some(
+            (authUser) =>
+              authUser.user_metadata?.staffId === staff.id ||
+              authUser.email === staff.email
+          );
+          return !hasAuth;
+        });
+      }
+    } catch (e) {
+      console.warn("Auth check failed, assuming all staff need auth:", e);
+      // If anything fails, conservatively assume all need auth
     }
 
     return new Response(

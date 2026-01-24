@@ -53,7 +53,7 @@ export const createStaffAuthAccount = async (
 
         // Add a timeout to prevent hanging
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
         const response = await fetch(url, {
             method: 'POST',
@@ -73,11 +73,26 @@ export const createStaffAuthAccount = async (
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-            const data = await response.json();
-            console.warn(`Create-staff-auth function returned ${response.status}`);
+            let errorMessage = 'Unknown error';
+            try {
+                const data = await response.json();
+                errorMessage = data.error || data.message || errorMessage;
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+
+            console.warn(`Create-staff-auth function returned ${response.status}:`, errorMessage);
+
+            if (response.status === 404) {
+                return {
+                    success: false,
+                    message: 'Edge Function not found. Please deploy it using: supabase functions deploy create-staff-auth',
+                };
+            }
+
             return {
                 success: false,
-                message: `Failed to create Auth account: ${data.error || 'Unknown error'}`,
+                message: `Failed to create Auth account: ${errorMessage}`,
             };
         }
 
@@ -91,11 +106,27 @@ export const createStaffAuthAccount = async (
         const errorMsg = err instanceof Error ? err.message : String(err);
         console.error('Staff auth creation error:', errorMsg);
 
+        // Check if it's a timeout/abort error
+        if (err instanceof Error && err.name === 'AbortError') {
+            return {
+                success: false,
+                message: 'Request timed out. The Edge Function may be slow or not responding. Please try again.',
+            };
+        }
+
+        // Check if it's a network error
+        if (err instanceof TypeError && errorMsg.includes('fetch')) {
+            return {
+                success: false,
+                message: 'Network error. Please check your connection and ensure Edge Functions are deployed.',
+            };
+        }
+
         // In development, if Edge Function fails, suggest deploying it
         if (!isProduction) {
             return {
                 success: false,
-                message: `Create-staff-auth Edge Function not available. Please deploy Supabase Edge Functions: run 'supabase functions deploy create-staff-auth' from your project root.`,
+                message: `Edge Function error: ${errorMsg}. If not deployed, run: supabase functions deploy create-staff-auth`,
             };
         }
 
@@ -225,7 +256,7 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
 
         // Add a timeout to prevent hanging
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout for audit
 
         const response = await fetch(url, {
             method: 'POST',
@@ -240,7 +271,11 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-            console.warn(`Audit function returned ${response.status}, using fallback`);
+            if (response.status === 404) {
+                console.warn('Audit Edge Function not found, using fallback');
+            } else {
+                console.warn(`Audit function returned ${response.status}, using fallback`);
+            }
             return auditStaffAuthAccountsFallback(schoolId);
         }
 
@@ -253,7 +288,13 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
         };
     } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
-        console.warn('Audit function error, using fallback:', errorMsg);
+
+        if (err instanceof Error && err.name === 'AbortError') {
+            console.warn('Audit function timed out, using fallback');
+        } else {
+            console.warn('Audit function error, using fallback:', errorMsg);
+        }
+
         return auditStaffAuthAccountsFallback(schoolId);
     }
 };
