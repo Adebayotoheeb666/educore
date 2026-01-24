@@ -144,10 +144,16 @@ export const Login = () => {
 
         try {
             if (mode === 'login') {
+                console.log('[Login] Attempting admin login with email:', email);
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
+                if (error) {
+                    console.error('[Login] Auth error:', error);
+                    throw error;
+                }
+                console.log('[Login] Successfully authenticated, redirecting to /admin');
                 navigate('/admin');
             } else if (mode === 'school-reg') {
+                console.log('[Login] Attempting school registration');
                 await registerSchool(
                     { email, password, fullName: name },
                     { name: schoolName, address: schoolAddress }
@@ -181,7 +187,13 @@ export const Login = () => {
                 }
             }
         } catch (err: any) {
-            console.error(err);
+            console.error('[Login] Error during authentication:', {
+                error: err,
+                message: err?.message,
+                status: err?.status,
+                code: err?.code,
+                mode: mode
+            });
             setError(getUserFriendlyErrorMessage(err));
         } finally {
             setLoading(false);
