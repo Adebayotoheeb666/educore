@@ -23,7 +23,7 @@ interface AuditResult {
 }
 
 export const StaffAuthAudit = () => {
-  const { user, role, schoolId } = useAuth();
+  const { user, role, loading: authLoading, schoolId } = useAuth();
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [fixing, setFixing] = useState(false);
@@ -147,6 +147,20 @@ export const StaffAuthAudit = () => {
   const compliancePercentage = auditResult
     ? Math.round((auditResult.staffWithAuth / auditResult.totalStaff) * 100)
     : 0;
+
+  // Handle loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Handle access denied
+  if (role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div className="space-y-6 pb-20">

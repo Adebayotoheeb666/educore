@@ -152,3 +152,18 @@ export const getStaffMembers = async (schoolId: string): Promise<UserProfile[]> 
         updatedAt: u.updated_at
     })) as UserProfile[];
 };
+
+export const syncStaffIdFromMetadata = async (userId: string, staffIdFromMetadata: string) => {
+    const { data, error } = await supabase
+        .rpc('sync_staff_id_from_metadata', {
+            p_user_id: userId,
+            p_staff_id_from_metadata: staffIdFromMetadata
+        });
+
+    if (error) {
+        console.error('Error syncing staff ID:', error);
+        throw new Error(error.message || 'Failed to sync staff ID');
+    }
+
+    return data;
+};

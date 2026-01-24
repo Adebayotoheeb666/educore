@@ -18,6 +18,7 @@ export const getStaffVirtualEmail = (schoolId: string, staffId: string): string 
 /**
  * Create Auth account for a staff member
  * Called when staff is created in the database
+ * Uses Edge Function for service role access
  */
 export const createStaffAuthAccount = async (
     schoolId: string,
@@ -26,37 +27,37 @@ export const createStaffAuthAccount = async (
     email?: string
 ): Promise<{ success: boolean; authId?: string; message: string }> => {
     try {
-        // Generate virtual email if not provided
-        const virtualEmail = email || getStaffVirtualEmail(schoolId, staffId);
+        // Call Edge Function to create auth with service role
+        const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-staff-auth`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
+                },
+                body: JSON.stringify({
+                    schoolId,
+                    staffId,
+                    staffName,
+                    email,
+                }),
+            }
+        );
 
-        // Generate temporary password (will need to be reset by staff)
-        const tempPassword = generateTemporaryPassword();
+        const data = await response.json();
 
-        // Create Auth account
-        const { data, error } = await supabase.auth.admin.createUser({
-            email: virtualEmail,
-            password: tempPassword,
-            email_confirm: true, // Auto-confirm email
-            user_metadata: {
-                role: 'staff',
-                schoolId: schoolId,
-                staffId: staffId,
-                fullName: staffName,
-                staffAuthCreatedAt: new Date().toISOString(),
-            },
-        });
-
-        if (error || !data.user) {
+        if (!response.ok) {
             return {
                 success: false,
-                message: `Failed to create Auth account: ${error?.message || 'Unknown error'}`,
+                message: `Failed to create Auth account: ${data.error || 'Unknown error'}`,
             };
         }
 
         return {
             success: true,
-            authId: data.user.id,
-            message: `Auth account created for staff member`,
+            authId: data.authId,
+            message: data.message || 'Auth account created for staff member',
         };
     } catch (err) {
         console.error('Staff auth creation error:', err);
@@ -104,6 +105,7 @@ export const linkStaffToAuthUser = async (
 /**
  * Verify all staff have Auth accounts
  * Returns list of staff without Auth accounts
+ * Uses Edge Function for service role access to auth.admin API
  */
 export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
     totalStaff: number;
@@ -111,38 +113,34 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
     staffWithoutAuth: Array<{ id: string; name: string; email: string }>;
 }> => {
     try {
-        // Get all staff in school
-        const { data: allStaff, error: staffError } = await supabase
-            .from('users')
-            .select('id, full_name, email')
-            .eq('school_id', schoolId)
-            .in('role', ['staff', 'admin', 'bursar']);
+        // Call Edge Function to perform audit with service role
+        const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-staff-auth`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
+                },
+                body: JSON.stringify({ schoolId }),
+            }
+        );
 
-        if (staffError) throw staffError;
+        const data = await response.json();
 
-        // Get all Auth users in this school
-        const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
-
-        if (authError) throw authError;
-
-        // Find staff without Auth accounts
-        const staffWithoutAuth = (allStaff || []).filter(staff => {
-            // Check if this staff has an Auth account
-            const hasAuth = authUsers?.some(
-                authUser => authUser.user_metadata?.staffId === staff.id ||
-                    authUser.email === staff.email
-            );
-            return !hasAuth;
-        });
+        if (!response.ok) {
+            console.error('Staff auth audit error:', data.error);
+            return {
+                totalStaff: 0,
+                staffWithAuth: 0,
+                staffWithoutAuth: [],
+            };
+        }
 
         return {
-            totalStaff: allStaff?.length || 0,
-            staffWithAuth: (allStaff?.length || 0) - staffWithoutAuth.length,
-            staffWithoutAuth: staffWithoutAuth.map(s => ({
-                id: s.id,
-                name: s.full_name || 'Unknown',
-                email: s.email || 'No email',
-            })),
+            totalStaff: data.totalStaff || 0,
+            staffWithAuth: data.staffWithAuth || 0,
+            staffWithoutAuth: data.staffWithoutAuth || [],
         };
     } catch (err) {
         console.error('Staff auth audit error:', err);
@@ -216,38 +214,6 @@ export const bulkCreateStaffAuthAccounts = async (schoolId: string): Promise<{
         };
     }
 };
-
-/**
- * Generate a secure temporary password
- * Staff will need to change this on first login
- */
-function generateTemporaryPassword(): string {
-    // Generate password that meets requirements:
-    // - At least 8 characters
-    // - Uppercase, lowercase, number, special character
-    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-    const numbers = '0123456789';
-    const special = '@$!%*?&';
-
-    let password = '';
-    password += uppercase[Math.floor(Math.random() * uppercase.length)];
-    password += lowercase[Math.floor(Math.random() * lowercase.length)];
-    password += numbers[Math.floor(Math.random() * numbers.length)];
-    password += special[Math.floor(Math.random() * special.length)];
-
-    // Add more random characters
-    const allChars = uppercase + lowercase + numbers + special;
-    for (let i = 0; i < 6; i++) {
-        password += allChars[Math.floor(Math.random() * allChars.length)];
-    }
-
-    // Shuffle
-    return password
-        .split('')
-        .sort(() => Math.random() - 0.5)
-        .join('');
-}
 
 /**
  * Send temporary password to staff (via email)
