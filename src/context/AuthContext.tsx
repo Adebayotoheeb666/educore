@@ -128,16 +128,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let schoolId = userMetadata.schoolId || userMetadata.school_id || '';
 
         if (!schoolId) {
-            console.warn('[AuthContext] No schoolId in metadata');
-            // Do not default to 'pending-setup' as it causes invalid UUID errors
-            // schoolId = 'pending-setup'; 
+            console.warn('[AuthContext] No schoolId in metadata - this user may need school setup');
         }
 
         const fallbackProfile: UserProfile = {
             id: userId,
             email: user.email || '',
             role: userMetadata.role || 'authenticated',
-            schoolId: schoolId,
+            schoolId: schoolId || undefined, // Keep undefined if not available, don't use empty string
             fullName: userMetadata.fullName || userMetadata.full_name || '',
             admissionNumber: userMetadata.admissionNumber || userMetadata.admission_number || '',
             phoneNumber: userMetadata.phone || userMetadata.phone_number || '',
@@ -154,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserContext(
             userId,
             user.email || 'unknown@school.app',
-            schoolId,
+            schoolId || '',
             userMetadata.role || 'authenticated'
         );
     };
