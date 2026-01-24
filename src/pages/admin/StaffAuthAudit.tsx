@@ -32,8 +32,8 @@ export const StaffAuthAudit = () => {
     failed: number;
     errors: Array<{ staffName: string; error: string }>;
   } | null>(null);
-  const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
-  const [creatingAuth, setCreatingAuth] = useState(false);
+  const [creatingStaffIds, setCreatingStaffIds] = useState<Set<string>>(new Set());
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Handle auth loading state first
   if (authLoading) {
