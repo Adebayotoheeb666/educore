@@ -111,7 +111,8 @@ export const StaffAuthAudit = () => {
   const handleCreateSingleAuth = async (staff: AuditResult['staffWithoutAuth'][0]) => {
     if (!schoolId) return;
 
-    setCreatingAuth(true);
+    setErrorMessage(null);
+    setCreatingStaffIds(prev => new Set([...prev, staff.id]));
     try {
       const result = await createStaffAuthAccount(schoolId, staff.id, staff.name, staff.email);
 
@@ -139,12 +140,19 @@ export const StaffAuthAudit = () => {
             }
           );
         }
+      } else {
+        setErrorMessage(result.message);
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create Auth account';
+      setErrorMessage(message);
       console.error('Create auth error:', err);
     } finally {
-      setCreatingAuth(false);
-      setSelectedStaff(null);
+      setCreatingStaffIds(prev => {
+        const next = new Set(prev);
+        next.delete(staff.id);
+        return next;
+      });
     }
   };
 
