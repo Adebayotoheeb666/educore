@@ -139,7 +139,11 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         .upsert({
             ...profileData,
             id: authUid, // The new Auth UID
-            email: getVirtualEmail(schoolId, identifier) // Update email to virtual one
+            school_id: schoolId, // Explicitly set school_id
+            ...(role === 'staff' && { staff_id: identifier }), // Explicitly set staff_id for staff
+            ...(role === 'student' && { admission_number: identifier }), // Explicitly set admission_number for students
+            email: getVirtualEmail(schoolId, identifier), // Update email to virtual one
+            role: role // Ensure role is set
         });
 
     if (insertError) {
