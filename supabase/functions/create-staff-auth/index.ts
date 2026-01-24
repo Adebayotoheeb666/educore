@@ -70,13 +70,14 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+
+    // Create a client with the Authorization header to validate the token
+    const userClient = createClient(supabaseUrl, supabaseAnonKey);
 
     const { data: { user }, error: authError } = await userClient.auth.getUser(token);
 
     if (authError || !user) {
+      console.error("Token validation error:", authError);
       return new Response(
         JSON.stringify({ error: "Invalid or expired token" }),
         { status: 401, headers: { "Content-Type": "application/json" } }
