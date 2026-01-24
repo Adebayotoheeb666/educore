@@ -57,10 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('[AuthContext] Profile fetched successfully:', data.role, 'SchoolId:', data.school_id);
 
                 // Check if profile has critical missing fields
+                // Note: Admins in setup don't need staff_id or admission_number, only school_id is critical for most users
                 const isBrokenProfile =
-                    !data.school_id ||
-                    (data.role === 'staff' && !data.staff_id) ||
-                    (data.role === 'student' && !data.admission_number);
+                    (data.role !== 'admin' && !data.school_id) || // Only admins can proceed without school_id during setup
+                    (data.role === 'staff' && !data.staff_id && !data.school_id) ||
+                    (data.role === 'student' && !data.admission_number && !data.school_id);
 
                 // If profile is broken, attempt repair from Auth metadata
                 let finalData = data;
@@ -77,6 +78,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (!refetchError && repairedData) {
                         console.log('[AuthContext] Profile repaired and re-fetched');
                         finalData = repairedData;
+                    } else {
+                        console.log('[AuthContext] Repair failed or no data returned, using original profile');
                     }
                 }
 
