@@ -14,7 +14,8 @@ import {
     Library,
     Trash2,
     Edit2,
-    AlertCircle
+    AlertCircle,
+    Settings
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { BulkStudentImport } from '../components/BulkStudentImport';
