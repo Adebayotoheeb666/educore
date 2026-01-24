@@ -113,23 +113,54 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
     staffWithoutAuth: Array<{ id: string; name: string; email: string }>;
 }> => {
     try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (!supabaseUrl) {
+            console.error('Supabase URL not configured');
+            return {
+                totalStaff: 0,
+                staffWithAuth: 0,
+                staffWithoutAuth: [],
+            };
+        }
+
+        // Get the session and auth token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+            console.error('Error getting session:', sessionError);
+            return {
+                totalStaff: 0,
+                staffWithAuth: 0,
+                staffWithoutAuth: [],
+            };
+        }
+
+        if (!session?.access_token) {
+            console.error('No access token available');
+            return {
+                totalStaff: 0,
+                staffWithAuth: 0,
+                staffWithoutAuth: [],
+            };
+        }
+
         // Call Edge Function to perform audit with service role
-        const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-staff-auth`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
-                },
-                body: JSON.stringify({ schoolId }),
-            }
-        );
+        const url = `${supabaseUrl}/functions/v1/audit-staff-auth`;
+        console.log('Calling audit function at:', url);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ schoolId }),
+        });
 
         const data = await response.json();
 
         if (!response.ok) {
-            console.error('Staff auth audit error:', data.error);
+            console.error('Staff auth audit error:', data.error || `HTTP ${response.status}`);
             return {
                 totalStaff: 0,
                 staffWithAuth: 0,
@@ -143,7 +174,8 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
             staffWithoutAuth: data.staffWithoutAuth || [],
         };
     } catch (err) {
-        console.error('Staff auth audit error:', err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error('Staff auth audit error:', errorMsg);
         return {
             totalStaff: 0,
             staffWithAuth: 0,
