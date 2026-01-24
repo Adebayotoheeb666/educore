@@ -72,9 +72,11 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
 
     // Create a client with the Authorization header to validate the token
-    const userClient = createClient(supabaseUrl, supabaseAnonKey);
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
-    const { data: { user }, error: authError } = await userClient.auth.getUser(token);
+    const { data: { user }, error: authError } = await userClient.auth.getUser();
 
     if (authError || !user) {
       console.error("Token validation error:", authError);
