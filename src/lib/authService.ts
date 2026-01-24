@@ -119,15 +119,25 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
 
     if (error || !placeholder) {
         console.warn("No placeholder profile found to link. Creating fresh profile.");
-        // Create fresh profile if missing
-        await supabase.from('users').insert({
+        // Create fresh profile if missing with all required fields
+        const freshProfile: any = {
             id: authUid,
             school_id: schoolId,
             role: role,
             [idField]: identifier,
             full_name: role === 'student' ? 'Student' : 'Staff Member', // Default fallback
-            email: getVirtualEmail(schoolId, identifier) // Just to have something
-        });
+            email: getVirtualEmail(schoolId, identifier),
+            // Ensure the identifier fields are set
+            ...(role === 'staff' && { staff_id: identifier }),
+            ...(role === 'student' && { admission_number: identifier })
+        };
+
+        const { error: createError } = await supabase.from('users').insert(freshProfile);
+
+        if (createError) {
+            console.error("Failed to create fresh profile:", createError);
+            throw new Error(`Failed to create profile: ${createError.message}`);
+        }
         return;
     }
 
