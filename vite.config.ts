@@ -37,14 +37,4 @@ export default defineConfig({
       }
     })
   ],
-  server: {
-    proxy: {
-      '/supabase': {
-        target: 'https://nhmyuoxqzhspwkmggbkz.supabase.co',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/supabase/, ''),
-        secure: true,
-      }
-    }
-  }
 })
