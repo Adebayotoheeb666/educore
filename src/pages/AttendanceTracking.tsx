@@ -68,33 +68,30 @@ export const AttendanceTracking = () => {
         const fetchStudents = async () => {
             setLoading(true);
             try {
-                // Students are stored in the 'users' collection with role 'student' and schoolId
-                // TODO: In a real app, we should filter by class enrollment (student_classes table)
-                // For now, fetching all students in school as per original logic, potentially filering later?
-                // The original code query: where('schoolId', ...), where('role', 'student')
-                // It didn't seem to filter by class strictly in the query shown, 
-                // but usually you would. I'll stick to the original logic or try to improve if tables exist.
-                // Given bulkImport creates 'student_classes', we *should* use it.
-                // But let's stick to 'users' for now to match old behavior unless we are sure.
-                // Actually, let's just fetch all students for now to be safe with the migration.
-
+                // Fetch students enrolled in the selected class using the student_classes table
                 const { data, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('school_id', schoolId)
-                    .eq('role', 'student')
-                    .eq('class_id', selectedClass);
+                    .from('student_classes')
+                    .select('*, users(id, full_name, admission_number, email, role)')
+                    .eq('class_id', selectedClass)
+                    .eq('status', 'active');
 
-                if (error) throw error;
+                if (error) {
+                    console.error("Error fetching students - details:", {
+                        message: error.message,
+                        code: error.code,
+                        details: error.details,
+                    });
+                    throw error;
+                }
 
-                const studentsList = data.map(doc => ({
-                    id: doc.id,
-                    fullName: doc.full_name,
-                    admissionNumber: doc.admission_number,
-                    ...doc
+                const studentsList = (data || []).map(enrollment => ({
+                    id: enrollment.users.id,
+                    fullName: enrollment.users.full_name || 'Unknown',
+                    admissionNumber: enrollment.users.admission_number || 'N/A',
+                    email: enrollment.users.email,
+                    role: enrollment.users.role,
                 }));
-                // If we want to filter by class, we'd need that info. 
-                // Assuming for this stage we strictly migrate what was there.
+
                 setStudents(studentsList);
 
                 // Initialize attendance as all present
@@ -102,7 +99,10 @@ export const AttendanceTracking = () => {
                 studentsList.forEach(s => initial[s.id] = 'present');
                 setAttendance(initial);
             } catch (err) {
-                console.error("Error fetching students:", err);
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                console.error("Error fetching students:", errorMsg, err);
+                // Show user-friendly error but don't block the UI
+                alert(`Unable to load students: ${errorMsg}`);
             } finally {
                 setLoading(false);
             }
