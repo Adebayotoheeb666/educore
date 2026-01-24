@@ -18,29 +18,21 @@ export const Dashboard = () => {
         const fetchPendingGrades = async () => {
             if (!user) return;
             try {
-                // For students: show their own results
-                // For staff/admin: show results they can access (will be filtered by RLS)
-                // Use school_id to avoid RLS issues - admins can see school results
-                const query = supabase
+                // Query results - RLS will automatically filter based on user role
+                // Students: see their own results (student_id = auth.uid())
+                // Staff: see results for their assigned classes
+                // Admins: see all results in their school
+                const { count, error } = await supabase
                     .from('results')
                     .select('*', { count: 'exact', head: true });
 
-                // Filter by role for better performance
-                if (role === 'student') {
-                    query.eq('student_id', user.id);
-                } else if (role === 'admin') {
-                    // Admins can see results, RLS will filter by school
-                    query.eq('school_id', profile?.schoolId);
-                } else {
-                    // Staff/bursar: RLS policies will handle access via staff_assignments
-                    // For now, just ensure they're in the right school
-                    query.eq('school_id', profile?.schoolId);
-                }
-
-                const { count, error } = await query;
-
                 if (error) {
-                    console.error('Error fetching pending grades:', error.message || error);
+                    console.error('Error fetching pending grades - Details:', {
+                        message: error.message,
+                        code: error.code,
+                        hint: error.hint,
+                        details: error.details
+                    });
                     throw error;
                 }
                 setPendingCount(count || 0);
@@ -53,7 +45,7 @@ export const Dashboard = () => {
         };
 
         fetchPendingGrades();
-    }, [user, role, profile?.schoolId]);
+    }, [user]);
 
     return (
         <div className="space-y-8 pb-20">
