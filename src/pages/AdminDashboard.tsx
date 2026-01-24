@@ -83,6 +83,47 @@ export const AdminDashboard = () => {
         setToasts(prev => prev.filter(t => t.id !== id));
     };
 
+    // Filter functions for search
+    const filterStaff = (data: any[]) => {
+        if (!searchTerm) return data;
+        const term = searchTerm.toLowerCase();
+        return data.filter(s =>
+            s.fullName?.toLowerCase().includes(term) ||
+            s.email?.toLowerCase().includes(term) ||
+            s.staffId?.toLowerCase().includes(term) ||
+            s.phone_number?.toLowerCase().includes(term)
+        );
+    };
+
+    const filterStudents = (data: any[]) => {
+        if (!searchTerm) return data;
+        const term = searchTerm.toLowerCase();
+        return data.filter(s =>
+            s.fullName?.toLowerCase().includes(term) ||
+            s.email?.toLowerCase().includes(term) ||
+            s.admissionNumber?.toLowerCase().includes(term) ||
+            s.phone_number?.toLowerCase().includes(term)
+        );
+    };
+
+    const filterClasses = (data: any[]) => {
+        if (!searchTerm) return data;
+        const term = searchTerm.toLowerCase();
+        return data.filter(c =>
+            c.name?.toLowerCase().includes(term) ||
+            c.level?.toLowerCase().includes(term)
+        );
+    };
+
+    const filterSubjects = (data: any[]) => {
+        if (!searchTerm) return data;
+        const term = searchTerm.toLowerCase();
+        return data.filter(s =>
+            s.name?.toLowerCase().includes(term) ||
+            s.code?.toLowerCase().includes(term)
+        );
+    };
+
     const fetchData = async () => {
         if (!schoolId) return;
 
