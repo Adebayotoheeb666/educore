@@ -47,17 +47,23 @@ export const StudentAssignment = () => {
 
     const fetchClassStudents = async (classId: string) => {
         try {
+            // Fetch students enrolled in the selected class
             const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('school_id', schoolId)
-                .eq('role', 'student')
-                .eq('class_id', classId);
+                .from('student_classes')
+                .select('*, users(id, full_name, admission_number, email, role)')
+                .eq('class_id', classId)
+                .eq('status', 'active');
 
             if (error) throw error;
-            setClassStudents(data || []);
+
+            const students = (data || []).map(enrollment => ({
+                ...enrollment.users,
+                enrollment_id: enrollment.id
+            }));
+            setClassStudents(students);
         } catch (err) {
-            console.error("Error fetching class students:", err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error("Error fetching class students:", errorMsg, err);
         }
     };
 
