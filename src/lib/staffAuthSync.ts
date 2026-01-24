@@ -140,6 +140,7 @@ export const linkStaffToAuthUser = async (
  */
 /**
  * Development fallback for staff audit (when Edge Function not deployed)
+ * Uses client-side queries only (no admin API access needed)
  */
 async function auditStaffAuthAccountsFallback(schoolId: string): Promise<{
     totalStaff: number;
@@ -150,7 +151,7 @@ async function auditStaffAuthAccountsFallback(schoolId: string): Promise<{
         // Fetch all staff in school from database
         const { data: allStaff, error: staffError } = await supabase
             .from('users')
-            .select('id, full_name, email')
+            .select('id, full_name, email, auth_user_id')
             .eq('school_id', schoolId)
             .in('role', ['staff', 'admin', 'bursar']);
 
@@ -163,31 +164,12 @@ async function auditStaffAuthAccountsFallback(schoolId: string): Promise<{
             };
         }
 
-        // Get all auth users from the auth table
-        const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
-
-        if (authError) {
-            console.error('Error listing auth users:', authError);
-            // If we can't list users due to permissions, return all staff as missing auth
-            return {
-                totalStaff: allStaff?.length || 0,
-                staffWithAuth: 0,
-                staffWithoutAuth: (allStaff || []).map(s => ({
-                    id: s.id,
-                    name: s.full_name || 'Unknown',
-                    email: s.email || 'No email',
-                })),
-            };
-        }
-
-        // Find staff without Auth accounts
+        // Find staff without Auth accounts by checking if auth_user_id is set
+        // If the column doesn't exist, assume they don't have auth accounts
         const staffWithoutAuth = (allStaff || []).filter((staff) => {
-            const hasAuth = authUsers?.some(
-                (authUser) =>
-                    authUser.user_metadata?.staffId === staff.id ||
-                    authUser.email === staff.email
-            );
-            return !hasAuth;
+            // Check if the staff member has an auth_user_id
+            // If auth_user_id is null/undefined, they don't have an auth account
+            return !staff.auth_user_id;
         });
 
         return {
