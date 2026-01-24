@@ -87,7 +87,10 @@ export const activateAccount = async (
             data: {
                 role: type,
                 schoolId: schoolId,
-                mappedId: identifier
+                ...(type === 'staff'
+                    ? { staff_id: identifier }
+                    : { admission_number: identifier }
+                )
             }
         }
     });
