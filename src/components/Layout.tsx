@@ -111,8 +111,8 @@ export const Layout = ({ children }: LayoutProps) => {
                     </span>
                 </div>
 
-                <nav className="flex-1 space-y-2">
-                    <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" />
+                <nav className="flex-1 space-y-2 overflow-y-auto min-h-0 custom-scrollbar">
+                    <SidebarItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
 
                     {/* Admin Specific Links */}
                     {profile?.role === 'admin' && (

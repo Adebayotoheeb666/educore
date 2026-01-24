@@ -107,7 +107,7 @@ export const AuditLogViewer = () => {
         }
     };
 
-    if (role !== 'admin') {
+    if (role?.toLowerCase() !== 'admin') {
         return <div className="p-8 text-white">Access Denied: Admins Only</div>;
     }
 

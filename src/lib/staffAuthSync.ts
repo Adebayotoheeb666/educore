@@ -227,7 +227,7 @@ export const sendStaffWelcomeEmail = async (
 ): Promise<{ success: boolean; message: string }> => {
     try {
         // Call notification service to send email
-        const { data, error } = await supabase.functions.invoke(
+        const { error } = await supabase.functions.invoke(
             'send-notifications',
             {
                 body: {

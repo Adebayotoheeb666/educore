@@ -24,6 +24,28 @@ export interface ImportResult {
 }
 
 /**
+ * Generates a deterministic UUID v5-like string from a name.
+ * This ensures valid UUID syntax while remaining idempotent.
+ */
+async function generateDeterministicUUID(name: string): Promise<string> {
+    // Basic hash function to create a hex string from name
+    // Using simple hashing since we just need valid UUID syntax and determinism
+    const msgUint8 = new TextEncoder().encode(name);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Format as UUID: 8-4-4-4-12
+    return [
+        hex.substring(0, 8),
+        hex.substring(8, 12),
+        hex.substring(12, 16),
+        hex.substring(16, 20),
+        hex.substring(20, 32)
+    ].join('-');
+}
+
+/**
  * Parse CSV file and extract student data
  */
 export const parseCSVFile = async (file: File): Promise<StudentImportRow[]> => {
@@ -153,6 +175,17 @@ export const bulkImportStudents = async (
     }
 
     try {
+        // 0. Fetch classes for this school to map names to IDs
+        const { data: classesData } = await supabase
+            .from('classes')
+            .select('id, name')
+            .eq('school_id', schoolId);
+
+        const classMap = new Map<string, string>();
+        if (classesData) {
+            classesData.forEach(c => classMap.set(c.name.toLowerCase().trim(), c.id));
+        }
+
         // Process students in batches
         const batchSize = 50;
 
@@ -165,8 +198,11 @@ export const bulkImportStudents = async (
             const enrollmentsToInsert: any[] = [];
 
             for (const row of batch) {
-                // Generate a deterministic UID for the student
-                const studentUid = `${schoolId}_${row.admissionNumber.trim().toLowerCase()}`;
+                const admissionNum = row.admissionNumber.trim().toLowerCase();
+
+                // Generate deterministic UIDs for the student and parent
+                const studentUid = await generateDeterministicUUID(`student_${schoolId}_${admissionNum}`);
+                const parentUid = await generateDeterministicUUID(`parent_${schoolId}_${admissionNum}`);
 
                 // Student Profile
                 usersToInsert.push({
@@ -180,7 +216,6 @@ export const bulkImportStudents = async (
 
                 // Parent Handling
                 if (createParents && (row.parentEmail || row.parentPhone)) {
-                    const parentUid = `${schoolId}_parent_${row.admissionNumber.trim().toLowerCase()}`;
 
                     parentsToInsert.push({
                         id: parentUid,
@@ -192,22 +227,26 @@ export const bulkImportStudents = async (
                     });
 
                     linksToInsert.push({
-                        id: `${parentUid}_${studentUid}`,
                         school_id: schoolId,
-                        parent_ids: [parentUid],
+                        parent_id: parentUid,
                         student_id: studentUid,
                         relationship: 'Guardian'
                     });
                 }
 
                 if (row.className) {
-                    enrollmentsToInsert.push({
-                        school_id: schoolId,
-                        student_id: studentUid,
-                        class_id: row.className,
-                        enrollment_date: new Date().toISOString().split('T')[0],
-                        status: 'active'
-                    });
+                    const classId = classMap.get(row.className.trim().toLowerCase());
+                    if (classId) {
+                        enrollmentsToInsert.push({
+                            school_id: schoolId,
+                            student_id: studentUid,
+                            class_id: classId,
+                            enrollment_date: new Date().toISOString().split('T')[0],
+                            status: 'active'
+                        });
+                    } else {
+                        result.errors.push({ row: i, error: `Class not found: ${row.className}` });
+                    }
                 }
             }
 
@@ -232,14 +271,20 @@ export const bulkImportStudents = async (
                 }
             }
 
-            // 3. Insert Links
+            // 3. Insert Parent-Student Links
             if (linksToInsert.length > 0) {
-                await supabase.from('parent_student_links').upsert(linksToInsert);
+                const { error: linkError } = await supabase.from('parent_student_links').upsert(linksToInsert, { onConflict: 'student_id,parent_id' });
+                if (linkError) {
+                    result.errors.push({ row: i, error: `Parent linking failed: ${linkError.message}` });
+                }
             }
 
-            // 4. Insert Enrollments
+            // 4. Record Class Enrollments
             if (enrollmentsToInsert.length > 0) {
-                await supabase.from('student_classes').insert(enrollmentsToInsert);
+                const { error: enrollError } = await supabase.from('student_classes').upsert(enrollmentsToInsert, { onConflict: 'student_id,class_id' });
+                if (enrollError) {
+                    result.errors.push({ row: i, error: `Class enrollment failed: ${enrollError.message}` });
+                }
             }
 
             result.imported += batch.length;

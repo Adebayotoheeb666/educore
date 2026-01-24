@@ -3,8 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { adminResetUserPassword } from '../../lib/passwordResetService';
 import { logAction } from '../../lib/auditService';
-import { syncStaffIdFromMetadata } from '../../lib/staffService';
-import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle, Mail, Zap } from 'lucide-react';
+import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 interface User {
@@ -34,7 +33,19 @@ export const UserManagement = () => {
   const [fixingStaffId, setFixingStaffId] = useState(false);
   const [fixStatus, setFixStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // All hooks must come before any conditional returns
+  // Only admins can access this page
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (role?.toLowerCase() !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   // Fetch all users in school
   useEffect(() => {
     if (!schoolId) return;
@@ -134,10 +145,21 @@ export const UserManagement = () => {
       const result = await adminResetUserPassword(user.email || '', selectedUser.id, newPassword);
 
       // Log the action
-      await logAction('PASSWORD_RESET', 'user', selectedUser.id, {
-        target_user: selectedUser.email,
-        target_name: selectedUser.full_name,
-      });
+      if (user) {
+        await logAction(
+          schoolId || '',
+          user.id,
+          user.email || 'system',
+          'password_reset',
+          'user',
+          selectedUser.id,
+          {},
+          {
+            target_user: selectedUser.email,
+            target_name: selectedUser.full_name,
+          }
+        );
+      }
 
       setResetStatus({
         type: 'success',
@@ -455,11 +477,10 @@ export const UserManagement = () => {
             </p>
 
             {resetStatus && (
-              <div className={`mb-4 p-4 rounded-lg flex gap-3 ${
-                resetStatus.type === 'success'
-                  ? 'bg-green-500/10 border border-green-500/20'
-                  : 'bg-red-500/10 border border-red-500/20'
-              }`}>
+              <div className={`mb-4 p-4 rounded-lg flex gap-3 ${resetStatus.type === 'success'
+                ? 'bg-green-500/10 border border-green-500/20'
+                : 'bg-red-500/10 border border-red-500/20'
+                }`}>
                 {resetStatus.type === 'success' ? (
                   <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                 ) : (
@@ -492,11 +513,10 @@ export const UserManagement = () => {
                   </button>
                 </div>
                 {newPassword && (
-                  <p className={`text-xs mt-1 font-medium ${
-                    passwordStrength === 'weak' ? 'text-red-500' :
+                  <p className={`text-xs mt-1 font-medium ${passwordStrength === 'weak' ? 'text-red-500' :
                     passwordStrength === 'medium' ? 'text-yellow-500' :
-                    'text-green-500'
-                  }`}>
+                      'text-green-500'
+                    }`}>
                     Strength: {passwordStrength}
                   </p>
                 )}

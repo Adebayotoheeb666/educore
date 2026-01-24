@@ -142,12 +142,9 @@ export const StaffAssignmentModal = ({ staffId, staffName, onClose, onSuccess }:
 
             // Create new assignments
             for (const assignment of assignments) {
-                const assignmentId = `${staffId}_${assignment.classId}_${assignment.subjectId}`;
-
                 const { error: insertError } = await supabase
                     .from('staff_assignments')
                     .insert({
-                        id: assignmentId,
                         school_id: schoolId,
                         staff_id: staffId,
                         class_id: assignment.classId,

@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   Users,
   Shield,
-  RefreshCw,
   Zap,
   Download,
 } from 'lucide-react';
@@ -36,7 +35,19 @@ export const StaffAuthAudit = () => {
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [creatingAuth, setCreatingAuth] = useState(false);
 
-  // All hooks must come before any conditional returns
+  // Only admins can access this
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (role?.toLowerCase() !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   // Perform initial audit
   useEffect(() => {
     if (!schoolId) return;
@@ -65,10 +76,21 @@ export const StaffAuthAudit = () => {
       setResults(result);
 
       // Log action
-      await logAction('BULK_CREATE_STAFF_AUTH', 'staff', 'bulk', {
-        success: result.success,
-        failed: result.failed,
-      });
+      if (user) {
+        await logAction(
+          schoolId || '',
+          user.id,
+          user.email || 'system',
+          'bulk_create',
+          'staff',
+          'bulk',
+          {},
+          {
+            success: result.success,
+            failed: result.failed,
+          }
+        );
+      }
 
       // Re-audit after fix
       setTimeout(async () => {
@@ -98,10 +120,21 @@ export const StaffAuthAudit = () => {
         }));
 
         // Log action
-        await logAction('CREATE_STAFF_AUTH', 'staff', staff.id, {
-          staff_name: staff.name,
-          staff_email: staff.email,
-        });
+        if (user) {
+          await logAction(
+            schoolId || '',
+            user.id,
+            user.email || 'system',
+            'create',
+            'staff',
+            staff.id,
+            {},
+            {
+              staff_name: staff.name,
+              staff_email: staff.email,
+            }
+          );
+        }
       }
     } catch (err) {
       console.error('Create auth error:', err);
@@ -167,9 +200,8 @@ export const StaffAuthAudit = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm font-medium">Compliance</p>
-                <p className={`text-3xl font-bold mt-1 ${
-                  compliancePercentage === 100 ? 'text-green-500' : 'text-orange-500'
-                }`}>
+                <p className={`text-3xl font-bold mt-1 ${compliancePercentage === 100 ? 'text-green-500' : 'text-orange-500'
+                  }`}>
                   {compliancePercentage}%
                 </p>
               </div>
@@ -216,11 +248,10 @@ export const StaffAuthAudit = () => {
 
       {/* Bulk Fix Results */}
       {results && (
-        <div className={`border rounded-lg p-4 ${
-          results.failed === 0
-            ? 'bg-green-500/10 border-green-500/20'
-            : 'bg-orange-500/10 border-orange-500/20'
-        }`}>
+        <div className={`border rounded-lg p-4 ${results.failed === 0
+          ? 'bg-green-500/10 border-green-500/20'
+          : 'bg-orange-500/10 border-orange-500/20'
+          }`}>
           <div className="flex gap-3 mb-3">
             {results.failed === 0 ? (
               <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />

@@ -42,7 +42,7 @@ export const initSentry = () => {
         shouldCreateSpanForRequest: (url) => {
           return !url.includes("/healthcheck");
         },
-      }),
+      }) as any,
     ],
 
     // Sample rate for performance monitoring (10% of transactions)
@@ -89,18 +89,16 @@ export const initSentry = () => {
       // Don't send if it's a known ignoreable error
       if (hint.originalException instanceof Error) {
         const message = hint.originalException.message;
-        
+
         // Ignore specific error patterns
         if (message.includes("ResizeObserver")) {
           return null;
         }
       }
 
-      // Scrub request body if it contains passwords
-      if (event.request) {
-        if (event.request.url?.includes("password")) {
-          event.request.body = "[REDACTED]";
-        }
+      // Scrub request URL if it contains passwords
+      if (event.request && event.request.url?.includes("password")) {
+        event.request.url = "[REDACTED]";
       }
 
       // Scrub sensitive breadcrumbs
@@ -118,7 +116,7 @@ export const initSentry = () => {
       }
 
       // Don't send if event has no meaningful data
-      if (!event.exception && !event.message && !event.error) {
+      if (!event.exception && !event.message) {
         return null;
       }
 
@@ -252,27 +250,50 @@ export const captureUserFeedback = (
 ) => {
   const eventId = Sentry.lastEventId();
   if (eventId) {
-    Sentry.captureUserFeedback({
-      event_id: eventId,
+    Sentry.captureFeedback({
+      message: comments,
       email,
       name,
-      comments,
+      associatedEventId: eventId,
     });
   }
 };
 
 /**
- * Start a performance transaction
+ * Start a performance transaction/span
  * Useful for tracking long-running operations
+ * Note: Modern Sentry uses automatic span creation via integrations
  */
 export const startTransaction = (
   op: string,
   name: string
 ) => {
-  return Sentry.startTransaction({
-    op,
-    name,
+  // Add breadcrumb to track transaction start
+  Sentry.addBreadcrumb({
+    category: 'transaction',
+    message: name,
+    level: 'info',
+    data: { op },
   });
+
+  // Return a mock transaction object for backwards compatibility
+  // Modern Sentry handles performance monitoring automatically through BrowserTracing
+  return {
+    finish: () => {
+      Sentry.addBreadcrumb({
+        category: 'transaction',
+        message: `${name} (finished)`,
+        level: 'info',
+        data: { op },
+      });
+    },
+    setTag: (key: string, value: string) => {
+      Sentry.setTag(key, value);
+    },
+    setData: (key: string, value: unknown) => {
+      Sentry.setContext('transaction', { [key]: value });
+    },
+  };
 };
 
 /**

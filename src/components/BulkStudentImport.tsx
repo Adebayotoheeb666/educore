@@ -9,14 +9,24 @@ import {
     type ImportResult
 } from '../lib/bulkImportService';
 import { useAuth } from '../hooks/useAuth';
+import type { User } from '@supabase/supabase-js';
+import type { UserProfile } from '../lib/types';
 
 interface BulkStudentImportProps {
     onSuccess?: (result: ImportResult) => void;
     onClose?: () => void;
+    user?: User | null;
+    profile?: UserProfile | null;
+    schoolId?: string | null;
 }
 
-export const BulkStudentImport = ({ onSuccess, onClose }: BulkStudentImportProps) => {
-    const { schoolId, user, profile } = useAuth();
+export const BulkStudentImport = ({ onSuccess, onClose, user: propUser, profile: propProfile, schoolId: propSchoolId }: BulkStudentImportProps) => {
+    const { schoolId: authSchoolId, user: authUser, profile: authProfile } = useAuth();
+
+    // Use props if available, otherwise fallback to hook (for robustness)
+    const user = propUser || authUser;
+    const profile = propProfile || authProfile;
+    const schoolId = propSchoolId || authSchoolId;
     const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'complete'>('upload');
     const [file, setFile] = useState<File | null>(null);
     const [fileData, setFileData] = useState<StudentImportRow[]>([]);
@@ -189,6 +199,13 @@ export const BulkStudentImport = ({ onSuccess, onClose }: BulkStudentImportProps
                     <h2 className="text-2xl font-bold text-white mb-2">Review Import</h2>
                     <p className="text-gray-400">Review the data before importing</p>
                 </div>
+
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-red-300 text-sm">{error}</p>
+                    </div>
+                )}
 
                 <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg p-4">
                     <p className="text-teal-300 font-bold mb-1">{fileData.length} students ready to import</p>

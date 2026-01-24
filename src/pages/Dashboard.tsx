@@ -5,47 +5,89 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 
 export const Dashboard = () => {
-    const { user, profile, role } = useAuth();
+    const { user, profile, role, loading: authLoading } = useAuth();
     const displayName = profile?.fullName || user?.user_metadata?.full_name || 'Teacher';
     const [pendingCount, setPendingCount] = useState(0);
+    const [classStats, setClassStats] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { schoolId } = useAuth();
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     if (role === 'student' || role === 'parent') {
         return <Navigate to="/portal" replace />;
     }
 
     useEffect(() => {
-        const fetchPendingGrades = async () => {
-            if (!user) return;
+        const fetchData = async () => {
+            if (!user) {
+                console.log('[Dashboard] No user, skipping fetch');
+                return;
+            }
             try {
-                // Query results - RLS will automatically filter based on user role
-                // Students: see their own results (student_id = auth.uid())
-                // Staff: see results for their assigned classes
-                // Admins: see all results in their school
+                // Fetch pending grades
                 const { count, error } = await supabase
                     .from('results')
-                    .select('*', { count: 'exact', head: true });
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id);
 
-                if (error) {
-                    console.error('Error fetching pending grades - Details:', {
-                        message: error.message,
-                        code: error.code,
-                        hint: error.hint,
-                        details: error.details
-                    });
-                    throw error;
+                if (!error) setPendingCount(count || 0);
+
+                // Fetch Staff Assignments
+                if (schoolId) {
+                    console.log('[Dashboard] Fetching staff assignments for:', { user_id: user.id, schoolId });
+
+                    const { data: assignments, error: assignError } = await supabase
+                        .from('staff_assignments')
+                        .select('class_id, classes(name), subject_id, subjects(name)')
+                        .eq('staff_id', user.id)
+                        .eq('school_id', schoolId);
+
+                    if (assignError) {
+                        console.error('[Dashboard] Error fetching assignments:', assignError);
+                    } else {
+                        console.log('[Dashboard] Fetched assignments:', assignments?.length || 0);
+                    }
+
+                    if (!assignError && assignments && assignments.length > 0) {
+                        const stats = await Promise.all(assignments.map(async (a: any) => {
+                            // Get student count for each class
+                            const { count: studentCount } = await supabase
+                                .from('student_classes')
+                                .select('*', { count: 'exact', head: true })
+                                .eq('class_id', a.class_id)
+                                .eq('school_id', schoolId);
+
+                            return {
+                                classId: a.class_id,
+                                className: a.classes?.name || 'Unknown Class',
+                                subjectName: a.subjects?.name,
+                                studentCount: studentCount || 0
+                            };
+                        }));
+                        setClassStats(stats);
+                        console.log('[Dashboard] Staff assignments loaded:', stats.length);
+                    } else if (!assignError) {
+                        console.log('[Dashboard] No assignments found for this staff');
+                    }
+                } else {
+                    console.warn('[Dashboard] schoolId not available');
                 }
-                setPendingCount(count || 0);
             } catch (err) {
-                console.error('Error fetching pending grades:', err instanceof Error ? err.message : String(err));
-                setPendingCount(0);
+                console.error('[Dashboard] Error fetching dashboard data:', err);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchPendingGrades();
-    }, [user]);
+        fetchData();
+    }, [user, schoolId]);
 
     return (
         <div className="space-y-8 pb-20">
@@ -58,6 +100,9 @@ export const Dashboard = () => {
                     <div>
                         <div className="text-teal-500 text-xs font-bold uppercase tracking-wider mb-0.5">Dashboard</div>
                         <h1 className="text-2xl font-bold text-white">Welcome, {displayName}</h1>
+                        {profile?.staffId && (
+                            <p className="text-gray-400 text-sm">Staff ID: <span className="text-teal-400 font-bold">{profile.staffId}</span></p>
+                        )}
                     </div>
                 </div>
 
@@ -128,14 +173,34 @@ export const Dashboard = () => {
             {/* Today's Schedule */}
             <div>
                 <div className="flex items-center justify-between mb-6 pt-4">
-                    <h2 className="text-xl font-bold text-white">Today's Schedule</h2>
-                    <span className="text-gray-500 text-sm font-bold">{new Date().toLocaleDateString('en-NG', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                    <h2 className="text-xl font-bold text-white">Your Assigned Classes</h2>
                 </div>
 
                 <div className="space-y-3">
-                    <div className="text-center py-8 text-gray-500">
-                        <p>No schedule added yet. Add your classes to track your daily timetable.</p>
-                    </div>
+                    {loading ? (
+                        <div className="text-center py-8 text-gray-500">Loading schedule...</div>
+                    ) : classStats.length > 0 ? (
+                        classStats.map((stat) => (
+                            <div key={stat.classId} className="bg-dark-card border border-white/5 rounded-2xl p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-400 font-bold">
+                                        {stat.className.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-white font-bold">{stat.className}</h3>
+                                        <p className="text-gray-500 text-sm">{stat.studentCount} Students • {stat.subjectName || 'General Subject'}</p>
+                                    </div>
+                                </div>
+                                <NavLink to={`/class-manager`} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm font-bold rounded-lg transition-colors">
+                                    View Class
+                                </NavLink>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center py-8 text-gray-500">
+                            <p>No classes assigned yet.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -166,6 +231,23 @@ export const Dashboard = () => {
 
                 {/* Background Decor */}
                 <div className="absolute right-0 bottom-0 w-64 h-64 bg-teal-500/5 blur-[80px] rounded-full translate-x-1/3 translate-y-1/3" />
+            </div>
+
+            {/* DEBUG: Temporary Diagnostic Info */}
+            <div className="mt-8 p-4 bg-black/50 border border-red-500/50 rounded-xl text-xs font-mono text-gray-300 overflow-auto max-h-80">
+                <h4 className="text-red-400 font-bold mb-2">DEBUG INFO (Take a screenshot if issues persist)</h4>
+                <div>Auth User ID: {user?.id}</div>
+                <div>Staff ID (from profile): {profile?.staffId || 'NOT SET'}</div>
+                <div>Role: {role}</div>
+                <div>School ID: {schoolId}</div>
+                <div>DisplayName Source: {profile?.fullName ? 'Profile' : user?.user_metadata?.full_name ? 'Metadata' : 'Fallback'}</div>
+                <div>Display Name: {displayName}</div>
+                <div className="mt-2 text-blue-300">Fetched Profile (from users table):</div>
+                <pre>{JSON.stringify(profile, null, 2)}</pre>
+                <div className="mt-2 text-yellow-300">Staff Assignments Count: {classStats.length}</div>
+                <div className="mt-2 text-orange-300">Query Used: staff_id={user?.id}, school_id={schoolId}</div>
+                <div className="mt-2 text-green-300">User Metadata:</div>
+                <pre>{JSON.stringify(user?.user_metadata, null, 2)}</pre>
             </div>
         </div>
     );

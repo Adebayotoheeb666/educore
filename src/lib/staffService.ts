@@ -7,17 +7,80 @@ export interface CreateStaffParams {
     role: 'staff' | 'bursar';
     specialization?: string;
     phoneNumber?: string;
+    staffId?: string;
 }
+
+/**
+ * Generate a unique staff ID
+ */
+function generateStaffId(schoolId: string): string {
+    const staffPrefix = schoolId.substring(0, 3).toUpperCase();
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    return `STF-${staffPrefix}-${randomSuffix}`;
+}
+
+/**
+ * Fallback for development: Create staff directly in Supabase without Auth
+ * (used when edge function is not deployed)
+ */
+const createStaffAccountFallback = async (
+    schoolId: string,
+    data: CreateStaffParams
+): Promise<{ staffId: string; docId: string; message: string }> => {
+    console.warn(
+        '⚠️  Using development fallback for staff creation. ' +
+        'The Supabase Edge Function "invite-staff" is not deployed. ' +
+        'To use the full feature, deploy functions with: supabase functions deploy'
+    );
+
+    const staffId = data.staffId || generateStaffId(schoolId);
+
+    // Create user profile directly in database
+    // Note: This doesn't create an Auth account, which is a limitation in development
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .insert({
+            school_id: schoolId,
+            email: data.email,
+            full_name: data.fullName,
+            role: data.role,
+            staff_id: staffId,
+            phone_number: data.phoneNumber,
+            assigned_subjects: data.specialization ? [data.specialization] : [],
+        })
+        .select()
+        .single();
+
+    if (userError) {
+        console.error('Development fallback error:', userError);
+        throw new Error(`Failed to create staff account: ${userError.message}`);
+    }
+
+    console.log(
+        '✅ Staff created in database (development mode). ' +
+        'Note: Auth account was not created. Staff cannot log in yet. ' +
+        'Deploy the edge function for full functionality.'
+    );
+
+    return {
+        staffId,
+        docId: userData.id,
+        message: `Staff profile created in development mode. ` +
+            `Note: Deploy Supabase functions for Auth account creation and email notifications.`
+    };
+};
 
 export const createStaffAccount = async (
     schoolId: string,
     adminId: string,
     data: CreateStaffParams
 ) => {
-    // ✅ Call Edge Function instead of direct DB insert for secure Auth creation
-    const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-staff`,
-        {
+    const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-staff`;
+    const isProduction = import.meta.env.PROD;
+
+    try {
+        // Try to use edge function (production or if deployed in development)
+        const response = await fetch(edgeFunctionUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -30,22 +93,34 @@ export const createStaffAccount = async (
                 role: data.role,
                 specialization: data.specialization,
                 phoneNumber: data.phoneNumber,
-                adminId
+                adminId,
+                staffId: data.staffId
             })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            // If in development and function not deployed, fall back to direct insert
+            if (!isProduction && (response.status === 404 || response.status === 0)) {
+                return await createStaffAccountFallback(schoolId, data);
+            }
+            throw new Error(result.error || `Failed to invite staff (HTTP ${response.status})`);
         }
-    );
 
-    const result = await response.json();
-
-    if (!response.ok) {
-        throw new Error(result.error || 'Failed to invite staff');
+        return {
+            staffId: result.staffId,
+            docId: result.authId,
+            message: "Staff invited successfully. Confirmation email sent."
+        };
+    } catch (error) {
+        // Network/CORS error - likely function not deployed
+        if (!isProduction && error instanceof TypeError && error.message.includes('Failed to fetch')) {
+            console.warn('Edge function not reachable in development, using fallback...');
+            return await createStaffAccountFallback(schoolId, data);
+        }
+        throw error;
     }
-
-    return {
-        staffId: result.staffId,
-        docId: result.authId,
-        message: "Staff invited successfully. Confirmation email sent."
-    };
 };
 
 export const getStaffMembers = async (schoolId: string): Promise<UserProfile[]> => {
