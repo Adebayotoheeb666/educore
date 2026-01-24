@@ -30,6 +30,9 @@ export const UserManagement = () => {
   const [resetting, setResetting] = useState(false);
   const [resetStatus, setResetStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak');
+  const [showFixStaffIdModal, setShowFixStaffIdModal] = useState(false);
+  const [fixingStaffId, setFixingStaffId] = useState(false);
+  const [fixStatus, setFixStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Only admins can access this page
   if (role !== 'admin') {
