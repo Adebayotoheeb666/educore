@@ -35,7 +35,7 @@ export const Dashboard = () => {
                 const { count, error } = await supabase
                     .from('results')
                     .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id);
+                    .eq('teacher_id', user.id);
 
                 if (!error) setPendingCount(count || 0);
 

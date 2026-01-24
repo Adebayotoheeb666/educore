@@ -3,7 +3,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { adminResetUserPassword } from '../../lib/passwordResetService';
 import { logAction } from '../../lib/auditService';
-import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import { syncStaffIdFromMetadata } from '../../lib/staffService';
+import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle, Zap } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 interface User {
@@ -48,10 +49,20 @@ export const UserManagement = () => {
 
   // Fetch all users in school
   useEffect(() => {
-    if (!schoolId) return;
+    console.log('[UserManagement] Effect triggered. SchoolId:', schoolId);
+
+    // If we're still auth-loading, do nothing
+    if (authLoading) return;
+
+    if (!schoolId) {
+      console.warn('[UserManagement] No schoolId available. Stopping loader.');
+      setLoading(false);
+      return;
+    }
 
     const fetchUsers = async () => {
       setLoading(true);
+      console.log('[UserManagement] Fetching users for school:', schoolId);
       try {
         const { data, error } = await supabase
           .from('users')
@@ -59,18 +70,23 @@ export const UserManagement = () => {
           .eq('school_id', schoolId)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error('[UserManagement] Error fetching users:', error);
+          throw error;
+        }
+
+        console.log('[UserManagement] Users fetched successfully:', data?.length);
         setUsers(data || []);
         setFilteredUsers(data || []);
       } catch (err) {
-        console.error('Error fetching users:', err);
+        console.error('[UserManagement] Catch error fetching users:', err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchUsers();
-  }, [schoolId]);
+  }, [schoolId, authLoading]);
 
   // Filter users based on search
   useEffect(() => {
@@ -221,11 +237,21 @@ export const UserManagement = () => {
       }
 
       // Log the action
-      await logAction('STAFF_ID_SYNCED', 'user', selectedUser.id, {
-        target_user: selectedUser.email,
-        target_name: selectedUser.full_name,
-        staff_id: mappedId
-      });
+      await logAction(
+        schoolId || '',
+        user.id,
+        user.email || 'system',
+        'update', // action
+        'user', // resourceType
+        selectedUser.id, // resourceId
+        {}, // changes
+        { // metadata
+          target_user: selectedUser.email,
+          target_name: selectedUser.full_name,
+          staff_id: mappedId,
+          description: 'Synced staff ID from auth metadata'
+        }
+      );
 
       setFixStatus({
         type: 'success',
@@ -323,7 +349,14 @@ export const UserManagement = () => {
           </div>
         ) : filteredUsers.length === 0 ? (
           <div className="p-8 text-center text-gray-400">
-            No users found
+            {!schoolId ? (
+              <div className="text-red-400">
+                <p className="font-bold">System Error: School ID missing.</p>
+                <p className="text-sm mt-1">Please try reloading the page. If the issue persists, contact support.</p>
+              </div>
+            ) : (
+              "No users found"
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -407,11 +440,10 @@ export const UserManagement = () => {
             </p>
 
             {fixStatus && (
-              <div className={`mb-4 p-4 rounded-lg flex gap-3 ${
-                fixStatus.type === 'success'
-                  ? 'bg-green-500/10 border border-green-500/20'
-                  : 'bg-red-500/10 border border-red-500/20'
-              }`}>
+              <div className={`mb-4 p-4 rounded-lg flex gap-3 ${fixStatus.type === 'success'
+                ? 'bg-green-500/10 border border-green-500/20'
+                : 'bg-red-500/10 border border-red-500/20'
+                }`}>
                 {fixStatus.type === 'success' ? (
                   <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                 ) : (

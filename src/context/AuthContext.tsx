@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         fetchingRef.current = true;
 
-        const FETCH_TIMEOUT = 4000; // 4 seconds max wait
+        const FETCH_TIMEOUT = 10000; // 10 seconds timeout
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
         let timedOut = false;
 
@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (timeoutId) clearTimeout(timeoutId);
 
             if (data) {
-                console.log('[AuthContext] Profile fetched successfully:', data.role);
+                console.log('[AuthContext] Profile fetched successfully:', data.role, 'SchoolId:', data.school_id);
 
                 // Check if profile has critical missing fields
                 const isBrokenProfile =
