@@ -32,8 +32,8 @@ export const StaffAuthAudit = () => {
     failed: number;
     errors: Array<{ staffName: string; error: string }>;
   } | null>(null);
-  const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
-  const [creatingAuth, setCreatingAuth] = useState(false);
+  const [creatingStaffIds, setCreatingStaffIds] = useState<Set<string>>(new Set());
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Handle auth loading state first
   if (authLoading) {
@@ -71,6 +71,7 @@ export const StaffAuthAudit = () => {
   const handleBulkFix = async () => {
     if (!schoolId) return;
 
+    setErrorMessage(null);
     setFixing(true);
     try {
       const result = await bulkCreateStaffAuthAccounts(schoolId);
@@ -99,6 +100,8 @@ export const StaffAuthAudit = () => {
         setAuditResult(newResult);
       }, 1000);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create Auth accounts';
+      setErrorMessage(message);
       console.error('Bulk fix error:', err);
     } finally {
       setFixing(false);
@@ -108,7 +111,8 @@ export const StaffAuthAudit = () => {
   const handleCreateSingleAuth = async (staff: AuditResult['staffWithoutAuth'][0]) => {
     if (!schoolId) return;
 
-    setCreatingAuth(true);
+    setErrorMessage(null);
+    setCreatingStaffIds(prev => new Set([...prev, staff.id]));
     try {
       const result = await createStaffAuthAccount(schoolId, staff.id, staff.name, staff.email);
 
@@ -136,12 +140,19 @@ export const StaffAuthAudit = () => {
             }
           );
         }
+      } else {
+        setErrorMessage(result.message);
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create Auth account';
+      setErrorMessage(message);
       console.error('Create auth error:', err);
     } finally {
-      setCreatingAuth(false);
-      setSelectedStaff(null);
+      setCreatingStaffIds(prev => {
+        const next = new Set(prev);
+        next.delete(staff.id);
+        return next;
+      });
     }
   };
 
@@ -212,11 +223,22 @@ export const StaffAuthAudit = () => {
         </div>
       )}
 
+      {/* Error Alert */}
+      {errorMessage && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-red-500 mb-1">Error</h3>
+            <p className="text-red-500/90 text-sm">{errorMessage}</p>
+          </div>
+        </div>
+      )}
+
       {/* Bulk Fix Button */}
       {!loading && auditResult && auditResult.staffWithoutAuth.length > 0 && (
         <button
           onClick={handleBulkFix}
-          disabled={fixing}
+          disabled={fixing || creatingStaffIds.size > 0}
           className="flex items-center gap-2 px-4 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition disabled:opacity-50 font-medium"
         >
           {fixing ? (
@@ -296,10 +318,10 @@ export const StaffAuthAudit = () => {
                     <td className="px-6 py-3">
                       <button
                         onClick={() => handleCreateSingleAuth(staff)}
-                        disabled={creatingAuth || selectedStaff === staff.id}
+                        disabled={creatingStaffIds.has(staff.id) || fixing}
                         className="flex items-center gap-2 px-3 py-1.5 bg-teal-500/10 text-teal-500 hover:bg-teal-500/20 rounded transition text-sm font-medium disabled:opacity-50"
                       >
-                        {selectedStaff === staff.id && creatingAuth ? (
+                        {creatingStaffIds.has(staff.id) ? (
                           <>
                             <div className="w-3 h-3 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                             Creating...
