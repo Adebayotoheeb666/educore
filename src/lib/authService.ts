@@ -346,6 +346,47 @@ export const confirmPhoneOTP = async (phoneNumber: string, code: string, schoolI
 };
 
 /**
+ * Repair a broken profile by syncing missing fields from Auth metadata
+ */
+export const repairProfileFromAuthMetadata = async (uid: string, user: any): Promise<void> => {
+    if (!user || !user.user_metadata) {
+        console.log('No user metadata available for repair');
+        return;
+    }
+
+    try {
+        const authMetadata = user.user_metadata;
+        const schoolId = authMetadata.schoolId || authMetadata.school_id;
+        const staffId = authMetadata.staff_id;
+        const admissionNumber = authMetadata.admission_number;
+        const fullName = authMetadata.full_name || authMetadata.fullName;
+
+        // Only update if we have data to update
+        if (schoolId || staffId || admissionNumber || fullName) {
+            const updateData: any = {};
+
+            if (schoolId) updateData.school_id = schoolId;
+            if (staffId) updateData.staff_id = staffId;
+            if (admissionNumber) updateData.admission_number = admissionNumber;
+            if (fullName) updateData.full_name = fullName;
+
+            const { error } = await supabase
+                .from('users')
+                .update(updateData)
+                .eq('id', uid);
+
+            if (error) {
+                console.error('Failed to repair profile:', error);
+            } else {
+                console.log('Profile repaired with data from Auth metadata:', updateData);
+            }
+        }
+    } catch (err) {
+        console.error('Exception during profile repair:', err);
+    }
+};
+
+/**
  * Get the current user's profile
  */
 export const getCurrentUserProfile = async (uid: string): Promise<UserProfile | null> => {
