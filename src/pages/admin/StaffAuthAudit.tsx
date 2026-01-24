@@ -223,11 +223,22 @@ export const StaffAuthAudit = () => {
         </div>
       )}
 
+      {/* Error Alert */}
+      {errorMessage && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-red-500 mb-1">Error</h3>
+            <p className="text-red-500/90 text-sm">{errorMessage}</p>
+          </div>
+        </div>
+      )}
+
       {/* Bulk Fix Button */}
       {!loading && auditResult && auditResult.staffWithoutAuth.length > 0 && (
         <button
           onClick={handleBulkFix}
-          disabled={fixing}
+          disabled={fixing || creatingStaffIds.size > 0}
           className="flex items-center gap-2 px-4 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition disabled:opacity-50 font-medium"
         >
           {fixing ? (
