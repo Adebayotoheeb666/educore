@@ -51,6 +51,10 @@ export const createStaffAuthAccount = async (
         const url = `${supabaseUrl}/functions/v1/create-staff-auth`;
         console.log('Calling create-staff-auth function at:', url);
 
+        // Add a timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -63,7 +67,10 @@ export const createStaffAuthAccount = async (
                 staffName,
                 email,
             }),
+            signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const data = await response.json();
