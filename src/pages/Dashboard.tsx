@@ -18,15 +18,34 @@ export const Dashboard = () => {
         const fetchPendingGrades = async () => {
             if (!user) return;
             try {
-                const { count, error } = await supabase
+                // For students: show their own results
+                // For staff/admin: show results they can access (will be filtered by RLS)
+                // Use school_id to avoid RLS issues - admins can see school results
+                const query = supabase
                     .from('results')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id);
+                    .select('*', { count: 'exact', head: true });
 
-                if (error) throw error;
+                // Filter by role for better performance
+                if (role === 'student') {
+                    query.eq('student_id', user.id);
+                } else if (role === 'admin') {
+                    // Admins can see results, RLS will filter by school
+                    query.eq('school_id', profile?.schoolId);
+                } else {
+                    // Staff/bursar: RLS policies will handle access via staff_assignments
+                    // For now, just ensure they're in the right school
+                    query.eq('school_id', profile?.schoolId);
+                }
+
+                const { count, error } = await query;
+
+                if (error) {
+                    console.error('Error fetching pending grades:', error.message || error);
+                    throw error;
+                }
                 setPendingCount(count || 0);
             } catch (err) {
-                console.error('Error fetching pending grades:', err);
+                console.error('Error fetching pending grades:', err instanceof Error ? err.message : String(err));
                 setPendingCount(0);
             } finally {
                 setLoading(false);
@@ -34,7 +53,7 @@ export const Dashboard = () => {
         };
 
         fetchPendingGrades();
-    }, [user]);
+    }, [user, role, profile?.schoolId]);
 
     return (
         <div className="space-y-8 pb-20">
