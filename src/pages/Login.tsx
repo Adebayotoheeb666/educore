@@ -47,6 +47,15 @@ export const Login = () => {
         const message = error?.message || '';
         const lowerMessage = message.toLowerCase();
 
+        // Network/Fetch errors
+        if (lowerMessage.includes('failed to fetch') || lowerMessage.includes('fetch failed')) {
+            console.error('Network error detected:', error);
+            return "Network error: Unable to connect to the authentication service. Please check your internet connection and try again. If the problem persists, the service may be temporarily unavailable.";
+        }
+        if (lowerMessage.includes('cors') || lowerMessage.includes('cross-origin')) {
+            return "Connection error: Unable to authenticate at this time. Please try again or contact support.";
+        }
+
         if (lowerMessage.includes('violates row-level security')) {
             return "Access denied. You may not have permission to perform this action.";
         }
@@ -135,10 +144,16 @@ export const Login = () => {
 
         try {
             if (mode === 'login') {
+                console.log('[Login] Attempting admin login with email:', email);
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
+                if (error) {
+                    console.error('[Login] Auth error:', error);
+                    throw error;
+                }
+                console.log('[Login] Successfully authenticated, redirecting to /admin');
                 navigate('/admin');
             } else if (mode === 'school-reg') {
+                console.log('[Login] Attempting school registration');
                 await registerSchool(
                     { email, password, fullName: name },
                     { name: schoolName, address: schoolAddress }
@@ -172,7 +187,13 @@ export const Login = () => {
                 }
             }
         } catch (err: any) {
-            console.error(err);
+            console.error('[Login] Error during authentication:', {
+                error: err,
+                message: err?.message,
+                status: err?.status,
+                code: err?.code,
+                mode: mode
+            });
             setError(getUserFriendlyErrorMessage(err));
         } finally {
             setLoading(false);
