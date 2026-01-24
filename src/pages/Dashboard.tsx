@@ -26,7 +26,10 @@ export const Dashboard = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!user) return;
+            if (!user) {
+                console.log('[Dashboard] No user, skipping fetch');
+                return;
+            }
             try {
                 // Fetch pending grades
                 const { count, error } = await supabase
@@ -38,13 +41,21 @@ export const Dashboard = () => {
 
                 // Fetch Staff Assignments
                 if (schoolId) {
+                    console.log('[Dashboard] Fetching staff assignments for:', { user_id: user.id, schoolId });
+
                     const { data: assignments, error: assignError } = await supabase
                         .from('staff_assignments')
                         .select('class_id, classes(name), subject_id, subjects(name)')
                         .eq('staff_id', user.id)
                         .eq('school_id', schoolId);
 
-                    if (!assignError && assignments) {
+                    if (assignError) {
+                        console.error('[Dashboard] Error fetching assignments:', assignError);
+                    } else {
+                        console.log('[Dashboard] Fetched assignments:', assignments?.length || 0);
+                    }
+
+                    if (!assignError && assignments && assignments.length > 0) {
                         const stats = await Promise.all(assignments.map(async (a: any) => {
                             // Get student count for each class
                             const { count: studentCount } = await supabase
@@ -61,10 +72,15 @@ export const Dashboard = () => {
                             };
                         }));
                         setClassStats(stats);
+                        console.log('[Dashboard] Staff assignments loaded:', stats.length);
+                    } else if (!assignError) {
+                        console.log('[Dashboard] No assignments found for this staff');
                     }
+                } else {
+                    console.warn('[Dashboard] schoolId not available');
                 }
             } catch (err) {
-                console.error('Error fetching dashboard data:', err);
+                console.error('[Dashboard] Error fetching dashboard data:', err);
             } finally {
                 setLoading(false);
             }
