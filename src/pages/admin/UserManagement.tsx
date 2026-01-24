@@ -34,20 +34,7 @@ export const UserManagement = () => {
   const [fixingStaffId, setFixingStaffId] = useState(false);
   const [fixStatus, setFixStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Wait for auth to load before checking role
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // Only admins can access this page
-  if (role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
+  // All hooks must come before any conditional returns
   // Fetch all users in school
   useEffect(() => {
     if (!schoolId) return;
