@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import type { UserProfile } from '../lib/types';
 import { setUserContext } from '../lib/sentry';
+import { repairProfileFromAuthMetadata } from '../lib/authService';
 
 interface AuthContextType {
     user: User | null;
