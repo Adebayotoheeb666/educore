@@ -87,15 +87,13 @@ export const AdminDashboard = () => {
 
         setLoading(true);
         try {
-            // Fetch All School Users
+            // Fetch All School Users via RPC to avoid RLS recursion
             const { data: allUsers, error: usersError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('school_id', schoolId);
+                .rpc('get_school_users', { p_school_id: schoolId });
 
             if (usersError) throw usersError;
 
-            const mappedUsers = (allUsers || []).map(u => ({
+            const mappedUsers = (allUsers || []).map((u: any) => ({
                 id: u.id,
                 ...u,
                 schoolId: u.school_id,
