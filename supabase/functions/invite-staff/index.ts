@@ -152,7 +152,10 @@ serve(async (req) => {
         if (profileError) {
             console.error("Profile creation error:", profileError);
             return new Response(
-                JSON.stringify({ error: "Failed to create user profile" }),
+                JSON.stringify({
+                    error: "Failed to create user profile",
+                    details: profileError
+                }),
                 {
                     status: 500,
                     headers: { ...corsHeaders, "Content-Type": "application/json" }

@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchingRef.current = true;
 
         const FETCH_TIMEOUT = 4000; // 4 seconds max wait
-        let timeoutId: NodeJS.Timeout | null = null;
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
         let timedOut = false;
 
         try {
@@ -102,8 +102,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let schoolId = userMetadata.schoolId || userMetadata.school_id || '';
 
         if (!schoolId) {
-            console.warn('[AuthContext] No schoolId in metadata, using pending-setup');
-            schoolId = 'pending-setup';
+            console.warn('[AuthContext] No schoolId in metadata');
+            // Do not default to 'pending-setup' as it causes invalid UUID errors
+            // schoolId = 'pending-setup'; 
         }
 
         const fallbackProfile: UserProfile = {
@@ -111,10 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: user.email || '',
             role: userMetadata.role || 'authenticated',
             schoolId: schoolId,
-            fullName: userMetadata.fullName || '',
-            admissionNumber: userMetadata.admissionNumber || '',
-            phoneNumber: userMetadata.phone || '',
-            staffId: userMetadata.staffId || '',
+            fullName: userMetadata.fullName || userMetadata.full_name || '',
+            admissionNumber: userMetadata.admissionNumber || userMetadata.admission_number || '',
+            phoneNumber: userMetadata.phone || userMetadata.phone_number || '',
+            staffId: userMetadata.staffId || userMetadata.staff_id || '',
             assignedClasses: [],
             assignedSubjects: [],
             linkedStudents: [],

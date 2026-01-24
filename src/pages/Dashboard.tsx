@@ -8,7 +8,9 @@ export const Dashboard = () => {
     const { user, profile, role, loading: authLoading } = useAuth();
     const displayName = profile?.fullName || user?.user_metadata?.full_name || 'Teacher';
     const [pendingCount, setPendingCount] = useState(0);
+    const [classStats, setClassStats] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { schoolId } = useAuth();
 
     if (authLoading) {
         return (
@@ -23,26 +25,53 @@ export const Dashboard = () => {
     }
 
     useEffect(() => {
-        const fetchPendingGrades = async () => {
+        const fetchData = async () => {
             if (!user) return;
             try {
+                // Fetch pending grades
                 const { count, error } = await supabase
                     .from('results')
                     .select('*', { count: 'exact', head: true })
                     .eq('user_id', user.id);
 
-                if (error) throw error;
-                setPendingCount(count || 0);
+                if (!error) setPendingCount(count || 0);
+
+                // Fetch Staff Assignments
+                if (schoolId) {
+                    const { data: assignments, error: assignError } = await supabase
+                        .from('staff_assignments')
+                        .select('class_id, classes(name), subject_id, subjects(name)')
+                        .eq('staff_id', user.id)
+                        .eq('school_id', schoolId);
+
+                    if (!assignError && assignments) {
+                        const stats = await Promise.all(assignments.map(async (a: any) => {
+                            // Get student count for each class
+                            const { count: studentCount } = await supabase
+                                .from('student_classes')
+                                .select('*', { count: 'exact', head: true })
+                                .eq('class_id', a.class_id)
+                                .eq('school_id', schoolId);
+
+                            return {
+                                classId: a.class_id,
+                                className: a.classes?.name || 'Unknown Class',
+                                subjectName: a.subjects?.name,
+                                studentCount: studentCount || 0
+                            };
+                        }));
+                        setClassStats(stats);
+                    }
+                }
             } catch (err) {
-                console.error('Error fetching pending grades:', err);
-                setPendingCount(0);
+                console.error('Error fetching dashboard data:', err);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchPendingGrades();
-    }, [user]);
+        fetchData();
+    }, [user, schoolId]);
 
     return (
         <div className="space-y-8 pb-20">
@@ -125,14 +154,34 @@ export const Dashboard = () => {
             {/* Today's Schedule */}
             <div>
                 <div className="flex items-center justify-between mb-6 pt-4">
-                    <h2 className="text-xl font-bold text-white">Today's Schedule</h2>
-                    <span className="text-gray-500 text-sm font-bold">{new Date().toLocaleDateString('en-NG', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                    <h2 className="text-xl font-bold text-white">Your Assigned Classes</h2>
                 </div>
 
                 <div className="space-y-3">
-                    <div className="text-center py-8 text-gray-500">
-                        <p>No schedule added yet. Add your classes to track your daily timetable.</p>
-                    </div>
+                    {loading ? (
+                        <div className="text-center py-8 text-gray-500">Loading schedule...</div>
+                    ) : classStats.length > 0 ? (
+                        classStats.map((stat) => (
+                            <div key={stat.classId} className="bg-dark-card border border-white/5 rounded-2xl p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-400 font-bold">
+                                        {stat.className.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-white font-bold">{stat.className}</h3>
+                                        <p className="text-gray-500 text-sm">{stat.studentCount} Students • {stat.subjectName || 'General Subject'}</p>
+                                    </div>
+                                </div>
+                                <NavLink to={`/class-manager`} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm font-bold rounded-lg transition-colors">
+                                    View Class
+                                </NavLink>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center py-8 text-gray-500">
+                            <p>No classes assigned yet.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -163,6 +212,21 @@ export const Dashboard = () => {
 
                 {/* Background Decor */}
                 <div className="absolute right-0 bottom-0 w-64 h-64 bg-teal-500/5 blur-[80px] rounded-full translate-x-1/3 translate-y-1/3" />
+            </div>
+
+            {/* DEBUG: Temporary Diagnostic Info */}
+            <div className="mt-8 p-4 bg-black/50 border border-red-500/50 rounded-xl text-xs font-mono text-gray-300 overflow-auto max-h-60">
+                <h4 className="text-red-400 font-bold mb-2">DEBUG INFO (Take a screenshot if issues persist)</h4>
+                <div>User ID: {user?.id}</div>
+                <div>Role: {role}</div>
+                <div>School ID: {schoolId}</div>
+                <div>DisplayName Source: {profile?.fullName ? 'Profile' : user?.user_metadata?.full_name ? 'Metadata' : 'Fallback'}</div>
+                <div>Name: {displayName}</div>
+                <div className="mt-2 text-blue-300">User Metadata:</div>
+                <pre>{JSON.stringify(user?.user_metadata, null, 2)}</pre>
+                <div className="mt-2 text-green-300">Fetched Profile:</div>
+                <pre>{JSON.stringify(profile, null, 2)}</pre>
+                <div className="mt-2 text-yellow-300">Stats Count: {classStats.length}</div>
             </div>
         </div>
     );
