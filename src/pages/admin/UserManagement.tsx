@@ -209,82 +209,9 @@ export const UserManagement = () => {
     setFixStatus(null);
 
     try {
-      // Get the auth user to extract the mappedId from metadata
-      const { data: authData, error: authError } = await supabase.auth.admin.getUserById(selectedUser.id);
-
-      if (authError || !authData.user) {
-        throw new Error('Could not retrieve auth user information');
-      }
-
-      const mappedId = authData.user.user_metadata?.mappedId;
-
-      if (!mappedId) {
-        setFixStatus({
-          type: 'error',
-          message: 'No mapped staff ID found in auth metadata'
-        });
-        return;
-      }
-
-      // Call the sync function
-      const result = await syncStaffIdFromMetadata(selectedUser.id, mappedId);
-
-      if (!result.success) {
-        setFixStatus({
-          type: 'error',
-          message: result.message || 'Failed to sync staff ID'
-        });
-        return;
-      }
-
-      // Log the action
-      await logAction(
-        schoolId || '',
-        user.id,
-        user.email || 'system',
-        'update', // action
-        'user', // resourceType
-        selectedUser.id, // resourceId
-        {}, // changes
-        { // metadata
-          target_user: selectedUser.email,
-          target_name: selectedUser.full_name,
-          staff_id: mappedId,
-          description: 'Synced staff ID from auth metadata'
-        }
-      );
-
-      setFixStatus({
-        type: 'success',
-        message: `Staff ID synced successfully: ${mappedId}`
-      });
-
-      // Refresh users list
-      setTimeout(() => {
-        setShowFixStaffIdModal(false);
-        setSelectedUser(null);
-        setFixStatus(null);
-        if (schoolId) {
-          const fetchUsers = async () => {
-            const { data, error } = await supabase
-              .from('users')
-              .select('id, full_name, email, role, staff_id, created_at')
-              .eq('school_id', schoolId)
-              .order('created_at', { ascending: false });
-
-            if (!error) {
-              setUsers(data || []);
-              setFilteredUsers(data || []);
-            }
-          };
-          fetchUsers();
-        }
-      }, 2000);
-    } catch (err) {
-      console.error('Fix staff ID error:', err);
       setFixStatus({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to fix staff ID'
+        message: 'This feature requires Edge Function deployment. Please deploy Supabase functions with: supabase functions deploy'
       });
     } finally {
       setFixingStaffId(false);
