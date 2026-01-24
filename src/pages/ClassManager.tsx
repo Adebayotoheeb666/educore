@@ -54,7 +54,8 @@ export const ClassManager = () => {
             if (classError) throw classError;
             setMyClasses(classData || []);
         } catch (err) {
-            console.error("Error fetching classes:", err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error("Error fetching classes:", errorMsg, err);
         } finally {
             setLoading(false);
         }
