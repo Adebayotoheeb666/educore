@@ -708,7 +708,7 @@ export const AdminDashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
-                                    {activeTab === 'staff' && staff.map(u => (
+                                    {activeTab === 'staff' && filterStaff(staff).map(u => (
                                         <tr key={u.id} className="group hover:bg-white/5 transition-colors">
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-3">
@@ -752,7 +752,7 @@ export const AdminDashboard = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {activeTab === 'students' && students.map(u => (
+                                    {activeTab === 'students' && filterStudents(students).map(u => (
                                         <tr key={u.id} className="group hover:bg-white/5 transition-colors">
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-3">
@@ -767,7 +767,7 @@ export const AdminDashboard = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {activeTab === 'classes' && classes.map(c => (
+                                    {activeTab === 'classes' && filterClasses(classes).map(c => (
                                         <tr key={c.id} className="group hover:bg-white/5 transition-colors">
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-3">
@@ -801,7 +801,7 @@ export const AdminDashboard = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {activeTab === 'subjects' && subjects.map(s => (
+                                    {activeTab === 'subjects' && filterSubjects(subjects).map(s => (
                                         <tr key={s.id} className="group hover:bg-white/5 transition-colors">
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-3">
