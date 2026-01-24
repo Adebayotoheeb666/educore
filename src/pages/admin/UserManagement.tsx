@@ -301,6 +301,7 @@ export const UserManagement = () => {
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-300">Name</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-300">Email</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-300">Role</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-300">Staff ID</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-300">Created</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-300">Actions</th>
                 </tr>
@@ -315,23 +316,46 @@ export const UserManagement = () => {
                         {u.role}
                       </span>
                     </td>
+                    <td className="px-6 py-3 text-sm">
+                      {u.staff_id ? (
+                        <span className="text-teal-400 font-mono">{u.staff_id}</span>
+                      ) : (
+                        <span className="text-red-400 text-xs font-semibold">NOT SET</span>
+                      )}
+                    </td>
                     <td className="px-6 py-3 text-gray-400 text-sm">
                       {new Date(u.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-3">
-                      <button
-                        onClick={() => {
-                          setSelectedUser(u);
-                          setShowResetModal(true);
-                          setResetStatus(null);
-                          setNewPassword('');
-                          setConfirmPassword('');
-                        }}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-teal-500/10 text-teal-500 hover:bg-teal-500/20 rounded transition text-sm font-medium"
-                      >
-                        <Lock className="w-4 h-4" />
-                        Reset Password
-                      </button>
+                      <div className="flex gap-2">
+                        {!u.staff_id && (u.role === 'staff' || u.role === 'bursar') && (
+                          <button
+                            onClick={() => {
+                              setSelectedUser(u);
+                              setShowFixStaffIdModal(true);
+                              setFixStatus(null);
+                            }}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded transition text-sm font-medium"
+                            title="Sync staff ID from auth metadata"
+                          >
+                            <Zap className="w-4 h-4" />
+                            Fix ID
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setSelectedUser(u);
+                            setShowResetModal(true);
+                            setResetStatus(null);
+                            setNewPassword('');
+                            setConfirmPassword('');
+                          }}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-teal-500/10 text-teal-500 hover:bg-teal-500/20 rounded transition text-sm font-medium"
+                        >
+                          <Lock className="w-4 h-4" />
+                          Reset Password
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
