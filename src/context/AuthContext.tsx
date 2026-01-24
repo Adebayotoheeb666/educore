@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import type { UserProfile } from '../lib/types';
 import { setUserContext } from '../lib/sentry';
+import { repairProfileFromAuthMetadata } from '../lib/authService';
 
 interface AuthContextType {
     user: User | null;
@@ -54,30 +55,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (data) {
                 console.log('[AuthContext] Profile fetched successfully:', data.role);
+
+                // Check if profile has critical missing fields
+                const isBrokenProfile =
+                    !data.school_id ||
+                    (data.role === 'staff' && !data.staff_id) ||
+                    (data.role === 'student' && !data.admission_number);
+
+                // If profile is broken, attempt repair from Auth metadata
+                let finalData = data;
+                if (isBrokenProfile) {
+                    console.log('[AuthContext] Broken profile detected, attempting repair from Auth metadata...');
+                    await repairProfileFromAuthMetadata(userId, user);
+                    // Re-fetch after repair
+                    const { data: repairedData, error: refetchError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', userId)
+                        .single();
+
+                    if (!refetchError && repairedData) {
+                        console.log('[AuthContext] Profile repaired and re-fetched');
+                        finalData = repairedData;
+                    }
+                }
+
                 // Successfully fetched from database
                 const mappedProfile: UserProfile = {
-                    id: data.id,
-                    email: data.email,
-                    role: data.role,
-                    schoolId: data.school_id,
-                    fullName: data.full_name,
-                    admissionNumber: data.admission_number,
-                    phoneNumber: data.phone_number,
-                    staffId: data.staff_id,
-                    assignedClasses: data.assigned_classes,
-                    assignedSubjects: data.assigned_subjects,
-                    linkedStudents: data.linked_students,
-                    profileImage: data.profile_image,
-                    createdAt: data.created_at,
-                    updatedAt: data.updated_at
+                    id: finalData.id,
+                    email: finalData.email,
+                    role: finalData.role,
+                    schoolId: finalData.school_id,
+                    fullName: finalData.full_name,
+                    admissionNumber: finalData.admission_number,
+                    phoneNumber: finalData.phone_number,
+                    staffId: finalData.staff_id,
+                    assignedClasses: finalData.assigned_classes,
+                    assignedSubjects: finalData.assigned_subjects,
+                    linkedStudents: finalData.linked_students,
+                    profileImage: finalData.profile_image,
+                    createdAt: finalData.created_at,
+                    updatedAt: finalData.updated_at
                 };
 
                 setProfile(mappedProfile);
                 setUserContext(
-                    data.id,
-                    data.email || 'unknown@school.app',
-                    data.school_id || 'unknown-school',
-                    data.role || 'unknown'
+                    finalData.id,
+                    finalData.email || 'unknown@school.app',
+                    finalData.school_id || 'unknown-school',
+                    finalData.role || 'unknown'
                 );
                 setLoading(false);
                 fetchingRef.current = false;

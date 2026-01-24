@@ -87,7 +87,10 @@ export const activateAccount = async (
             data: {
                 role: type,
                 schoolId: schoolId,
-                mappedId: identifier
+                ...(type === 'staff'
+                    ? { staff_id: identifier }
+                    : { admission_number: identifier }
+                )
             }
         }
     });
@@ -116,15 +119,25 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
 
     if (error || !placeholder) {
         console.warn("No placeholder profile found to link. Creating fresh profile.");
-        // Create fresh profile if missing
-        await supabase.from('users').insert({
+        // Create fresh profile if missing with all required fields
+        const freshProfile: any = {
             id: authUid,
             school_id: schoolId,
             role: role,
             [idField]: identifier,
             full_name: role === 'student' ? 'Student' : 'Staff Member', // Default fallback
-            email: getVirtualEmail(schoolId, identifier) // Just to have something
-        });
+            email: getVirtualEmail(schoolId, identifier),
+            // Ensure the identifier fields are set
+            ...(role === 'staff' && { staff_id: identifier }),
+            ...(role === 'student' && { admission_number: identifier })
+        };
+
+        const { error: createError } = await supabase.from('users').insert(freshProfile);
+
+        if (createError) {
+            console.error("Failed to create fresh profile:", createError);
+            throw new Error(`Failed to create profile: ${createError.message}`);
+        }
         return;
     }
 
@@ -136,7 +149,11 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         .upsert({
             ...profileData,
             id: authUid, // The new Auth UID
-            email: getVirtualEmail(schoolId, identifier) // Update email to virtual one
+            school_id: schoolId, // Explicitly set school_id
+            ...(role === 'staff' && { staff_id: identifier }), // Explicitly set staff_id for staff
+            ...(role === 'student' && { admission_number: identifier }), // Explicitly set admission_number for students
+            email: getVirtualEmail(schoolId, identifier), // Update email to virtual one
+            role: role // Ensure role is set
         });
 
     if (insertError) {
@@ -326,6 +343,47 @@ export const confirmPhoneOTP = async (phoneNumber: string, code: string, schoolI
     }
 
     return data;
+};
+
+/**
+ * Repair a broken profile by syncing missing fields from Auth metadata
+ */
+export const repairProfileFromAuthMetadata = async (uid: string, user: any): Promise<void> => {
+    if (!user || !user.user_metadata) {
+        console.log('No user metadata available for repair');
+        return;
+    }
+
+    try {
+        const authMetadata = user.user_metadata;
+        const schoolId = authMetadata.schoolId || authMetadata.school_id;
+        const staffId = authMetadata.staff_id;
+        const admissionNumber = authMetadata.admission_number;
+        const fullName = authMetadata.full_name || authMetadata.fullName;
+
+        // Only update if we have data to update
+        if (schoolId || staffId || admissionNumber || fullName) {
+            const updateData: any = {};
+
+            if (schoolId) updateData.school_id = schoolId;
+            if (staffId) updateData.staff_id = staffId;
+            if (admissionNumber) updateData.admission_number = admissionNumber;
+            if (fullName) updateData.full_name = fullName;
+
+            const { error } = await supabase
+                .from('users')
+                .update(updateData)
+                .eq('id', uid);
+
+            if (error) {
+                console.error('Failed to repair profile:', error);
+            } else {
+                console.log('Profile repaired with data from Auth metadata:', updateData);
+            }
+        }
+    } catch (err) {
+        console.error('Exception during profile repair:', err);
+    }
 };
 
 /**
