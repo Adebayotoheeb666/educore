@@ -269,17 +269,21 @@ export const Login = () => {
 
                     {(mode === 'student-login' || mode === 'staff-login') && (
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">School ID</label>
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">School ID or Name</label>
                             <div className="relative group">
                                 <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
                                 <input
                                     type="text" required
                                     className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
-                                    placeholder="wisdom-school"
+                                    placeholder="School UUID or name (e.g., International Wisdom School)"
                                     value={schoolId}
                                     onChange={(e) => setSchoolId(e.target.value)}
                                 />
                             </div>
+                            <p className="text-xs text-gray-500 ml-1 mt-1">
+                                {mode === 'staff-login' && 'Use your school\'s ID (UUID) or name. Ask your administrator if unsure.'}
+                                {mode === 'student-login' && 'Use your school\'s ID (UUID) or name. Ask your school administrator if unsure.'}
+                            </p>
                         </div>
                     )}
 
