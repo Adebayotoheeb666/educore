@@ -162,10 +162,9 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         if (role === 'staff') {
             try {
                 const { data, error: rpcError } = await supabase.rpc('link_staff_profile_after_activation', {
-                    school_id: schoolId,
-                    auth_uid: authUid,
-                    staff_id_identifier: identifier,
-                    auth_user_role: role
+                    p_school_id: schoolId,
+                    p_auth_uid: authUid,
+                    p_staff_id_identifier: identifier
                 });
 
                 if (rpcError) {
@@ -173,15 +172,23 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                 } else if (data && !data.success) {
                     console.warn("Staff profile linking failed:", data.message);
                 } else {
-                    console.log("Staff profile linked successfully:", data?.message);
+                    console.log("Staff profile linked successfully:", data?.message, `(${data?.assignments_migrated || 0} assignments)`);
+                }
+
+                // Now delete the old placeholder (whether RPC succeeded or failed)
+                // This is safe because the new profile with authUid should already exist
+                const { error: deleteError } = await supabase
+                    .from('users')
+                    .delete()
+                    .eq('id', placeholder.id);
+
+                if (deleteError) {
+                    console.warn("Failed to delete placeholder profile:", deleteError);
                 }
             } catch (err) {
                 console.error("Staff profile linking exception:", err);
-                // Fallback: Try direct update (may fail due to RLS)
-                await supabase
-                    .from('staff_assignments')
-                    .update({ staff_id: authUid })
-                    .eq('staff_id', placeholder.id);
+                // Attempt cleanup anyway
+                await supabase.from('users').delete().eq('id', placeholder.id);
             }
         } else {
             // For other roles, just delete the old placeholder
