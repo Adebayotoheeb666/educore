@@ -232,23 +232,6 @@ export const Dashboard = () => {
                 {/* Background Decor */}
                 <div className="absolute right-0 bottom-0 w-64 h-64 bg-teal-500/5 blur-[80px] rounded-full translate-x-1/3 translate-y-1/3" />
             </div>
-
-            {/* DEBUG: Temporary Diagnostic Info */}
-            <div className="mt-8 p-4 bg-black/50 border border-red-500/50 rounded-xl text-xs font-mono text-gray-300 overflow-auto max-h-80">
-                <h4 className="text-red-400 font-bold mb-2">DEBUG INFO (Take a screenshot if issues persist)</h4>
-                <div>Auth User ID: {user?.id}</div>
-                <div>Staff ID (from profile): {profile?.staffId || 'NOT SET'}</div>
-                <div>Role: {role}</div>
-                <div>School ID: {schoolId}</div>
-                <div>DisplayName Source: {profile?.fullName ? 'Profile' : user?.user_metadata?.full_name ? 'Metadata' : 'Fallback'}</div>
-                <div>Display Name: {displayName}</div>
-                <div className="mt-2 text-blue-300">Fetched Profile (from users table):</div>
-                <pre>{JSON.stringify(profile, null, 2)}</pre>
-                <div className="mt-2 text-yellow-300">Staff Assignments Count: {classStats.length}</div>
-                <div className="mt-2 text-orange-300">Query Used: staff_id={user?.id}, school_id={schoolId}</div>
-                <div className="mt-2 text-green-300">User Metadata:</div>
-                <pre>{JSON.stringify(user?.user_metadata, null, 2)}</pre>
-            </div>
         </div>
     );
 };
