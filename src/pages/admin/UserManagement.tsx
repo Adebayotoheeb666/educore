@@ -17,7 +17,7 @@ interface User {
 }
 
 export const UserManagement = () => {
-  const { user, role, schoolId } = useAuth();
+  const { user, role, loading: authLoading, schoolId } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,6 +33,15 @@ export const UserManagement = () => {
   const [showFixStaffIdModal, setShowFixStaffIdModal] = useState(false);
   const [fixingStaffId, setFixingStaffId] = useState(false);
   const [fixStatus, setFixStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Wait for auth to load before checking role
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   // Only admins can access this page
   if (role !== 'admin') {
