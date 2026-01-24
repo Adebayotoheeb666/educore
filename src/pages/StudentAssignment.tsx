@@ -39,7 +39,8 @@ export const StudentAssignment = () => {
             const classes = assignments?.map(a => a.classes).filter(Boolean) || [];
             setAssignedClasses(classes);
         } catch (err) {
-            console.error("Error fetching assignments:", err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error("Error fetching assignments:", errorMsg, err);
         } finally {
             setLoading(false);
         }
