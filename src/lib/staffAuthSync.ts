@@ -216,6 +216,10 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
         const url = `${supabaseUrl}/functions/v1/audit-staff-auth`;
         console.log('Calling audit function at:', url);
 
+        // Add a timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -223,7 +227,10 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
                 'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({ schoolId }),
+            signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             console.warn(`Audit function returned ${response.status}, using fallback`);
