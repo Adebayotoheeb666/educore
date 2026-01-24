@@ -18,6 +18,7 @@ export const getStaffVirtualEmail = (schoolId: string, staffId: string): string 
 /**
  * Create Auth account for a staff member
  * Called when staff is created in the database
+ * Uses Edge Function for service role access
  */
 export const createStaffAuthAccount = async (
     schoolId: string,
@@ -26,37 +27,37 @@ export const createStaffAuthAccount = async (
     email?: string
 ): Promise<{ success: boolean; authId?: string; message: string }> => {
     try {
-        // Generate virtual email if not provided
-        const virtualEmail = email || getStaffVirtualEmail(schoolId, staffId);
+        // Call Edge Function to create auth with service role
+        const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-staff-auth`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
+                },
+                body: JSON.stringify({
+                    schoolId,
+                    staffId,
+                    staffName,
+                    email,
+                }),
+            }
+        );
 
-        // Generate temporary password (will need to be reset by staff)
-        const tempPassword = generateTemporaryPassword();
+        const data = await response.json();
 
-        // Create Auth account
-        const { data, error } = await supabase.auth.admin.createUser({
-            email: virtualEmail,
-            password: tempPassword,
-            email_confirm: true, // Auto-confirm email
-            user_metadata: {
-                role: 'staff',
-                schoolId: schoolId,
-                staffId: staffId,
-                fullName: staffName,
-                staffAuthCreatedAt: new Date().toISOString(),
-            },
-        });
-
-        if (error || !data.user) {
+        if (!response.ok) {
             return {
                 success: false,
-                message: `Failed to create Auth account: ${error?.message || 'Unknown error'}`,
+                message: `Failed to create Auth account: ${data.error || 'Unknown error'}`,
             };
         }
 
         return {
             success: true,
-            authId: data.user.id,
-            message: `Auth account created for staff member`,
+            authId: data.authId,
+            message: data.message || 'Auth account created for staff member',
         };
     } catch (err) {
         console.error('Staff auth creation error:', err);
