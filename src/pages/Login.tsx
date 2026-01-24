@@ -101,6 +101,33 @@ export const Login = () => {
         }
     };
 
+    const resolveSchoolId = async (inputSchoolId: string): Promise<string> => {
+        // If it's a valid UUID, use it as-is
+        if (isValidUUID(inputSchoolId)) {
+            return inputSchoolId;
+        }
+
+        // Otherwise, try to find the school by name
+        console.log('School ID is not a UUID, attempting to look up by name:', inputSchoolId);
+        const schools = await findSchoolByName(inputSchoolId);
+
+        if (schools.length === 1) {
+            console.log('Found school:', schools[0].name);
+            return schools[0].id;
+        } else if (schools.length > 1) {
+            throw new Error(
+                `Multiple schools found matching "${inputSchoolId}". Please use the school's UUID instead. ` +
+                `Contact your administrator for the school UUID.`
+            );
+        } else {
+            throw new Error(
+                `School "${inputSchoolId}" not found. Please use the school's UUID. ` +
+                `The School ID should be a unique identifier (like: abc12345-1234-5678-90ab-cdef12345678). ` +
+                `If you don't know your school's UUID, contact your administrator.`
+            );
+        }
+    };
+
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -121,19 +148,22 @@ export const Login = () => {
                 if (!schoolId || !admissionNumber || !password) {
                     throw new Error("Please fill in all fields (School ID, Admission Number, and PIN)");
                 }
-                await loginWithAdmissionNumber(schoolId, admissionNumber, password);
+                const resolvedSchoolId = await resolveSchoolId(schoolId);
+                await loginWithAdmissionNumber(resolvedSchoolId, admissionNumber, password);
                 navigate('/portal');
             } else if (mode === 'staff-login') {
                 if (!schoolId || !staffId || !password) {
                     throw new Error("Please fill in all fields (School ID, Staff ID, and Password)");
                 }
-                await loginWithStaffId(schoolId, staffId, password);
+                const resolvedSchoolId = await resolveSchoolId(schoolId);
+                await loginWithStaffId(resolvedSchoolId, staffId, password);
                 navigate('/');
             } else if (mode === 'parent-login') {
                 if (showOtpInput) {
                     await handleVerifyOtp();
                 } else if (schoolId && admissionNumber && password) {
-                    await loginWithParentCredentials(schoolId, admissionNumber, password);
+                    const resolvedSchoolId = await resolveSchoolId(schoolId);
+                    await loginWithParentCredentials(resolvedSchoolId, admissionNumber, password);
                     navigate('/portal/parent');
                 } else if (phoneNumber) {
                     await handleSendOtp();
