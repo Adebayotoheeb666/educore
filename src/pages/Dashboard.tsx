@@ -26,7 +26,10 @@ export const Dashboard = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!user) return;
+            if (!user) {
+                console.log('[Dashboard] No user, skipping fetch');
+                return;
+            }
             try {
                 // Fetch pending grades
                 const { count, error } = await supabase
@@ -38,13 +41,21 @@ export const Dashboard = () => {
 
                 // Fetch Staff Assignments
                 if (schoolId) {
+                    console.log('[Dashboard] Fetching staff assignments for:', { user_id: user.id, schoolId });
+
                     const { data: assignments, error: assignError } = await supabase
                         .from('staff_assignments')
                         .select('class_id, classes(name), subject_id, subjects(name)')
                         .eq('staff_id', user.id)
                         .eq('school_id', schoolId);
 
-                    if (!assignError && assignments) {
+                    if (assignError) {
+                        console.error('[Dashboard] Error fetching assignments:', assignError);
+                    } else {
+                        console.log('[Dashboard] Fetched assignments:', assignments?.length || 0);
+                    }
+
+                    if (!assignError && assignments && assignments.length > 0) {
                         const stats = await Promise.all(assignments.map(async (a: any) => {
                             // Get student count for each class
                             const { count: studentCount } = await supabase
@@ -61,10 +72,15 @@ export const Dashboard = () => {
                             };
                         }));
                         setClassStats(stats);
+                        console.log('[Dashboard] Staff assignments loaded:', stats.length);
+                    } else if (!assignError) {
+                        console.log('[Dashboard] No assignments found for this staff');
                     }
+                } else {
+                    console.warn('[Dashboard] schoolId not available');
                 }
             } catch (err) {
-                console.error('Error fetching dashboard data:', err);
+                console.error('[Dashboard] Error fetching dashboard data:', err);
             } finally {
                 setLoading(false);
             }
@@ -84,6 +100,9 @@ export const Dashboard = () => {
                     <div>
                         <div className="text-teal-500 text-xs font-bold uppercase tracking-wider mb-0.5">Dashboard</div>
                         <h1 className="text-2xl font-bold text-white">Welcome, {displayName}</h1>
+                        {profile?.staffId && (
+                            <p className="text-gray-400 text-sm">Staff ID: <span className="text-teal-400 font-bold">{profile.staffId}</span></p>
+                        )}
                     </div>
                 </div>
 
@@ -215,18 +234,20 @@ export const Dashboard = () => {
             </div>
 
             {/* DEBUG: Temporary Diagnostic Info */}
-            <div className="mt-8 p-4 bg-black/50 border border-red-500/50 rounded-xl text-xs font-mono text-gray-300 overflow-auto max-h-60">
+            <div className="mt-8 p-4 bg-black/50 border border-red-500/50 rounded-xl text-xs font-mono text-gray-300 overflow-auto max-h-80">
                 <h4 className="text-red-400 font-bold mb-2">DEBUG INFO (Take a screenshot if issues persist)</h4>
-                <div>User ID: {user?.id}</div>
+                <div>Auth User ID: {user?.id}</div>
+                <div>Staff ID (from profile): {profile?.staffId || 'NOT SET'}</div>
                 <div>Role: {role}</div>
                 <div>School ID: {schoolId}</div>
                 <div>DisplayName Source: {profile?.fullName ? 'Profile' : user?.user_metadata?.full_name ? 'Metadata' : 'Fallback'}</div>
-                <div>Name: {displayName}</div>
-                <div className="mt-2 text-blue-300">User Metadata:</div>
-                <pre>{JSON.stringify(user?.user_metadata, null, 2)}</pre>
-                <div className="mt-2 text-green-300">Fetched Profile:</div>
+                <div>Display Name: {displayName}</div>
+                <div className="mt-2 text-blue-300">Fetched Profile (from users table):</div>
                 <pre>{JSON.stringify(profile, null, 2)}</pre>
-                <div className="mt-2 text-yellow-300">Stats Count: {classStats.length}</div>
+                <div className="mt-2 text-yellow-300">Staff Assignments Count: {classStats.length}</div>
+                <div className="mt-2 text-orange-300">Query Used: staff_id={user?.id}, school_id={schoolId}</div>
+                <div className="mt-2 text-green-300">User Metadata:</div>
+                <pre>{JSON.stringify(user?.user_metadata, null, 2)}</pre>
             </div>
         </div>
     );

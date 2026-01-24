@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { signInWithPhone, confirmPhoneOTP, registerSchool, loginWithAdmissionNumber, loginWithStaffId, loginWithParentCredentials } from '../lib/authService';
+import { isValidUUID, findSchoolByName } from '../lib/schoolService';
 import { Sparkles, Mail, Lock, ArrowRight, User, AlertCircle, Building2, UserCircle2, Phone, ShieldCheck, BadgeCheck } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup' | 'school-reg' | 'student-login' | 'parent-login' | 'staff-login';
@@ -100,6 +101,33 @@ export const Login = () => {
         }
     };
 
+    const resolveSchoolId = async (inputSchoolId: string): Promise<string> => {
+        // If it's a valid UUID, use it as-is
+        if (isValidUUID(inputSchoolId)) {
+            return inputSchoolId;
+        }
+
+        // Otherwise, try to find the school by name
+        console.log('School ID is not a UUID, attempting to look up by name:', inputSchoolId);
+        const schools = await findSchoolByName(inputSchoolId);
+
+        if (schools.length === 1) {
+            console.log('Found school:', schools[0].name);
+            return schools[0].id;
+        } else if (schools.length > 1) {
+            throw new Error(
+                `Multiple schools found matching "${inputSchoolId}". Please use the school's UUID instead. ` +
+                `Contact your administrator for the school UUID.`
+            );
+        } else {
+            throw new Error(
+                `School "${inputSchoolId}" not found. Please use the school's UUID. ` +
+                `The School ID should be a unique identifier (like: abc12345-1234-5678-90ab-cdef12345678). ` +
+                `If you don't know your school's UUID, contact your administrator.`
+            );
+        }
+    };
+
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -120,19 +148,22 @@ export const Login = () => {
                 if (!schoolId || !admissionNumber || !password) {
                     throw new Error("Please fill in all fields (School ID, Admission Number, and PIN)");
                 }
-                await loginWithAdmissionNumber(schoolId, admissionNumber, password);
+                const resolvedSchoolId = await resolveSchoolId(schoolId);
+                await loginWithAdmissionNumber(resolvedSchoolId, admissionNumber, password);
                 navigate('/portal');
             } else if (mode === 'staff-login') {
                 if (!schoolId || !staffId || !password) {
                     throw new Error("Please fill in all fields (School ID, Staff ID, and Password)");
                 }
-                await loginWithStaffId(schoolId, staffId, password);
+                const resolvedSchoolId = await resolveSchoolId(schoolId);
+                await loginWithStaffId(resolvedSchoolId, staffId, password);
                 navigate('/');
             } else if (mode === 'parent-login') {
                 if (showOtpInput) {
                     await handleVerifyOtp();
                 } else if (schoolId && admissionNumber && password) {
-                    await loginWithParentCredentials(schoolId, admissionNumber, password);
+                    const resolvedSchoolId = await resolveSchoolId(schoolId);
+                    await loginWithParentCredentials(resolvedSchoolId, admissionNumber, password);
                     navigate('/portal/parent');
                 } else if (phoneNumber) {
                     await handleSendOtp();
@@ -238,17 +269,21 @@ export const Login = () => {
 
                     {(mode === 'student-login' || mode === 'staff-login') && (
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">School ID</label>
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">School ID or Name</label>
                             <div className="relative group">
                                 <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
                                 <input
                                     type="text" required
                                     className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
-                                    placeholder="wisdom-school"
+                                    placeholder="School UUID or name (e.g., International Wisdom School)"
                                     value={schoolId}
                                     onChange={(e) => setSchoolId(e.target.value)}
                                 />
                             </div>
+                            <p className="text-xs text-gray-500 ml-1 mt-1">
+                                {mode === 'staff-login' && 'Use your school\'s ID (UUID) or name. Ask your administrator if unsure.'}
+                                {mode === 'student-login' && 'Use your school\'s ID (UUID) or name. Ask your school administrator if unsure.'}
+                            </p>
                         </div>
                     )}
 

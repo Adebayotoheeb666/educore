@@ -14,13 +14,15 @@ import {
     Library,
     Trash2,
     Edit2,
-    AlertCircle
+    AlertCircle,
+    Settings
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { BulkStudentImport } from '../components/BulkStudentImport';
 import { StaffAssignmentModal } from '../components/StaffAssignmentModal';
 import { ParentStudentLinkModal } from '../components/ParentStudentLinkModal';
 import { StaffCreationModal } from '../components/StaffCreationModal';
+import { SchoolSettingsModal } from '../components/SchoolSettingsModal';
 import { supabase } from '../lib/supabase';
 import type { ImportResult } from '../lib/bulkImportService';
 import { ToastContainer, type ToastProps } from '../components/common/Toast';
@@ -43,6 +45,7 @@ export const AdminDashboard = () => {
     const [showStaffCreation, setShowStaffCreation] = useState(false);
     const [showSubjectModal, setShowSubjectModal] = useState(false);
     const [showClassModal, setShowClassModal] = useState(false);
+    const [showSchoolSettings, setShowSchoolSettings] = useState(false);
 
     const [selectedStaffForAssignment, setSelectedStaffForAssignment] = useState<{ id: string; name: string } | null>(null);
     const [selectedStudentForLinking, setSelectedStudentForLinking] = useState<{ id: string; name: string } | null>(null);
@@ -513,12 +516,38 @@ export const AdminDashboard = () => {
                 </div>
             )}
 
+            {/* School Settings Modal */}
+            {showSchoolSettings && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-dark-card border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-dark-card border-b border-white/10 p-6 flex items-center justify-between">
+                            <h1 className="text-2xl font-bold text-white">School Settings</h1>
+                            <button onClick={() => setShowSchoolSettings(false)} className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white"><X className="w-6 h-6" /></button>
+                        </div>
+                        <div className="p-6">
+                            <SchoolSettingsModal
+                                schoolId={schoolId}
+                                onClose={() => setShowSchoolSettings(false)}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white">School Management</h1>
                     <p className="text-gray-400">Manage your institution's staff, students, and curriculum.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowSchoolSettings(true)}
+                        className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl text-gray-400 hover:text-teal-400 transition-colors"
+                        title="School settings and UUID"
+                    >
+                        <Settings className="w-4 h-4" />
+                        <span className="hidden sm:inline">School Settings</span>
+                    </button>
                     <button className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl text-gray-400 hover:text-white transition-colors">
                         <Search className="w-4 h-4" />
                         <span>Search</span>
