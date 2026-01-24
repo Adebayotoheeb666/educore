@@ -57,10 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('[AuthContext] Profile fetched successfully:', data.role, 'SchoolId:', data.school_id);
 
                 // Check if profile has critical missing fields
+                // Note: Admins in setup don't need staff_id or admission_number, only school_id is critical for most users
                 const isBrokenProfile =
-                    !data.school_id ||
-                    (data.role === 'staff' && !data.staff_id) ||
-                    (data.role === 'student' && !data.admission_number);
+                    (data.role !== 'admin' && !data.school_id) || // Only admins can proceed without school_id during setup
+                    (data.role === 'staff' && !data.staff_id && !data.school_id) ||
+                    (data.role === 'student' && !data.admission_number && !data.school_id);
 
                 // If profile is broken, attempt repair from Auth metadata
                 let finalData = data;
@@ -77,6 +78,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (!refetchError && repairedData) {
                         console.log('[AuthContext] Profile repaired and re-fetched');
                         finalData = repairedData;
+                    } else {
+                        console.log('[AuthContext] Repair failed or no data returned, using original profile');
                     }
                 }
 
@@ -128,16 +131,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let schoolId = userMetadata.schoolId || userMetadata.school_id || '';
 
         if (!schoolId) {
-            console.warn('[AuthContext] No schoolId in metadata');
-            // Do not default to 'pending-setup' as it causes invalid UUID errors
-            // schoolId = 'pending-setup'; 
+            console.warn('[AuthContext] No schoolId in metadata - this user may need school setup');
         }
 
         const fallbackProfile: UserProfile = {
             id: userId,
             email: user.email || '',
             role: userMetadata.role || 'authenticated',
-            schoolId: schoolId,
+            schoolId: schoolId || undefined, // Keep undefined if not available, don't use empty string
             fullName: userMetadata.fullName || userMetadata.full_name || '',
             admissionNumber: userMetadata.admissionNumber || userMetadata.admission_number || '',
             phoneNumber: userMetadata.phone || userMetadata.phone_number || '',
@@ -154,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserContext(
             userId,
             user.email || 'unknown@school.app',
-            schoolId,
+            schoolId || '',
             userMetadata.role || 'authenticated'
         );
     };

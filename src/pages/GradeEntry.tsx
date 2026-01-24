@@ -47,7 +47,8 @@ export const GradeEntry = () => {
                 if (subjectError) throw subjectError;
                 setSubjects(subjectData.map(s => ({ id: s.id, ...s })));
             } catch (err) {
-                console.error("Error fetching metadata:", err);
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                console.error("Error fetching metadata:", errorMsg, err);
             } finally {
                 setLoading(false);
             }
@@ -106,7 +107,14 @@ export const GradeEntry = () => {
                 setScores(existingScores);
 
             } catch (err) {
-                console.error("Error fetching students/scores:", err);
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                console.error("Error fetching students/scores:", {
+                    message: errorMsg,
+                    code: (err as any)?.code,
+                    details: (err as any)?.details,
+                    fullError: err
+                });
+                alert(`Failed to load grades: ${errorMsg}`);
             } finally {
                 setLoading(false);
             }

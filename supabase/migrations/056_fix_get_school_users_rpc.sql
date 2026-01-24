@@ -23,35 +23,52 @@ RETURNS TABLE (
     updated_at TIMESTAMP WITH TIME ZONE
 ) AS $$
 DECLARE
+    v_user_id UUID;
     v_user_role TEXT;
     v_user_school_id UUID;
 BEGIN
+    -- Get the current user's ID from auth
+    v_user_id := auth.uid();
+
+    -- If user is not authenticated, deny access
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
     -- Get the current user's role and school_id from the database directly
     -- SECURITY DEFINER allows us to bypass RLS for this lookup
-    SELECT role, school_id 
+    SELECT role, school_id
     INTO v_user_role, v_user_school_id
-    FROM public.users 
-    WHERE id = auth.uid();
+    FROM public.users
+    WHERE id = v_user_id;
 
     -- Security Check: Requester must be admin AND belong to the requested school
-    IF v_user_role IS NULL OR v_user_role != 'admin' OR v_user_school_id IS NULL OR v_user_school_id != p_school_id THEN
-        RAISE EXCEPTION 'Access denied: You must be an admin of this school to view all users.';
+    IF v_user_role != 'admin' THEN
+        RAISE EXCEPTION 'Access denied: Admin access required';
+    END IF;
+
+    IF v_user_school_id IS NULL THEN
+        RAISE EXCEPTION 'Access denied: User has no school assigned';
+    END IF;
+
+    IF v_user_school_id != p_school_id THEN
+        RAISE EXCEPTION 'Access denied: Cannot access users from a different school';
     END IF;
 
     -- Return all users for the school
     RETURN QUERY
-    SELECT 
-        u.id, 
-        u.email, 
-        u.role, 
-        u.school_id, 
-        u.full_name, 
-        u.admission_number, 
-        u.staff_id, 
-        u.phone_number, 
-        u.profile_image, 
-        u.linked_students, 
-        u.created_at, 
+    SELECT
+        u.id,
+        u.email,
+        u.role,
+        u.school_id,
+        u.full_name,
+        u.admission_number,
+        u.staff_id,
+        u.phone_number,
+        u.profile_image,
+        u.linked_students,
+        u.created_at,
         u.updated_at
     FROM public.users u
     WHERE u.school_id = p_school_id

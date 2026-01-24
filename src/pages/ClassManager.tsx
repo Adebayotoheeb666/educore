@@ -54,7 +54,8 @@ export const ClassManager = () => {
             if (classError) throw classError;
             setMyClasses(classData || []);
         } catch (err) {
-            console.error("Error fetching classes:", err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error("Error fetching classes:", errorMsg, err);
         } finally {
             setLoading(false);
         }
@@ -62,20 +63,23 @@ export const ClassManager = () => {
 
     const fetchEnrolledStudents = async (classId: string) => {
         try {
-            // Fetch students linked to this class via 'student_classes' or 'users.class_id'
-            // To be consistent with the platform's TODOs, we check 'users' table first 
-            // but implement 'student_classes' link.
+            // Fetch students enrolled in this class via the student_classes junction table
             const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('school_id', schoolId)
-                .eq('role', 'student')
-                .eq('class_id', classId); // Assuming we use class_id in users for simplicity in this MVP
+                .from('student_classes')
+                .select('*, users(id, full_name, admission_number, email, role)')
+                .eq('class_id', classId)
+                .eq('status', 'active');
 
             if (error) throw error;
-            setEnrolledStudents(data || []);
+
+            const students = (data || []).map(enrollment => ({
+                ...enrollment.users,
+                enrollment_id: enrollment.id
+            }));
+            setEnrolledStudents(students);
         } catch (err) {
-            console.error("Error fetching enrolled students:", err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error("Error fetching enrolled students:", errorMsg, err);
         }
     };
 
@@ -91,7 +95,8 @@ export const ClassManager = () => {
             if (error) throw error;
             setSchoolStudents(data || []);
         } catch (err) {
-            console.error("Error fetching school students:", err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error("Error fetching school students:", errorMsg, err);
         }
     };
 

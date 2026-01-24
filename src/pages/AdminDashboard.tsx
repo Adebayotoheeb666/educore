@@ -39,6 +39,7 @@ export const AdminDashboard = () => {
     const [financials, setFinancials] = useState({ totalRevenue: 0, outstanding: 0 });
     const [loading, setLoading] = useState(true);
     const [showAddMenu, setShowAddMenu] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Modals
     const [showBulkImport, setShowBulkImport] = useState(false);
@@ -80,6 +81,47 @@ export const AdminDashboard = () => {
 
     const removeToast = (id: string) => {
         setToasts(prev => prev.filter(t => t.id !== id));
+    };
+
+    // Filter functions for search
+    const filterStaff = (data: any[]) => {
+        if (!searchTerm) return data;
+        const term = searchTerm.toLowerCase();
+        return data.filter(s =>
+            s.fullName?.toLowerCase().includes(term) ||
+            s.email?.toLowerCase().includes(term) ||
+            s.staffId?.toLowerCase().includes(term) ||
+            s.phone_number?.toLowerCase().includes(term)
+        );
+    };
+
+    const filterStudents = (data: any[]) => {
+        if (!searchTerm) return data;
+        const term = searchTerm.toLowerCase();
+        return data.filter(s =>
+            s.fullName?.toLowerCase().includes(term) ||
+            s.email?.toLowerCase().includes(term) ||
+            s.admissionNumber?.toLowerCase().includes(term) ||
+            s.phone_number?.toLowerCase().includes(term)
+        );
+    };
+
+    const filterClasses = (data: any[]) => {
+        if (!searchTerm) return data;
+        const term = searchTerm.toLowerCase();
+        return data.filter(c =>
+            c.name?.toLowerCase().includes(term) ||
+            c.level?.toLowerCase().includes(term)
+        );
+    };
+
+    const filterSubjects = (data: any[]) => {
+        if (!searchTerm) return data;
+        const term = searchTerm.toLowerCase();
+        return data.filter(s =>
+            s.name?.toLowerCase().includes(term) ||
+            s.code?.toLowerCase().includes(term)
+        );
     };
 
     const fetchData = async () => {
@@ -348,7 +390,13 @@ export const AdminDashboard = () => {
         );
     }
 
-    if (schoolId === 'pending-setup' || !schoolId) {
+    // Check role first - only admins can access this dashboard
+    if (role !== 'admin') {
+        return <div className="p-8 text-white">Access Denied: Admins Only</div>;
+    }
+
+    // Only show "School Setup Required" if we're done loading and schoolId is still missing
+    if (!schoolId || schoolId === 'pending-setup') {
         return (
             <div className="p-8 text-white">
                 <div className="max-w-md bg-dark-card border border-white/10 rounded-2xl p-8">
@@ -363,10 +411,6 @@ export const AdminDashboard = () => {
                 </div>
             </div>
         );
-    }
-
-    if (role !== 'admin') {
-        return <div className="p-8 text-white">Access Denied: Admins Only</div>;
     }
 
     if (!schoolId && !authLoading) {
@@ -564,10 +608,16 @@ export const AdminDashboard = () => {
                         <Settings className="w-4 h-4" />
                         <span className="hidden sm:inline">School Settings</span>
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl text-gray-400 hover:text-white transition-colors">
-                        <Search className="w-4 h-4" />
-                        <span>Search</span>
-                    </button>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="px-4 py-2 pl-10 border border-white/10 rounded-xl bg-dark-bg text-gray-300 placeholder-gray-600 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/30 transition-all"
+                        />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
+                    </div>
                     <div className="relative">
                         <button
                             onClick={() => setShowAddMenu(!showAddMenu)}

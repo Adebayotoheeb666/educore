@@ -38,7 +38,8 @@ export const StudentAttendance = () => {
                 } as AttendanceRecord));
                 setAttendance(list);
             } catch (err) {
-                console.error("Error fetching attendance:", err);
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                console.error("Error fetching attendance:", errorMsg, err);
             } finally {
                 setLoading(false);
             }
