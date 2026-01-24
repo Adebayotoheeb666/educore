@@ -522,6 +522,14 @@ export const AdminDashboard = () => {
                     <p className="text-gray-400">Manage your institution's staff, students, and curriculum.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowSchoolSettings(true)}
+                        className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl text-gray-400 hover:text-teal-400 transition-colors"
+                        title="School settings and UUID"
+                    >
+                        <Settings className="w-4 h-4" />
+                        <span className="hidden sm:inline">School Settings</span>
+                    </button>
                     <button className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl text-gray-400 hover:text-white transition-colors">
                         <Search className="w-4 h-4" />
                         <span>Search</span>
