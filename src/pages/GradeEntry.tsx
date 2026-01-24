@@ -47,7 +47,8 @@ export const GradeEntry = () => {
                 if (subjectError) throw subjectError;
                 setSubjects(subjectData.map(s => ({ id: s.id, ...s })));
             } catch (err) {
-                console.error("Error fetching metadata:", err);
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                console.error("Error fetching metadata:", errorMsg, err);
             } finally {
                 setLoading(false);
             }
