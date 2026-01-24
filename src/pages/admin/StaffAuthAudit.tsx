@@ -318,10 +318,10 @@ export const StaffAuthAudit = () => {
                     <td className="px-6 py-3">
                       <button
                         onClick={() => handleCreateSingleAuth(staff)}
-                        disabled={creatingAuth || selectedStaff === staff.id}
+                        disabled={creatingStaffIds.has(staff.id) || fixing}
                         className="flex items-center gap-2 px-3 py-1.5 bg-teal-500/10 text-teal-500 hover:bg-teal-500/20 rounded transition text-sm font-medium disabled:opacity-50"
                       >
-                        {selectedStaff === staff.id && creatingAuth ? (
+                        {creatingStaffIds.has(staff.id) ? (
                           <>
                             <div className="w-3 h-3 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                             Creating...
