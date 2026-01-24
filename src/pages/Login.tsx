@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { signInWithPhone, confirmPhoneOTP, registerSchool, loginWithAdmissionNumber, loginWithStaffId, loginWithParentCredentials } from '../lib/authService';
+import { isValidUUID, findSchoolByName } from '../lib/schoolService';
 import { Sparkles, Mail, Lock, ArrowRight, User, AlertCircle, Building2, UserCircle2, Phone, ShieldCheck, BadgeCheck } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup' | 'school-reg' | 'student-login' | 'parent-login' | 'staff-login';
