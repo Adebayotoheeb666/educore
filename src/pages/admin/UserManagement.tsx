@@ -52,9 +52,6 @@ export const UserManagement = () => {
   useEffect(() => {
     console.log('[UserManagement] Effect triggered. SchoolId:', schoolId);
 
-    // If we're still auth-loading, do nothing
-    if (authLoading) return;
-
     if (!schoolId) {
       console.warn('[UserManagement] No schoolId available. Stopping loader.');
       setLoading(false);
@@ -87,7 +84,7 @@ export const UserManagement = () => {
     };
 
     fetchUsers();
-  }, [schoolId, authLoading]);
+  }, [schoolId]);
 
   // Filter users based on search
   useEffect(() => {
