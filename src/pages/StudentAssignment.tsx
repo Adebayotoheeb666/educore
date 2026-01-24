@@ -79,7 +79,8 @@ export const StudentAssignment = () => {
             if (error) throw error;
             setAllStudents(data || []);
         } catch (err) {
-            console.error("Error fetching all students:", err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error("Error fetching all students:", errorMsg, err);
         }
     };
 
