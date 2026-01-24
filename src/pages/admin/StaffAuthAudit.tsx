@@ -35,8 +35,8 @@ export const StaffAuthAudit = () => {
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [creatingAuth, setCreatingAuth] = useState(false);
 
-  // Only admins can access this
-  if (loading) {
+  // Handle auth loading state first
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-dark-bg flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
@@ -44,6 +44,7 @@ export const StaffAuthAudit = () => {
     );
   }
 
+  // Check authorization
   if (role?.toLowerCase() !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
