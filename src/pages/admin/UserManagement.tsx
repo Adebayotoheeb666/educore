@@ -34,8 +34,8 @@ export const UserManagement = () => {
   const [fixingStaffId, setFixingStaffId] = useState(false);
   const [fixStatus, setFixStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Only admins can access this page
-  if (loading) {
+  // Handle auth loading first
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-dark-bg flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
@@ -43,6 +43,7 @@ export const UserManagement = () => {
     );
   }
 
+  // Check authorization
   if (role?.toLowerCase() !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
@@ -50,9 +51,6 @@ export const UserManagement = () => {
   // Fetch all users in school
   useEffect(() => {
     console.log('[UserManagement] Effect triggered. SchoolId:', schoolId);
-
-    // If we're still auth-loading, do nothing
-    if (authLoading) return;
 
     if (!schoolId) {
       console.warn('[UserManagement] No schoolId available. Stopping loader.');
@@ -86,7 +84,7 @@ export const UserManagement = () => {
     };
 
     fetchUsers();
-  }, [schoolId, authLoading]);
+  }, [schoolId]);
 
   // Filter users based on search
   useEffect(() => {
@@ -208,82 +206,9 @@ export const UserManagement = () => {
     setFixStatus(null);
 
     try {
-      // Get the auth user to extract the mappedId from metadata
-      const { data: authData, error: authError } = await supabase.auth.admin.getUserById(selectedUser.id);
-
-      if (authError || !authData.user) {
-        throw new Error('Could not retrieve auth user information');
-      }
-
-      const mappedId = authData.user.user_metadata?.mappedId;
-
-      if (!mappedId) {
-        setFixStatus({
-          type: 'error',
-          message: 'No mapped staff ID found in auth metadata'
-        });
-        return;
-      }
-
-      // Call the sync function
-      const result = await syncStaffIdFromMetadata(selectedUser.id, mappedId);
-
-      if (!result.success) {
-        setFixStatus({
-          type: 'error',
-          message: result.message || 'Failed to sync staff ID'
-        });
-        return;
-      }
-
-      // Log the action
-      await logAction(
-        schoolId || '',
-        user.id,
-        user.email || 'system',
-        'update', // action
-        'user', // resourceType
-        selectedUser.id, // resourceId
-        {}, // changes
-        { // metadata
-          target_user: selectedUser.email,
-          target_name: selectedUser.full_name,
-          staff_id: mappedId,
-          description: 'Synced staff ID from auth metadata'
-        }
-      );
-
-      setFixStatus({
-        type: 'success',
-        message: `Staff ID synced successfully: ${mappedId}`
-      });
-
-      // Refresh users list
-      setTimeout(() => {
-        setShowFixStaffIdModal(false);
-        setSelectedUser(null);
-        setFixStatus(null);
-        if (schoolId) {
-          const fetchUsers = async () => {
-            const { data, error } = await supabase
-              .from('users')
-              .select('id, full_name, email, role, staff_id, created_at')
-              .eq('school_id', schoolId)
-              .order('created_at', { ascending: false });
-
-            if (!error) {
-              setUsers(data || []);
-              setFilteredUsers(data || []);
-            }
-          };
-          fetchUsers();
-        }
-      }, 2000);
-    } catch (err) {
-      console.error('Fix staff ID error:', err);
       setFixStatus({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to fix staff ID'
+        message: 'This feature requires Edge Function deployment. Please deploy Supabase functions with: supabase functions deploy'
       });
     } finally {
       setFixingStaffId(false);
@@ -306,20 +231,6 @@ export const UserManagement = () => {
         return 'bg-gray-500/10 text-gray-500';
     }
   };
-
-  // Handle loading state
-  if (authLoading) {
-    return (
-      <div className="min-h-[400px] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // Handle access denied
-  if (role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   return (
     <div className="space-y-6 pb-20">

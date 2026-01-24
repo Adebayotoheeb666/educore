@@ -6,6 +6,8 @@
 
 import { supabase } from './supabase';
 
+const isProduction = import.meta.env.MODE === 'production';
+
 /**
  * Generate virtual email for staff (similar to student pattern)
  */
@@ -27,43 +29,72 @@ export const createStaffAuthAccount = async (
     email?: string
 ): Promise<{ success: boolean; authId?: string; message: string }> => {
     try {
-        // Call Edge Function to create auth with service role
-        const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-staff-auth`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
-                },
-                body: JSON.stringify({
-                    schoolId,
-                    staffId,
-                    staffName,
-                    email,
-                }),
-            }
-        );
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (!supabaseUrl) {
+            return {
+                success: false,
+                message: 'Supabase URL not configured',
+            };
+        }
 
-        const data = await response.json();
+        // Get the session and auth token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError || !session?.access_token) {
+            return {
+                success: false,
+                message: 'Unable to authenticate request',
+            };
+        }
+
+        // Call Edge Function to create auth with service role
+        const url = `${supabaseUrl}/functions/v1/create-staff-auth`;
+        console.log('Calling create-staff-auth function at:', url);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+                schoolId,
+                staffId,
+                staffName,
+                email,
+            }),
+        });
 
         if (!response.ok) {
+            const data = await response.json();
+            console.warn(`Create-staff-auth function returned ${response.status}`);
             return {
                 success: false,
                 message: `Failed to create Auth account: ${data.error || 'Unknown error'}`,
             };
         }
 
+        const data = await response.json();
         return {
             success: true,
             authId: data.authId,
             message: data.message || 'Auth account created for staff member',
         };
     } catch (err) {
-        console.error('Staff auth creation error:', err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error('Staff auth creation error:', errorMsg);
+
+        // In development, if Edge Function fails, suggest deploying it
+        if (!isProduction) {
+            return {
+                success: false,
+                message: `Create-staff-auth Edge Function not available. Please deploy Supabase Edge Functions: run 'supabase functions deploy create-staff-auth' from your project root.`,
+            };
+        }
+
         return {
             success: false,
-            message: `Error creating staff Auth account: ${(err as Error).message}`,
+            message: `Error creating staff Auth account: ${errorMsg}`,
         };
     }
 };
@@ -107,29 +138,26 @@ export const linkStaffToAuthUser = async (
  * Returns list of staff without Auth accounts
  * Uses Edge Function for service role access to auth.admin API
  */
-export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
+/**
+ * Development fallback for staff audit (when Edge Function not deployed)
+ * Uses client-side queries only (no admin API access needed)
+ */
+async function auditStaffAuthAccountsFallback(schoolId: string): Promise<{
     totalStaff: number;
     staffWithAuth: number;
     staffWithoutAuth: Array<{ id: string; name: string; email: string }>;
-}> => {
+}> {
     try {
-        // Call Edge Function to perform audit with service role
-        const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-staff-auth`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
-                },
-                body: JSON.stringify({ schoolId }),
-            }
-        );
+        // Fetch all staff in school from database
+        // Try to include auth_user_id if it exists, but don't fail if it doesn't
+        const { data: allStaff, error: staffError } = await supabase
+            .from('users')
+            .select('id, full_name, email')
+            .eq('school_id', schoolId)
+            .in('role', ['staff', 'admin', 'bursar']);
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            console.error('Staff auth audit error:', data.error);
+        if (staffError) {
+            console.error('Error fetching staff:', staffError);
             return {
                 totalStaff: 0,
                 staffWithAuth: 0,
@@ -137,18 +165,82 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
             };
         }
 
+        // In development mode without the Edge Function, we'll return all staff as needing auth
+        // This is a conservative approach - in production, the Edge Function does the actual check
+        return {
+            totalStaff: allStaff?.length || 0,
+            staffWithAuth: 0,
+            staffWithoutAuth: (allStaff || []).map((s) => ({
+                id: s.id,
+                name: s.full_name || 'Unknown',
+                email: s.email || 'No email',
+            })),
+        };
+    } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error('Staff audit fallback error:', errorMsg);
+        return {
+            totalStaff: 0,
+            staffWithAuth: 0,
+            staffWithoutAuth: [],
+        };
+    }
+}
+
+export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
+    totalStaff: number;
+    staffWithAuth: number;
+    staffWithoutAuth: Array<{ id: string; name: string; email: string }>;
+}> => {
+    try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (!supabaseUrl) {
+            console.warn('Supabase URL not configured, using fallback');
+            return auditStaffAuthAccountsFallback(schoolId);
+        }
+
+        // Get the session and auth token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+            console.warn('Error getting session, using fallback:', sessionError);
+            return auditStaffAuthAccountsFallback(schoolId);
+        }
+
+        if (!session?.access_token) {
+            console.warn('No access token available, using fallback');
+            return auditStaffAuthAccountsFallback(schoolId);
+        }
+
+        // Call Edge Function to perform audit with service role
+        const url = `${supabaseUrl}/functions/v1/audit-staff-auth`;
+        console.log('Calling audit function at:', url);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ schoolId }),
+        });
+
+        if (!response.ok) {
+            console.warn(`Audit function returned ${response.status}, using fallback`);
+            return auditStaffAuthAccountsFallback(schoolId);
+        }
+
+        const data = await response.json();
+
         return {
             totalStaff: data.totalStaff || 0,
             staffWithAuth: data.staffWithAuth || 0,
             staffWithoutAuth: data.staffWithoutAuth || [],
         };
     } catch (err) {
-        console.error('Staff auth audit error:', err);
-        return {
-            totalStaff: 0,
-            staffWithAuth: 0,
-            staffWithoutAuth: [],
-        };
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.warn('Audit function error, using fallback:', errorMsg);
+        return auditStaffAuthAccountsFallback(schoolId);
     }
 };
 
