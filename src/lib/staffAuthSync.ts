@@ -27,23 +27,39 @@ export const createStaffAuthAccount = async (
     email?: string
 ): Promise<{ success: boolean; authId?: string; message: string }> => {
     try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (!supabaseUrl) {
+            return {
+                success: false,
+                message: 'Supabase URL not configured',
+            };
+        }
+
+        // Get the session and auth token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError || !session?.access_token) {
+            return {
+                success: false,
+                message: 'Unable to authenticate request',
+            };
+        }
+
         // Call Edge Function to create auth with service role
-        const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-staff-auth`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
-                },
-                body: JSON.stringify({
-                    schoolId,
-                    staffId,
-                    staffName,
-                    email,
-                }),
-            }
-        );
+        const url = `${supabaseUrl}/functions/v1/create-staff-auth`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+                schoolId,
+                staffId,
+                staffName,
+                email,
+            }),
+        });
 
         const data = await response.json();
 
@@ -60,10 +76,11 @@ export const createStaffAuthAccount = async (
             message: data.message || 'Auth account created for staff member',
         };
     } catch (err) {
-        console.error('Staff auth creation error:', err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error('Staff auth creation error:', errorMsg);
         return {
             success: false,
-            message: `Error creating staff Auth account: ${(err as Error).message}`,
+            message: `Error creating staff Auth account: ${errorMsg}`,
         };
     }
 };
