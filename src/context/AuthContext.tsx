@@ -134,6 +134,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const useFallbackProfile = (userId: string, user: User) => {
+        // First, try to load cached profile from localStorage (better than using metadata)
+        let cachedProfile: UserProfile | null = null;
+        try {
+            const cached = localStorage.getItem(`authProfile_${userId}`);
+            if (cached) {
+                cachedProfile = JSON.parse(cached);
+                console.log('[AuthContext] Loaded cached profile from localStorage');
+            }
+        } catch (e) {
+            console.warn('[AuthContext] Failed to load cached profile from localStorage:', e);
+        }
+
+        // If we have a cached profile, use it (most reliable fallback)
+        if (cachedProfile) {
+            setProfile(cachedProfile);
+            setUserContext(
+                userId,
+                cachedProfile.email || 'unknown@school.app',
+                cachedProfile.schoolId || '',
+                cachedProfile.role || 'authenticated'
+            );
+            return;
+        }
+
+        // Otherwise, fall back to user metadata
         const userMetadata = user.user_metadata || {};
         let schoolId = userMetadata.schoolId || userMetadata.school_id || '';
 
