@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         fetchingRef.current = true;
 
-        const FETCH_TIMEOUT = 10000; // 10 seconds timeout
+        const FETCH_TIMEOUT = 20000; // 20 seconds timeout (increased from 10 for slow connections)
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
         let timedOut = false;
 
@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                 }
 
-                // Successfully fetched from database
+                // Successfully fetched from database - cache it in localStorage
                 const mappedProfile: UserProfile = {
                     id: finalData.id,
                     email: finalData.email,
@@ -101,6 +101,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     updatedAt: finalData.updated_at
                 };
 
+                // Cache profile to localStorage for faster fallback on timeout
+                try {
+                    localStorage.setItem(`authProfile_${userId}`, JSON.stringify(mappedProfile));
+                } catch (e) {
+                    console.warn('[AuthContext] Failed to cache profile to localStorage:', e);
+                }
+
                 setProfile(mappedProfile);
                 setUserContext(
                     finalData.id,
@@ -113,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return;
             }
 
-            // No data or error - use fallback
+            // No data or error - use fallback (with cached profile as preference)
             console.warn('[AuthContext] Using fallback profile, timeout:', timedOut, 'error:', error?.message);
             useFallbackProfile(userId, user);
         } catch (err) {
