@@ -57,7 +57,7 @@ BEGIN
     WHERE u.school_id = p_school_id
     ORDER BY u.full_name ASC;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
 
 -- Grant execution permissions
 GRANT EXECUTE ON FUNCTION get_school_users(UUID) TO authenticated;
