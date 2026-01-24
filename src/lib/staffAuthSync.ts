@@ -49,6 +49,8 @@ export const createStaffAuthAccount = async (
 
         // Call Edge Function to create auth with service role
         const url = `${supabaseUrl}/functions/v1/create-staff-auth`;
+        console.log('Calling create-staff-auth function at:', url);
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -63,15 +65,16 @@ export const createStaffAuthAccount = async (
             }),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
+            const data = await response.json();
+            console.warn(`Create-staff-auth function returned ${response.status}`);
             return {
                 success: false,
                 message: `Failed to create Auth account: ${data.error || 'Unknown error'}`,
             };
         }
 
+        const data = await response.json();
         return {
             success: true,
             authId: data.authId,
@@ -80,6 +83,15 @@ export const createStaffAuthAccount = async (
     } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         console.error('Staff auth creation error:', errorMsg);
+
+        // In development, if Edge Function fails, suggest deploying it
+        if (!isProduction) {
+            return {
+                success: false,
+                message: `Create-staff-auth Edge Function not available. Please deploy Supabase Edge Functions: run 'supabase functions deploy create-staff-auth' from your project root.`,
+            };
+        }
+
         return {
             success: false,
             message: `Error creating staff Auth account: ${errorMsg}`,
