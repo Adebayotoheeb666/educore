@@ -348,7 +348,13 @@ export const AdminDashboard = () => {
         );
     }
 
-    if (schoolId === 'pending-setup' || !schoolId) {
+    // Check role first - only admins can access this dashboard
+    if (role !== 'admin') {
+        return <div className="p-8 text-white">Access Denied: Admins Only</div>;
+    }
+
+    // Only show "School Setup Required" if we're done loading and schoolId is still missing
+    if (!schoolId || schoolId === 'pending-setup') {
         return (
             <div className="p-8 text-white">
                 <div className="max-w-md bg-dark-card border border-white/10 rounded-2xl p-8">
@@ -363,10 +369,6 @@ export const AdminDashboard = () => {
                 </div>
             </div>
         );
-    }
-
-    if (role !== 'admin') {
-        return <div className="p-8 text-white">Access Denied: Admins Only</div>;
     }
 
     if (!schoolId && !authLoading) {
