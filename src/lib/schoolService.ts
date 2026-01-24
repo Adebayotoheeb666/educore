@@ -2,27 +2,51 @@ import { supabase } from './supabase';
 
 /**
  * Find a school by name (case-insensitive)
+ * Uses edge function to bypass RLS restrictions for unauthenticated users
  * Returns the school ID (UUID) and other details
  */
 export const findSchoolByName = async (schoolName: string) => {
     try {
-        const { data, error } = await supabase
-            .from('schools')
-            .select('id, name, address')
-            .ilike('name', `%${schoolName}%`)
-            .limit(5);
+        // Try edge function first (server-side lookup with service role)
+        const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lookup-school`;
 
-        if (error) {
-            console.error('Error finding school:', error);
-            // Return empty array on error - the caller will handle it
-            // This could be due to RLS restrictions on unauthenticated access
-            return [];
+        const response = await fetch(edgeFunctionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({ schoolName })
+        });
+
+        const result = await response.json();
+
+        if (result.schools && Array.isArray(result.schools)) {
+            return result.schools;
         }
 
-        return data || [];
-    } catch (err) {
-        console.error('Exception finding school:', err);
+        console.warn('School lookup returned no results:', result.error);
         return [];
+    } catch (err) {
+        console.error('Exception in findSchoolByName:', err);
+        // Fallback: try direct query (may fail due to RLS)
+        try {
+            const { data, error } = await supabase
+                .from('schools')
+                .select('id, name, address')
+                .ilike('name', `%${schoolName}%`)
+                .limit(5);
+
+            if (error) {
+                console.error('Fallback query also failed:', error);
+                return [];
+            }
+
+            return data || [];
+        } catch (fallbackErr) {
+            console.error('Fallback exception:', fallbackErr);
+            return [];
+        }
     }
 };
 
