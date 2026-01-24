@@ -87,9 +87,27 @@ export const AdminDashboard = () => {
 
         setLoading(true);
         try {
-            // Fetch All School Users via RPC to avoid RLS recursion
-            const { data: allUsers, error: usersError } = await supabase
+            let allUsers;
+            let usersError;
+
+            // Try to fetch via RPC first (preferred method)
+            const rpcResult = await supabase
                 .rpc('get_school_users', { p_school_id: schoolId });
+
+            if (rpcResult.error) {
+                // RPC failed, fall back to direct table query
+                console.warn('RPC call failed, falling back to direct query:', rpcResult.error);
+                const directResult = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('school_id', schoolId);
+
+                allUsers = directResult.data;
+                usersError = directResult.error;
+            } else {
+                allUsers = rpcResult.data;
+                usersError = rpcResult.error;
+            }
 
             if (usersError) throw usersError;
 
