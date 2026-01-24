@@ -126,6 +126,78 @@ export const linkStaffToAuthUser = async (
  * Returns list of staff without Auth accounts
  * Uses Edge Function for service role access to auth.admin API
  */
+/**
+ * Development fallback for staff audit (when Edge Function not deployed)
+ */
+async function auditStaffAuthAccountsFallback(schoolId: string): Promise<{
+    totalStaff: number;
+    staffWithAuth: number;
+    staffWithoutAuth: Array<{ id: string; name: string; email: string }>;
+}> {
+    try {
+        // Fetch all staff in school from database
+        const { data: allStaff, error: staffError } = await supabase
+            .from('users')
+            .select('id, full_name, email')
+            .eq('school_id', schoolId)
+            .in('role', ['staff', 'admin', 'bursar']);
+
+        if (staffError) {
+            console.error('Error fetching staff:', staffError);
+            return {
+                totalStaff: 0,
+                staffWithAuth: 0,
+                staffWithoutAuth: [],
+            };
+        }
+
+        // Get all auth users from the auth table
+        const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
+
+        if (authError) {
+            console.error('Error listing auth users:', authError);
+            // If we can't list users due to permissions, return all staff as missing auth
+            return {
+                totalStaff: allStaff?.length || 0,
+                staffWithAuth: 0,
+                staffWithoutAuth: (allStaff || []).map(s => ({
+                    id: s.id,
+                    name: s.full_name || 'Unknown',
+                    email: s.email || 'No email',
+                })),
+            };
+        }
+
+        // Find staff without Auth accounts
+        const staffWithoutAuth = (allStaff || []).filter((staff) => {
+            const hasAuth = authUsers?.some(
+                (authUser) =>
+                    authUser.user_metadata?.staffId === staff.id ||
+                    authUser.email === staff.email
+            );
+            return !hasAuth;
+        });
+
+        return {
+            totalStaff: allStaff?.length || 0,
+            staffWithAuth: (allStaff?.length || 0) - staffWithoutAuth.length,
+            staffWithoutAuth: staffWithoutAuth.map((s) => ({
+                id: s.id,
+                name: s.full_name || 'Unknown',
+                email: s.email || 'No email',
+            })),
+        };
+    } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error('Staff audit fallback error:', errorMsg);
+        return {
+            totalStaff: 0,
+            staffWithAuth: 0,
+            staffWithoutAuth: [],
+        };
+    }
+}
+
 export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
     totalStaff: number;
     staffWithAuth: number;
@@ -134,33 +206,21 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
     try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         if (!supabaseUrl) {
-            console.error('Supabase URL not configured');
-            return {
-                totalStaff: 0,
-                staffWithAuth: 0,
-                staffWithoutAuth: [],
-            };
+            console.warn('Supabase URL not configured, using fallback');
+            return auditStaffAuthAccountsFallback(schoolId);
         }
 
         // Get the session and auth token
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError) {
-            console.error('Error getting session:', sessionError);
-            return {
-                totalStaff: 0,
-                staffWithAuth: 0,
-                staffWithoutAuth: [],
-            };
+            console.warn('Error getting session, using fallback:', sessionError);
+            return auditStaffAuthAccountsFallback(schoolId);
         }
 
         if (!session?.access_token) {
-            console.error('No access token available');
-            return {
-                totalStaff: 0,
-                staffWithAuth: 0,
-                staffWithoutAuth: [],
-            };
+            console.warn('No access token available, using fallback');
+            return auditStaffAuthAccountsFallback(schoolId);
         }
 
         // Call Edge Function to perform audit with service role
@@ -176,16 +236,12 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
             body: JSON.stringify({ schoolId }),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            console.error('Staff auth audit error:', data.error || `HTTP ${response.status}`);
-            return {
-                totalStaff: 0,
-                staffWithAuth: 0,
-                staffWithoutAuth: [],
-            };
+            console.warn(`Audit function returned ${response.status}, using fallback`);
+            return auditStaffAuthAccountsFallback(schoolId);
         }
+
+        const data = await response.json();
 
         return {
             totalStaff: data.totalStaff || 0,
@@ -194,12 +250,8 @@ export const auditStaffAuthAccounts = async (schoolId: string): Promise<{
         };
     } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
-        console.error('Staff auth audit error:', errorMsg);
-        return {
-            totalStaff: 0,
-            staffWithAuth: 0,
-            staffWithoutAuth: [],
-        };
+        console.warn('Audit function error, using fallback:', errorMsg);
+        return auditStaffAuthAccountsFallback(schoolId);
     }
 };
 
