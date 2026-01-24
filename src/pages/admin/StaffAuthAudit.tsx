@@ -100,6 +100,8 @@ export const StaffAuthAudit = () => {
         setAuditResult(newResult);
       }, 1000);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create Auth accounts';
+      setErrorMessage(message);
       console.error('Bulk fix error:', err);
     } finally {
       setFixing(false);
