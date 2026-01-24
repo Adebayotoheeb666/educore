@@ -84,6 +84,9 @@ export const Dashboard = () => {
                     <div>
                         <div className="text-teal-500 text-xs font-bold uppercase tracking-wider mb-0.5">Dashboard</div>
                         <h1 className="text-2xl font-bold text-white">Welcome, {displayName}</h1>
+                        {profile?.staffId && (
+                            <p className="text-gray-400 text-sm">Staff ID: <span className="text-teal-400 font-bold">{profile.staffId}</span></p>
+                        )}
                     </div>
                 </div>
 
