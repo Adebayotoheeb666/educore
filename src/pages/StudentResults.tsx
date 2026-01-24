@@ -71,7 +71,8 @@ export const StudentResults = () => {
 
                 setResults(resultsList);
             } catch (err) {
-                console.error("Error fetching results:", err);
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                console.error("Error fetching results:", errorMsg, err);
             } finally {
                 setLoading(false);
             }
