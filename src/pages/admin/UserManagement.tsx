@@ -3,7 +3,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { adminResetUserPassword } from '../../lib/passwordResetService';
 import { logAction } from '../../lib/auditService';
-import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle, Mail } from 'lucide-react';
+import { syncStaffIdFromMetadata } from '../../lib/staffService';
+import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle, Mail, Zap } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 interface User {
@@ -11,6 +12,7 @@ interface User {
   full_name: string;
   email: string;
   role: 'admin' | 'staff' | 'student' | 'parent' | 'bursar';
+  staff_id: string | null;
   created_at: string;
 }
 
