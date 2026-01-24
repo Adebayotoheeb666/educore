@@ -61,4 +61,4 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Grant execute permission to authenticated users
-GRANT EXECUTE ON FUNCTION link_staff_profile_after_activation(UUID, UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION link_staff_profile_after_activation(UUID, UUID, TEXT) TO authenticated;
