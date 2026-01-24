@@ -365,6 +365,76 @@ export const UserManagement = () => {
         )}
       </div>
 
+      {/* Fix Staff ID Modal */}
+      {showFixStaffIdModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-dark-card border border-dark-input rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold text-white mb-2">Fix Staff ID</h2>
+            <p className="text-gray-400 mb-6">
+              Sync staff ID for <span className="font-semibold text-teal-400">{selectedUser.full_name}</span> ({selectedUser.email})
+            </p>
+
+            {fixStatus && (
+              <div className={`mb-4 p-4 rounded-lg flex gap-3 ${
+                fixStatus.type === 'success'
+                  ? 'bg-green-500/10 border border-green-500/20'
+                  : 'bg-red-500/10 border border-red-500/20'
+              }`}>
+                {fixStatus.type === 'success' ? (
+                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                )}
+                <p className={fixStatus.type === 'success' ? 'text-green-500' : 'text-red-500'}>
+                  {fixStatus.message}
+                </p>
+              </div>
+            )}
+
+            <div className="bg-dark-bg p-4 rounded-lg mb-6 text-sm text-gray-300">
+              <p className="mb-2">This will sync the staff ID from the user's authentication metadata:</p>
+              <ul className="list-disc list-inside space-y-1 text-xs text-gray-400">
+                <li>Extract mappedId from auth user metadata</li>
+                <li>Update the staff_id field in the users table</li>
+                <li>Staff assignments will then be visible to the user</li>
+              </ul>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowFixStaffIdModal(false);
+                  setSelectedUser(null);
+                  setFixStatus(null);
+                }}
+                disabled={fixingStaffId}
+                className="flex-1 px-4 py-2 bg-dark-bg text-gray-300 hover:bg-dark-input rounded transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFixStaffId}
+                disabled={fixingStaffId}
+                className="flex-1 px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {fixingStaffId ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Fixing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4" />
+                    Fix Staff ID
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Reset Password Modal */}
       {showResetModal && selectedUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
