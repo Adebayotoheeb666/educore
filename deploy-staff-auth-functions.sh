@@ -34,13 +34,13 @@ echo ""
 
 # Deploy audit function
 echo "📦 Deploying audit-staff-auth function..."
-supabase functions deploy audit-staff-auth --no-verify-jwt
+supabase functions deploy audit-staff-auth
 
 echo ""
 
 # Deploy create function
 echo "📦 Deploying create-staff-auth function..."
-supabase functions deploy create-staff-auth --no-verify-jwt
+supabase functions deploy create-staff-auth
 
 echo ""
 echo "✅ Deployment complete!"
