@@ -6,6 +6,8 @@
 
 import { supabase } from './supabase';
 
+const isProduction = import.meta.env.MODE === 'production';
+
 /**
  * Generate virtual email for staff (similar to student pattern)
  */
