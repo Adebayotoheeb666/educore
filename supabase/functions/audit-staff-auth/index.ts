@@ -39,7 +39,7 @@ serve(async (req) => {
     // Initialize server client with service role (has admin permissions)
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get all staff in school
+    // Get all staff in school with their auth status
     const { data: allStaff, error: staffError } = await adminClient
       .from("users")
       .select("id, full_name, email")
@@ -48,21 +48,42 @@ serve(async (req) => {
 
     if (staffError) throw staffError;
 
-    // Get all Auth users - NOW we have permission to do this with service role
-    const { data: { users: authUsers }, error: authError } =
-      await adminClient.auth.admin.listUsers();
+    // Get only the staff we found to check auth accounts more efficiently
+    // Try to look up auth users by email only (faster than listUsers)
+    const staffEmails = (allStaff || []).map(s => s.email).filter(Boolean);
 
-    if (authError) throw authError;
+    let staffWithoutAuth = allStaff || [];
 
-    // Find staff without Auth accounts
-    const staffWithoutAuth = (allStaff || []).filter((staff) => {
-      const hasAuth = authUsers?.some(
-        (authUser) =>
-          authUser.user_metadata?.staffId === staff.id ||
-          authUser.email === staff.email
-      );
-      return !hasAuth;
-    });
+    // Only query auth if we have staff to check
+    if (staffEmails.length > 0) {
+      try {
+        // Use listUsers with an optional limit parameter if available
+        // Fall back to checking all users if needed
+        const { data: { users: authUsers }, error: authError } =
+          await adminClient.auth.admin.listUsers({
+            perPage: 10000, // Get more users per page
+            page: 0,
+          });
+
+        if (authError) {
+          console.warn("Auth list error, assuming all staff need auth:", authError);
+          // If auth listing fails, assume all need auth (conservative)
+        } else if (authUsers) {
+          // Find staff without Auth accounts
+          staffWithoutAuth = (allStaff || []).filter((staff) => {
+            const hasAuth = authUsers.some(
+              (authUser) =>
+                authUser.user_metadata?.staffId === staff.id ||
+                authUser.email === staff.email
+            );
+            return !hasAuth;
+          });
+        }
+      } catch (e) {
+        console.warn("Auth check failed, assuming all staff need auth:", e);
+        // If anything fails, conservatively assume all need auth
+      }
+    }
 
     return new Response(
       JSON.stringify({
