@@ -216,38 +216,6 @@ export const bulkCreateStaffAuthAccounts = async (schoolId: string): Promise<{
 };
 
 /**
- * Generate a secure temporary password
- * Staff will need to change this on first login
- */
-function generateTemporaryPassword(): string {
-    // Generate password that meets requirements:
-    // - At least 8 characters
-    // - Uppercase, lowercase, number, special character
-    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-    const numbers = '0123456789';
-    const special = '@$!%*?&';
-
-    let password = '';
-    password += uppercase[Math.floor(Math.random() * uppercase.length)];
-    password += lowercase[Math.floor(Math.random() * lowercase.length)];
-    password += numbers[Math.floor(Math.random() * numbers.length)];
-    password += special[Math.floor(Math.random() * special.length)];
-
-    // Add more random characters
-    const allChars = uppercase + lowercase + numbers + special;
-    for (let i = 0; i < 6; i++) {
-        password += allChars[Math.floor(Math.random() * allChars.length)];
-    }
-
-    // Shuffle
-    return password
-        .split('')
-        .sort(() => Math.random() - 0.5)
-        .join('');
-}
-
-/**
  * Send temporary password to staff (via email)
  * This would be called after creating Auth account
  */
