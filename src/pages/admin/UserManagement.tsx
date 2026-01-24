@@ -45,7 +45,7 @@ export const UserManagement = () => {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('id, full_name, email, role, created_at')
+          .select('id, full_name, email, role, staff_id, created_at')
           .eq('school_id', schoolId)
           .order('created_at', { ascending: false });
 
