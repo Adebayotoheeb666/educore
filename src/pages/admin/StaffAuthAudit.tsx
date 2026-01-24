@@ -24,7 +24,7 @@ interface AuditResult {
 }
 
 export const StaffAuthAudit = () => {
-  const { user, role, schoolId } = useAuth();
+  const { user, role, loading: authLoading, schoolId } = useAuth();
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [fixing, setFixing] = useState(false);
@@ -36,11 +36,7 @@ export const StaffAuthAudit = () => {
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [creatingAuth, setCreatingAuth] = useState(false);
 
-  // Only admins can access this
-  if (role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
+  // All hooks must come before any conditional returns
   // Perform initial audit
   useEffect(() => {
     if (!schoolId) return;
