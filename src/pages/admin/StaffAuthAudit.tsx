@@ -71,6 +71,7 @@ export const StaffAuthAudit = () => {
   const handleBulkFix = async () => {
     if (!schoolId) return;
 
+    setErrorMessage(null);
     setFixing(true);
     try {
       const result = await bulkCreateStaffAuthAccounts(schoolId);
