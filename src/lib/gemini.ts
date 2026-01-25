@@ -252,7 +252,16 @@ export const geminiService = {
    */
   async extractTextFromPDF(fileData: ArrayBuffer): Promise<string> {
     try {
-      const pdfjsLib = await import('pdfjs-dist');
+      // Dynamic import with proper error handling
+      let pdfjsLib: any;
+      try {
+        const module = await import('pdfjs-dist');
+        pdfjsLib = module.default || module;
+      } catch (importError) {
+        console.error('Failed to import pdfjs-dist:', importError);
+        throw new Error('PDF processing library is not available');
+      }
+
       const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
       let fullText = '';
 
