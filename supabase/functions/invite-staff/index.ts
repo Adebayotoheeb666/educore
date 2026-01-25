@@ -75,13 +75,16 @@ serve(async (req) => {
         })();
 
         // 2. Check if user already exists in Auth
+        console.log("Checking for existing user with email:", requestBody.email.toLowerCase().trim());
         const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
         if (listError) {
             console.error("Error listing users:", listError);
             throw new Error(`Failed to check existing users: ${listError.message}`);
         }
 
+        console.log("Total users in system:", existingUsers?.users?.length || 0);
         const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === requestBody.email.toLowerCase().trim());
+        console.log("Existing user found:", !!existingUser);
 
         let authId = existingUser?.id;
 
