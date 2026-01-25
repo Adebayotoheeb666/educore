@@ -628,36 +628,38 @@ export const AdminDashboard = () => {
                 </div>
             )}
 
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                <div>
+            <header className="flex items-center justify-between gap-3 sm:gap-4">
+                <div className="flex-1">
                     <h1 className="text-2xl md:text-3xl font-bold text-white">School Management</h1>
-                    <p className="text-gray-400 text-sm md:text-base">Manage your institution's staff, students, and curriculum.</p>
+                    <p className="text-gray-400 text-xs sm:text-sm md:text-base hidden sm:block">Manage your institution's staff, students, and curriculum.</p>
                 </div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+
+                {/* Desktop Menu (hidden on md and below) */}
+                <div className="hidden lg:flex items-center gap-3">
                     <button
                         onClick={() => setShowSchoolSettings(true)}
-                        className="flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-2 border border-white/10 rounded-xl text-gray-400 hover:text-teal-400 transition-colors text-sm"
+                        className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl text-gray-400 hover:text-teal-400 transition-colors text-sm"
                         title="School settings and UUID"
                     >
-                        <Settings className="w-4 h-4 flex-shrink-0" />
-                        <span className="hidden sm:inline">School Settings</span>
+                        <Settings className="w-4 h-4" />
+                        <span>School Settings</span>
                     </button>
-                    <div className="relative order-3 sm:order-2">
+                    <div className="relative">
                         <input
                             type="text"
                             placeholder="Search..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full sm:w-auto px-3 sm:px-4 py-2 pl-9 sm:pl-10 border border-white/10 rounded-xl bg-dark-bg text-gray-300 text-sm placeholder-gray-600 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/30 transition-all"
+                            className="px-4 py-2 pl-10 border border-white/10 rounded-xl bg-dark-bg text-gray-300 text-sm placeholder-gray-600 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/30 transition-all w-48"
                         />
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 sm:w-4 h-3 sm:h-4 text-gray-600" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
                     </div>
-                    <div className="relative order-2 sm:order-3">
+                    <div className="relative">
                         <button
                             onClick={() => setShowAddMenu(!showAddMenu)}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-teal-500 hover:bg-teal-400 text-dark-bg font-bold rounded-xl transition-all shadow-lg shadow-teal-500/20 text-sm"
+                            className="flex items-center gap-2 px-6 py-2 bg-teal-500 hover:bg-teal-400 text-dark-bg font-bold rounded-xl transition-all shadow-lg shadow-teal-500/20 text-sm"
                         >
-                            <Plus className="w-4 sm:w-5 h-4 sm:h-5" />
+                            <Plus className="w-5 h-5" />
                             <span>Add New</span>
                         </button>
                         {showAddMenu && (
@@ -673,6 +675,48 @@ export const AdminDashboard = () => {
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* Mobile/Tablet Menu */}
+                <div className="lg:hidden relative">
+                    <button
+                        onClick={() => setShowMobileMenu(!showMobileMenu)}
+                        className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
+                        title="Menu"
+                    >
+                        <Menu className="w-5 h-5" />
+                    </button>
+                    {showMobileMenu && (
+                        <div className="absolute right-0 mt-2 w-64 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                            <div className="p-4 border-b border-white/5">
+                                <div className="relative mb-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Search..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full px-3 py-2 pl-9 border border-white/10 rounded-lg bg-dark-bg text-gray-300 text-sm placeholder-gray-600 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/30 transition-all"
+                                    />
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-600" />
+                                </div>
+                            </div>
+                            <div className="max-h-96 overflow-y-auto">
+                                <button onClick={() => { setShowSchoolSettings(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5 flex items-center gap-2">
+                                    <Settings className="w-4 h-4" />
+                                    School Settings
+                                </button>
+                                <div className="border-t border-white/5 my-2"></div>
+                                <button onClick={() => { setEditingStaff(null); setShowStaffCreation(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Add Staff Member</button>
+                                <button onClick={() => { setEditingStudent(null); setShowStudentCreation(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Add Student</button>
+                                <button onClick={() => { setShowClassModal(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Create New Class</button>
+                                <button onClick={() => { setShowSubjectModal(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Create Subject</button>
+                                <button onClick={() => { setShowBulkImport(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 flex items-center justify-between">
+                                    <span>+ Bulk Student Upload</span>
+                                    <Download className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </header>
 
