@@ -13,6 +13,15 @@ export const TermManagement = () => {
     const [editingTerm, setEditingTerm] = useState<(Term & { id: string }) | null>(null);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        termId: string;
+        termName: string;
+    }>({
+        isOpen: false,
+        termId: '',
+        termName: ''
+    });
 
     // Form state
     const [formData, setFormData] = useState({
