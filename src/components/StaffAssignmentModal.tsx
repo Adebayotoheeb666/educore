@@ -99,7 +99,8 @@ export const StaffAssignmentModal = ({ staffId, staffName, onClose, onSuccess }:
     }, [schoolId, staffId]);
 
     const handleAddAssignment = () => {
-        setAssignments([...assignments, { classId: '', subjectId: '' }]);
+        const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        setAssignments([...assignments, { id: newId, classId: '', subjectId: '' }]);
     };
 
     const handleRemoveAssignment = (index: number) => {
