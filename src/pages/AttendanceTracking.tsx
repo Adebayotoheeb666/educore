@@ -118,7 +118,7 @@ export const AttendanceTracking = () => {
         setSaving(true);
         setSuccess(false);
         try {
-            // Prepare batch data with class_id (required for RLS policy)
+            // Prepare batch data with all required fields for the attendance table
             const attendanceRecords = Object.entries(attendance).map(([studentId, status]) => ({
                 school_id: schoolId,
                 student_id: studentId,
@@ -135,26 +135,44 @@ export const AttendanceTracking = () => {
             }
 
             if (getOnlineStatus()) {
-                // Check for existing records for today and delete them before inserting new ones
-                const { error: deleteError } = await supabase
-                    .from('attendance')
-                    .delete()
-                    .eq('date', today)
-                    .eq('class_id', selectedClass);
-
-                if (deleteError) {
-                    console.error('Error deleting old attendance records:', deleteError);
-                    // Continue anyway, as insert might handle duplicates
+                // Try to delete existing records for this class and date
+                try {
+                    await supabase
+                        .from('attendance')
+                        .delete()
+                        .eq('date', today)
+                        .eq('class_id', selectedClass);
+                } catch (err) {
+                    console.error('Warning: Could not delete old attendance records:', err);
+                    // Continue with insert anyway
                 }
 
+                // Insert new attendance records
                 const { error: insertError } = await supabase
                     .from('attendance')
-                    .insert(attendanceRecords);
+                    .insert(attendanceRecords, { returning: 'minimal' });
 
                 if (insertError) {
                     const errorMsg = insertError.message || JSON.stringify(insertError);
-                    console.error('Attendance insert error:', { code: insertError.code, message: errorMsg, details: insertError.details });
-                    throw new Error(`Failed to save attendance: ${errorMsg}`);
+                    const errorCode = insertError.code;
+
+                    console.error('Attendance insert error:', {
+                        code: errorCode,
+                        message: errorMsg,
+                        details: insertError.details,
+                        hint: insertError.hint
+                    });
+
+                    // Provide helpful error messages
+                    if (errorMsg.includes('teacher_id')) {
+                        throw new Error('Database schema is missing teacher_id column. Please contact your administrator.');
+                    } else if (errorMsg.includes('class_id')) {
+                        throw new Error('Database schema is missing class_id column. Please contact your administrator.');
+                    } else if (errorCode === 'PGRST001') {
+                        throw new Error('You do not have permission to record attendance. Please ensure you are assigned to this class.');
+                    } else {
+                        throw new Error(`Failed to save attendance: ${errorMsg}`);
+                    }
                 }
             } else {
                 // Queue action for offline support
@@ -195,7 +213,7 @@ export const AttendanceTracking = () => {
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : String(err);
             console.error("Error saving attendance:", errorMsg);
-            alert(`Failed to save attendance: ${errorMsg}`);
+            alert(errorMsg || 'Failed to save attendance');
         } finally {
             setSaving(false);
         }
