@@ -66,6 +66,43 @@ export const Settings = () => {
         }
     };
 
+    const loadAcademicSettings = () => {
+        try {
+            const savedClasses = localStorage.getItem('academicClasses');
+            const savedSubjects = localStorage.getItem('academicSubjects');
+
+            if (savedClasses) {
+                setClasses(JSON.parse(savedClasses));
+            } else {
+                setClasses(['Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6', 'JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']);
+            }
+
+            if (savedSubjects) {
+                setSubjects(JSON.parse(savedSubjects));
+            } else {
+                setSubjects(['Mathematics', 'English', 'Basic Science', 'Physics', 'Chemistry']);
+            }
+        } catch (err) {
+            console.error('Error loading academic settings:', err);
+            setClasses(['Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6', 'JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']);
+            setSubjects(['Mathematics', 'English', 'Basic Science', 'Physics', 'Chemistry']);
+        }
+    };
+
+    const loadNotifications = async () => {
+        if (!user?.schoolId || !user?.id) return;
+
+        setNotificationsLoading(true);
+        try {
+            const notifs = await getNotifications(user.schoolId, user.id, 10);
+            setNotifications(notifs);
+        } catch (err) {
+            console.error('Error loading notifications:', err);
+        } finally {
+            setNotificationsLoading(false);
+        }
+    };
+
     const handleAddClass = () => {
         if (newClass.trim()) {
             setClasses([...classes, newClass.trim()]);
