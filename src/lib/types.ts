@@ -65,7 +65,7 @@ export interface UserProfile {
 export interface ParentStudentLink {
   id?: string;
   schoolId: string;
-  parentIds: string[]; // Array of parent UIDs
+  parentId: string; // Single parent UID (normalized one-to-one relationship)
   studentId: string;
   relationship: 'Father' | 'Mother' | 'Guardian' | 'Other';
   createdAt: string;
