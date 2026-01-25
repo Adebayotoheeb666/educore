@@ -692,7 +692,7 @@ export const AdminDashboard = () => {
                 </div>
 
                 {/* Quick Access Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 p-6 border-b border-white/5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 p-4 sm:p-6 border-b border-white/5">
                     <div className="bg-dark-card border border-white/5 rounded-2xl p-6 hover:border-teal-500/30 transition-colors">
                         <div className="flex items-center justify-between mb-4">
                             <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
