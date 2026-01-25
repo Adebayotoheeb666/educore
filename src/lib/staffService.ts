@@ -126,10 +126,26 @@ export const createStaffAccount = async (
             message: "Staff invited successfully. Confirmation email sent."
         };
     } catch (error) {
-        // Network/CORS error - likely function not deployed
-        if (!isProduction && error instanceof TypeError && error.message.includes('Failed to fetch')) {
-            console.warn('Edge function not reachable in development, using fallback...');
-            return await createStaffAccountFallback(schoolId, data);
+        console.error('Staff creation attempt failed:', error);
+
+        // Network/CORS error - likely function not deployed or network issue
+        if (!isProduction) {
+            const isNetworkError = error instanceof TypeError &&
+                (error.message.includes('Failed to fetch') ||
+                 error.message.includes('CORS') ||
+                 error.message.includes('NetworkError'));
+
+            if (isNetworkError) {
+                console.warn('Edge function not reachable in development, using fallback...');
+                try {
+                    return await createStaffAccountFallback(schoolId, data);
+                } catch (fallbackError) {
+                    console.error('Fallback also failed:', fallbackError);
+                    throw new Error(`Failed to create staff account: ${
+                        fallbackError instanceof Error ? fallbackError.message : 'Unknown error'
+                    }`);
+                }
+            }
         }
         throw error;
     }
