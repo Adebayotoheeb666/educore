@@ -92,7 +92,7 @@ export const Dashboard = () => {
                         console.log('[Dashboard] No assignments found for this staff');
                     }
 
-                    // Fetch recent attendance records (non-blocking)
+                    // Fetch recent attendance records with student names
                     const classIdList = [...new Set(assignments.map(a => a.class_id))];
                     if (classIdList.length > 0) {
                         try {
@@ -102,11 +102,27 @@ export const Dashboard = () => {
                                 .in('class_id', classIdList)
                                 .eq('school_id', schoolId)
                                 .order('date', { ascending: false })
-                                .limit(10);
+                                .limit(50); // Get more records for daily summaries
 
                             if (!attendError && attendance) {
-                                setAttendanceRecords(attendance);
-                                console.log('[Dashboard] Attendance records loaded:', attendance.length);
+                                // Get unique student IDs and fetch their names
+                                const studentIds = [...new Set(attendance.map(a => a.student_id))];
+                                const { data: students } = await supabase
+                                    .from('users')
+                                    .select('id, full_name')
+                                    .in('id', studentIds);
+
+                                // Create a map of student ID to name
+                                const studentNameMap = new Map(students?.map(s => [s.id, s.full_name]) || []);
+
+                                // Enrich attendance records with student names
+                                const enrichedRecords = attendance.map(record => ({
+                                    ...record,
+                                    student_name: studentNameMap.get(record.student_id) || 'Unknown Student'
+                                }));
+
+                                setAttendanceRecords(enrichedRecords);
+                                console.log('[Dashboard] Attendance records loaded:', enrichedRecords.length);
                             } else if (attendError) {
                                 console.warn('[Dashboard] Attendance fetch warning:', {
                                     message: attendError.message,
@@ -114,7 +130,6 @@ export const Dashboard = () => {
                                     hint: attendError.hint,
                                     code: attendError.code
                                 });
-                                // Don't fail - just show no records
                                 setAttendanceRecords([]);
                             }
                         } catch (attendanceErr) {
