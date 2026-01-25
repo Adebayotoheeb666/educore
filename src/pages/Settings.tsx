@@ -315,19 +315,12 @@ export const Settings = () => {
                             <div className="text-white font-bold mb-1">Data Saver Mode</div>
                             <p className="text-gray-500 text-xs w-48">Disables images and heavy media to reduce bandwidth costs.</p>
                         </div>
-                        <button
-                            onClick={handleToggleDataSaver}
+                        <Toggle
+                            checked={dataSaver}
+                            onChange={handleToggleDataSaver}
                             disabled={dataSaverLoading}
-                            className="transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {dataSaverLoading ? (
-                                <div className="w-12 h-12 flex items-center justify-center">
-                                    <div className="w-4 h-4 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin"></div>
-                                </div>
-                            ) : (
-                                <Toggle checked={dataSaver} onChange={() => { }} />
-                            )}
-                        </button>
+                            isLoading={dataSaverLoading}
+                        />
                     </div>
 
                     <div className="bg-dark-card border border-white/5 p-4 rounded-2xl flex justify-between items-center">
