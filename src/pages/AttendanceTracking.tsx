@@ -118,10 +118,11 @@ export const AttendanceTracking = () => {
         setSaving(true);
         setSuccess(false);
         try {
-            // Prepare batch data
+            // Prepare batch data with class_id (required for RLS policy)
             const attendanceRecords = Object.entries(attendance).map(([studentId, status]) => ({
                 school_id: schoolId,
                 student_id: studentId,
+                class_id: selectedClass,
                 teacher_id: user.id,
                 date: today,
                 status
@@ -139,7 +140,7 @@ export const AttendanceTracking = () => {
                     .from('attendance')
                     .delete()
                     .eq('date', today)
-                    .eq('teacher_id', user.id);
+                    .eq('class_id', selectedClass);
 
                 if (deleteError) {
                     console.error('Error deleting old attendance records:', deleteError);
