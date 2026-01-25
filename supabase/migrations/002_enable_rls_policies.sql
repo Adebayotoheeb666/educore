@@ -196,7 +196,7 @@ CREATE POLICY "parent_see_child_attendance" ON attendance
   USING (
     student_id IN (
       SELECT student_id FROM parent_student_links
-      WHERE parent_ids @> ARRAY[auth.uid()::text]
+      WHERE parent_id = auth.uid()
     )
     AND school_id = (
       SELECT school_id FROM users WHERE id = auth.uid() LIMIT 1
@@ -256,7 +256,7 @@ CREATE POLICY "parent_see_child_results" ON results
   USING (
     student_id IN (
       SELECT student_id FROM parent_student_links
-      WHERE parent_ids @> ARRAY[auth.uid()::text]
+      WHERE parent_id = auth.uid()
     )
     AND school_id = (
       SELECT school_id FROM users WHERE id = auth.uid() LIMIT 1
@@ -399,7 +399,7 @@ CREATE POLICY "parent_see_child_transactions" ON financial_transactions
   USING (
     student_id IN (
       SELECT student_id FROM parent_student_links
-      WHERE parent_ids @> ARRAY[auth.uid()::text]
+      WHERE parent_id = auth.uid()
     )
     AND school_id = (
       SELECT school_id FROM users WHERE id = auth.uid() LIMIT 1
@@ -430,7 +430,7 @@ CREATE POLICY "bursar_manage_transactions" ON financial_transactions
 CREATE POLICY "parent_see_own_links" ON parent_student_links
   FOR SELECT
   USING (
-    parent_ids @> ARRAY[auth.uid()::text]
+    parent_id = auth.uid()
     AND school_id = (
       SELECT school_id FROM users WHERE id = auth.uid() LIMIT 1
     )
