@@ -210,14 +210,14 @@ export const PayForStudents = () => {
             if (insertError) throw insertError;
 
             // Step 4: Send notification to parent (if available)
-            const { data: parentData } = await supabase
+            const { data: parentLinks } = await supabase
                 .from('parent_student_links')
-                .select('parent_ids')
+                .select('parent_id')
                 .eq('student_id', selectedStudent.id)
-                .single();
+                .limit(1); // Get first parent link
 
-            if (parentData && parentData.parent_ids && parentData.parent_ids.length > 0) {
-                const parentId = parentData.parent_ids[0];
+            if (parentLinks && parentLinks.length > 0) {
+                const parentId = parentLinks[0].parent_id;
                 const { data: parentProfile } = await supabase
                     .from('users')
                     .select('email, full_name')
