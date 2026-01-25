@@ -379,16 +379,14 @@ export const AdminDashboard = () => {
     }
 
     if (!profile) {
+        console.warn('[AdminDashboard] Profile is missing - this should not happen with localStorage caching');
         return (
             <div className="p-8 text-white">
                 <h2 className="text-2xl font-bold mb-4">Unable to Load Profile</h2>
-                <p className="text-gray-400 mb-4">We couldn't fetch your profile data. Please refresh the page or contact support.</p>
-                <button
-                    onClick={() => window.location.reload()}
-                    className="bg-teal-500 hover:bg-teal-400 text-dark-bg font-bold py-2 px-4 rounded"
-                >
-                    Refresh Page
-                </button>
+                <p className="text-gray-400 mb-4">We're having trouble loading your profile. The app will automatically try again.</p>
+                <div className="mt-8 flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                </div>
             </div>
         );
     }
