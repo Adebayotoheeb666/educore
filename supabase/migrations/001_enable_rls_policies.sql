@@ -206,7 +206,7 @@ CREATE POLICY "parents_see_child_attendance" ON attendance
   USING (
     student_id IN (
       SELECT DISTINCT ps.student_id FROM parent_student_links ps
-      WHERE ps.parent_ids @> ARRAY[auth.uid()::text]
+      WHERE ps.parent_id = auth.uid()
     )
   );
 
@@ -257,7 +257,7 @@ CREATE POLICY "parents_see_child_results" ON results
   USING (
     student_id IN (
       SELECT DISTINCT ps.student_id FROM parent_student_links ps
-      WHERE ps.parent_ids @> ARRAY[auth.uid()::text]
+      WHERE ps.parent_id = auth.uid()
     )
   );
 
@@ -365,7 +365,7 @@ CREATE POLICY "parents_see_child_transactions" ON financial_transactions
   USING (
     student_id IN (
       SELECT DISTINCT ps.student_id FROM parent_student_links ps
-      WHERE ps.parent_ids @> ARRAY[auth.uid()::text]
+      WHERE ps.parent_id = auth.uid()
     )
   );
 
@@ -394,7 +394,7 @@ ALTER TABLE parent_student_links ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "parents_see_own_links" ON parent_student_links
   FOR SELECT
   USING (
-    parent_ids @> ARRAY[auth.uid()::text]
+    parent_id = auth.uid()
   );
 
 -- Students can see their parent links
