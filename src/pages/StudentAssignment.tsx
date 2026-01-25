@@ -146,7 +146,7 @@ export const StudentAssignment = () => {
     const filteredStudents = allStudents.filter(s =>
         (s.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.admission_number?.toLowerCase().includes(searchQuery.toLowerCase())) &&
-        s.class_id !== selectedClass?.id
+        !classStudents.find(cs => cs.id === s.id)
     );
 
     if (loading) {
