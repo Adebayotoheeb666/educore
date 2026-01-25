@@ -146,17 +146,17 @@ export const TermManagement = () => {
 
     return (
         <div className="space-y-8">
-            <header className="flex items-center justify-between">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Term Management</h1>
-                    <p className="text-gray-400 mt-2">Manage academic terms and sessions</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white">Term Management</h1>
+                    <p className="text-gray-400 mt-2 text-sm md:text-base">Manage academic terms and sessions</p>
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl transition-colors"
+                    className="flex items-center justify-center sm:justify-start gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl transition-colors w-full sm:w-auto"
                 >
                     <Plus className="w-5 h-5" />
-                    Create Term
+                    <span>Create Term</span>
                 </button>
             </header>
 
