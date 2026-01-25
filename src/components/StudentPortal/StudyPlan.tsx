@@ -167,9 +167,9 @@ export function StudyPlan({ results, attendanceRate, userId }: StudyPlanProps) {
                 <h3 className="text-lg font-bold text-green-400">Your Strengths</h3>
               </div>
               <ul className="space-y-2">
-                {plan.strengths.map((strength, idx) => (
+                {plan.strengths.map((strength) => (
                   <li
-                    key={idx}
+                    key={`strength-${strength}`}
                     className="p-3 bg-green-500/10 rounded border border-green-500/20 text-dark-text text-sm"
                   >
                     ✓ {strength}
