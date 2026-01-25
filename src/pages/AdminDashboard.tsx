@@ -830,15 +830,15 @@ export const AdminDashboard = () => {
                                     ))}
                                     {activeTab === 'classes' && filterClasses(classes).map(c => (
                                         <tr key={c.id} className="group hover:bg-white/5 transition-colors border-b border-white/5">
-                                            <td className="py-3 md:py-4 px-2 md:px-4">
+                                            <td className="py-3 md:py-4 px-3 sm:px-4">
                                                 <div className="flex items-center gap-2 md:gap-3">
                                                     <div className="w-8 md:w-10 h-8 md:h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold"><BookOpen className="w-4 md:w-5 h-4 md:h-5" /></div>
                                                     <span className="text-white font-medium text-sm md:text-base truncate">{c.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-3 md:py-4 px-2 md:px-4 text-gray-400 text-xs md:text-sm hidden sm:table-cell">{c.level || 'N/A'}</td>
-                                            <td className="py-3 md:py-4 px-2 md:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell">{c.studentCount || 0} Students</td>
-                                            <td className="py-3 md:py-4 px-2 md:px-4">
+                                            <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 text-xs md:text-sm hidden sm:table-cell">{c.level || 'N/A'}</td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell">{c.studentCount || 0} Students</td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4">
                                                 <div className="flex items-center gap-1 md:gap-2 justify-end md:justify-start">
                                                     <button
                                                         onClick={() => {
