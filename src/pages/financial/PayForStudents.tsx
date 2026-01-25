@@ -244,7 +244,13 @@ export const PayForStudents = () => {
 
         } catch (err) {
             console.error('Payment error:', err);
-            setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
+            let errorMessage = 'Payment failed. Please try again.';
+            if (err instanceof Error) {
+                errorMessage = err.message;
+            } else if (err && typeof err === 'object' && 'message' in err) {
+                errorMessage = String((err as any).message);
+            }
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
