@@ -24,7 +24,7 @@ interface LinkData {
 }
 
 export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSuccess }: ParentStudentLinkModalProps) => {
-    const { schoolId } = useAuth();
+    const { schoolId, user, profile } = useAuth();
     const [parents, setParents] = useState<ParentOption[]>([]);
     const [links, setLinks] = useState<LinkData[]>([]);
     const [existingLinks, setExistingLinks] = useState<ParentStudentLink[]>([]);
@@ -32,6 +32,7 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [showParentCreation, setShowParentCreation] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
