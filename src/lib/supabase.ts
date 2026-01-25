@@ -7,7 +7,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     console.error('[Supabase] Missing environment variables:');
     console.error('  VITE_SUPABASE_URL:', !!supabaseUrl);
     console.error('  VITE_SUPABASE_ANON_KEY:', !!supabaseAnonKey);
-    throw new Error('Missing Supabase environment variables');
+    throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
 console.log('[Supabase] Initializing client with URL:', supabaseUrl);
