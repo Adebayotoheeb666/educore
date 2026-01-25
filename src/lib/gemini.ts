@@ -54,77 +54,82 @@ async function geminiProxyRequest(
   params: Record<string, unknown>,
   userProfile: UserProfile
 ): Promise<any> {
-  // Check client-side rate limit first
-  const rateLimitCheck = rateLimiter.checkLimit(action, userProfile.id);
-  if (!rateLimitCheck.allowed) {
-    throw new Error(
-      `Rate limit exceeded for ${action}. Please wait ${rateLimitCheck.retryAfter} seconds before trying again.`
-    );
-  }
-
-  // Get auth token
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    throw new Error('Authentication required. Please log in.');
-  }
-
-  // Prepare request
-  const requestBody = {
-    action,
-    params,
-    schoolId: userProfile.schoolId,
-    userId: userProfile.id,
-  };
-
-  // Get edge function URL
-  const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-proxy`;
-
-  // Make request with retry logic
-  const makeRequest = async () => {
-    const response = await fetch(edgeFunctionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-
-      // Handle rate limiting from server
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After') || '60';
-        throw new Error(
-          `Server rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
-        );
-      }
-
+  try {
+    // Check client-side rate limit first
+    const rateLimitCheck = rateLimiter.checkLimit(action, userProfile.id);
+    if (!rateLimitCheck.allowed) {
       throw new Error(
-        errorData.details || errorData.error || 'Failed to process request'
+        `Rate limit exceeded for ${action}. Please wait ${rateLimitCheck.retryAfter} seconds before trying again.`
       );
     }
 
-    const result = await response.json();
+    // Get auth token
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (!result.success) {
-      throw new Error(result.error || 'Request failed');
+    if (!session) {
+      throw new Error('Authentication required. Please log in.');
     }
 
-    return result.data;
-  };
+    // Prepare request
+    const requestBody = {
+      action,
+      params,
+      schoolId: userProfile.schoolId,
+      userId: userProfile.id,
+    };
 
-  // Retry with exponential backoff
-  return retryWithBackoff(makeRequest, {
-    maxAttempts: 3,
-    initialDelayMs: 1000,
-    maxDelayMs: 10000,
-    backoffMultiplier: 2,
-  });
+    // Get edge function URL
+    const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-proxy`;
+
+    // Make request with retry logic
+    const makeRequest = async () => {
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        // Handle rate limiting from server
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After') || '60';
+          throw new Error(
+            `Server rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
+          );
+        }
+
+        throw new Error(
+          errorData.details || errorData.error || 'Failed to process request'
+        );
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Request failed');
+      }
+
+      return result.data;
+    };
+
+    // Retry with exponential backoff
+    return retryWithBackoff(makeRequest, {
+      maxAttempts: 3,
+      initialDelayMs: 1000,
+      maxDelayMs: 10000,
+      backoffMultiplier: 2,
+    });
+  } catch (error) {
+    console.error(`Gemini proxy error for action ${action}:`, error);
+    throw error instanceof Error ? error : new Error('Gemini service error');
+  }
 }
 
 // ============================================
