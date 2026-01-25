@@ -218,7 +218,7 @@ export const TermManagement = () => {
                                         <Edit2 className="w-4 h-4" />
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(term.id)}
+                                        onClick={() => handleDeleteClick(term.id, term.name)}
                                         className="p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition-colors"
                                     >
                                         <Trash2 className="w-4 h-4" />
