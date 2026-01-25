@@ -269,7 +269,7 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
             ) : (
                 <div className="space-y-3">
                     {links.map((link, index) => (
-                        <div key={index} className="flex gap-3">
+                        <div key={link.id} className="flex gap-3">
                             <select
                                 value={link.parentId}
                                 onChange={(e) => handleLinkChange(index, 'parentId', e.target.value)}
