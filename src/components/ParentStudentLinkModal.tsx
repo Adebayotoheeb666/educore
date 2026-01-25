@@ -165,23 +165,11 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
             // Create new links for each parent
             for (const link of links) {
-                // In Supabase, we don't necessarily need to construct the ID manually if auto-gen,
-                // but if we Want to maintain the structure: `${link.parentId}_${studentId}`
-                const linkId = `${link.parentId}_${studentId}`;
-
                 const { error: insertError } = await supabase
                     .from('parent_student_links')
                     .insert({
-                        id: linkId,
                         school_id: schoolId,
-                        parent_ids: [link.parentId], // Array in DB? Or just parent_id? 
-                        // The original interface implies parentIds: string[].
-                        // If the DB schema supports array, fine. If it's a join table, usually one parent per row.
-                        // Assuming the schema follows the original Firestore structure where 'parentIds' was an array.
-                        // However, standard SQL normalization would suggest one row per link.
-                        // Based on the 'links' state which has single parentId per entry, 
-                        // but 'existingLinks' mapping 'parentIds' property...
-                        // Let's assume the DB table 'parent_student_links' has a 'parent_ids' column (text[]).
+                        parent_id: link.parentId,
                         student_id: studentId,
                         relationship: link.relationship
                     });
