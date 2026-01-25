@@ -634,28 +634,28 @@ export const AdminDashboard = () => {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <button
                         onClick={() => setShowSchoolSettings(true)}
-                        className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl text-gray-400 hover:text-teal-400 transition-colors"
+                        className="flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-2 border border-white/10 rounded-xl text-gray-400 hover:text-teal-400 transition-colors text-sm"
                         title="School settings and UUID"
                     >
-                        <Settings className="w-4 h-4" />
+                        <Settings className="w-4 h-4 flex-shrink-0" />
                         <span className="hidden sm:inline">School Settings</span>
                     </button>
-                    <div className="relative">
+                    <div className="relative order-3 sm:order-2">
                         <input
                             type="text"
                             placeholder="Search..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="px-4 py-2 pl-10 border border-white/10 rounded-xl bg-dark-bg text-gray-300 placeholder-gray-600 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/30 transition-all"
+                            className="w-full sm:w-auto px-3 sm:px-4 py-2 pl-9 sm:pl-10 border border-white/10 rounded-xl bg-dark-bg text-gray-300 text-sm placeholder-gray-600 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/30 transition-all"
                         />
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 sm:w-4 h-3 sm:h-4 text-gray-600" />
                     </div>
-                    <div className="relative">
+                    <div className="relative order-2 sm:order-3">
                         <button
                             onClick={() => setShowAddMenu(!showAddMenu)}
-                            className="flex items-center gap-2 px-6 py-3 bg-teal-500 hover:bg-teal-400 text-dark-bg font-bold rounded-xl transition-all shadow-lg shadow-teal-500/20"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-teal-500 hover:bg-teal-400 text-dark-bg font-bold rounded-xl transition-all shadow-lg shadow-teal-500/20 text-sm"
                         >
-                            <Plus className="w-5 h-5" />
+                            <Plus className="w-4 sm:w-5 h-4 sm:h-5" />
                             <span>Add New</span>
                         </button>
                         {showAddMenu && (
