@@ -50,17 +50,13 @@ export const checkConnection = async (): Promise<boolean> => {
 };
 
 const startHeartbeat = () => {
+    // Lightweight periodic check as a backup to browser events
     setInterval(async () => {
-        try {
-            const status = await checkConnection();
-            if (status !== isOnline) {
-                status ? handleOnline() : handleOffline();
-            }
-        } catch (error) {
-            // Silently handle errors in heartbeat to prevent console spam
-            console.debug('Heartbeat check error:', error);
+        const status = await checkConnection();
+        if (status !== isOnline) {
+            status ? handleOnline() : handleOffline();
         }
-    }, 10000); // Check every 10 seconds
+    }, 15000); // Check every 15 seconds as a fallback
 };
 
 /**
