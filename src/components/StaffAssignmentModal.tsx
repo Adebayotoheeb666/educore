@@ -22,6 +22,7 @@ interface SubjectOption {
 }
 
 interface AssignmentData {
+    id: string; // Unique ID for this assignment entry
     classId: string;
     subjectId: string;
 }
