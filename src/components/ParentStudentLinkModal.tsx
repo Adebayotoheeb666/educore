@@ -111,7 +111,8 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
     }, [schoolId, studentId]);
 
     const handleAddLink = () => {
-        setLinks([...links, { parentId: '', relationship: 'Father' }]);
+        const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        setLinks([...links, { id: newId, parentId: '', relationship: 'Father' }]);
     };
 
     const handleRemoveLink = (index: number) => {
