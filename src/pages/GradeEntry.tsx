@@ -10,6 +10,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/auditService';
+import { getOnlineStatus, queueAction } from '../lib/offlineService';
 
 export const GradeEntry = () => {
     const { schoolId, user, profile } = useAuth();
@@ -159,11 +160,20 @@ export const GradeEntry = () => {
                 };
             });
 
-            const { error } = await supabase
-                .from('results')
-                .upsert(batch);
+            if (getOnlineStatus()) {
+                const { error } = await supabase
+                    .from('results')
+                    .upsert(batch);
 
-            if (error) throw error;
+                if (error) throw error;
+            } else {
+                // Queue action for offline support
+                await queueAction('results', 'upsert_results', batch);
+                setSuccess(true);
+                setTimeout(() => setSuccess(false), 3000);
+                setSaving(false);
+                return;
+            }
 
             // Log grade entry action
             try {

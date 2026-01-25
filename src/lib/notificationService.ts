@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Notification, DocWithId } from './types';
+import { playNotificationSound, triggerVibration } from './pushNotificationService';
 
 /**
  * Send an in-app notification
@@ -25,6 +26,43 @@ export const sendNotification = async (
         });
     } catch (error) {
         console.error('Failed to send notification:', error);
+    }
+};
+
+/**
+ * Send a push notification using the Supabase edge function
+ */
+export const sendPushNotification = async (
+    userId: string,
+    schoolId: string,
+    title: string,
+    body: string,
+    data?: Record<string, any>,
+    tag?: string
+) => {
+    try {
+        const { data: response, error } = await supabase.functions.invoke('send-push-notification', {
+            body: {
+                userId,
+                schoolId,
+                title,
+                body,
+                data,
+                tag,
+                icon: '/pwa-192x192.png',
+                badge: '/pwa-192x192.png'
+            }
+        });
+
+        if (error) {
+            console.error('Failed to send push notification:', error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true, response };
+    } catch (error) {
+        console.error('Push notification error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 };
 
@@ -132,6 +170,16 @@ export const sendAttendanceAlert = async (
             { name: schoolName || 'School', role: 'admin' }
         );
 
+        // Send push notification
+        await sendPushNotification(
+            studentId, // This might be the parent's user_id in some contexts, but studentId is often used as recipient
+            schoolId,
+            '📋 Attendance Alert',
+            `${studentName} was marked absent on ${date}`,
+            { link: '/student/attendance' },
+            'attendance'
+        );
+
         return { success: true };
     } catch (error) {
         console.error('Attendance alert error:', error);
@@ -181,6 +229,16 @@ export const sendResultNotification = async (
             schoolName || 'School'
         );
 
+        // Send push notification
+        await sendPushNotification(
+            studentId,
+            schoolId,
+            '📊 Results Published',
+            `Results for ${subject} (${score}/${totalScore}) - ${term}`,
+            { link: '/student/results' },
+            'result'
+        );
+
         return { success: true };
     } catch (error) {
         console.error('Result notification error:', error);
@@ -228,6 +286,16 @@ export const sendFeeNotification = async (
             { name: schoolName || 'School', role: 'bursar' }
         );
 
+        // Send push notification
+        await sendPushNotification(
+            studentId,
+            schoolId,
+            '💰 Fee Payment Due',
+            `₦${amount.toLocaleString()} due on ${dueDate}`,
+            { link: '/parent/finances' },
+            'fee'
+        );
+
         return { success: true };
     } catch (error) {
         console.error('Fee notification error:', error);
@@ -273,6 +341,16 @@ export const sendMessageNotification = async (
             schoolName || 'School',
             undefined,
             { name: senderName, role: senderRole }
+        );
+
+        // Send push notification
+        await sendPushNotification(
+            recipientId,
+            schoolId,
+            '💬 New Message',
+            `${senderName} sent you a message: "${messagePreview}"`,
+            { link: '/messages' },
+            'message'
         );
 
         return { success: true };

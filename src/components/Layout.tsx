@@ -12,6 +12,7 @@ import { ShieldCheck, Bell } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { getNotifications, markAsRead, markAllAsRead } from '../lib/notificationService';
 import type { Notification } from '../lib/types';
+import { OfflineIndicator } from './common/OfflineIndicator';
 
 // Helper for Tailwind classes
 export function cn(...inputs: (string | undefined | null | false)[]) {
@@ -173,8 +174,9 @@ export const Layout = ({ children }: LayoutProps) => {
             {/* Main Content */}
             <main className="flex-1 md:ml-64 p-4 md:p-8">
                 <div className="max-w-7xl mx-auto">
-                    {/* Top Bar with Notifications */}
-                    <div className="flex justify-end mb-6 relative z-40">
+                    {/* Top Bar with Notifications and Offline Indicator */}
+                    <div className="flex justify-between items-center mb-6 relative z-40">
+                        <OfflineIndicator />
                         <div className="relative" ref={notificationRef}>
                             <button
                                 onClick={() => setShowNotifications(!showNotifications)}

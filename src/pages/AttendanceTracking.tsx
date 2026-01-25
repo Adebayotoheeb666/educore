@@ -13,6 +13,7 @@ import { geminiService } from '../lib/gemini';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/auditService';
+import { getOnlineStatus, queueAction } from '../lib/offlineService';
 
 export const AttendanceTracking = () => {
     const { schoolId, user, profile } = useAuth();
@@ -128,11 +129,20 @@ export const AttendanceTracking = () => {
                 created_at: new Date().toISOString() // Let Supabase handle it or explicit
             }));
 
-            const { error } = await supabase
-                .from('attendance')
-                .insert(attendanceRecords);
+            if (getOnlineStatus()) {
+                const { error } = await supabase
+                    .from('attendance')
+                    .insert(attendanceRecords);
 
-            if (error) throw error;
+                if (error) throw error;
+            } else {
+                // Queue action for offline support
+                await queueAction('attendance', 'mark_attendance', attendanceRecords);
+                setSuccess(true);
+                setTimeout(() => setSuccess(false), 3000);
+                setSaving(false);
+                return;
+            }
 
             // Log attendance tracking action
             const presentCount = Object.values(attendance).filter(s => s === 'present').length;

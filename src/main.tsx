@@ -6,9 +6,13 @@ import './index.css'
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { initSentry } from './lib/sentry';
+import { initOfflineService } from './lib/offlineService';
 
 // Initialize Sentry error monitoring
 initSentry();
+
+// Initialize offline service for queue management and sync
+initOfflineService();
 
 // Lazy load pages
 const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
+import { playNotificationSound, triggerVibration } from '../../lib/pushNotificationService';
 
 interface Notification {
   id: string;
@@ -101,6 +102,10 @@ export const NotificationCenter = () => {
           };
           setNotifications((prev) => [newNotif, ...prev]);
           setUnreadCount((prev) => prev + 1);
+
+          // Play sound and vibrate on new notification
+          playNotificationSound();
+          triggerVibration();
         }
       )
       .subscribe();
@@ -250,8 +255,8 @@ export const NotificationCenter = () => {
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors capitalize ${filter === f
-                    ? 'bg-teal-500 text-dark-bg'
-                    : 'text-gray-400 hover:text-white border border-white/10'
+                  ? 'bg-teal-500 text-dark-bg'
+                  : 'text-gray-400 hover:text-white border border-white/10'
                   }`}
               >
                 {f}
