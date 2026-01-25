@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { createTerm, updateTerm, deleteTerm, setActiveTerm, getAllTerms } from '../lib/termService';
+import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import type { Term } from '../lib/types';
 
 export const TermManagement = () => {
