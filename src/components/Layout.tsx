@@ -1,23 +1,14 @@
 import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, FileText, Camera, BarChart2, Settings, LogOut, DollarSign, CheckCircle2, Calculator, Users } from 'lucide-react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-import { useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, BookOpen, FileText, Camera, BarChart2, Settings, LogOut, DollarSign, CheckCircle2, Calculator, Users, ShieldCheck, Bell } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { cn } from '../lib/cn';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { clearUserContext } from '../lib/sentry';
-import { ShieldCheck, Bell } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
 import { getNotifications, markAsRead, markAllAsRead } from '../lib/notificationService';
 import type { Notification } from '../lib/types';
 import { OfflineIndicator } from './common/OfflineIndicator';
-
-// Helper for Tailwind classes
-export function cn(...inputs: (string | undefined | null | false)[]) {
-    return twMerge(clsx(inputs));
-}
 
 interface LayoutProps {
     children: ReactNode;
