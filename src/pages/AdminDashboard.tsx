@@ -446,6 +446,18 @@ export const AdminDashboard = () => {
                     if (count === 0) {
                         showToast('Delete failed: access denied (RLS) or record not found.', 'error');
                     } else {
+                        // Log the delete action
+                        if (schoolId && user?.id && profile?.full_name) {
+                            await logAction(
+                                schoolId,
+                                user.id,
+                                profile.full_name,
+                                'delete',
+                                'staff',
+                                id,
+                                { name }
+                            );
+                        }
                         showToast('Staff member deleted successfully', 'success');
                         fetchData();
                     }
