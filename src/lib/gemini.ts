@@ -15,7 +15,6 @@
  * - Rate limiting warnings are shown to users
  */
 
-import { supabase } from './supabase';
 import type { UserProfile } from './types';
 import { rateLimiter, retryWithBackoff } from './rateLimiter';
 
@@ -54,77 +53,85 @@ async function geminiProxyRequest(
   params: Record<string, unknown>,
   userProfile: UserProfile
 ): Promise<any> {
-  // Check client-side rate limit first
-  const rateLimitCheck = rateLimiter.checkLimit(action, userProfile.id);
-  if (!rateLimitCheck.allowed) {
-    throw new Error(
-      `Rate limit exceeded for ${action}. Please wait ${rateLimitCheck.retryAfter} seconds before trying again.`
-    );
-  }
+  try {
+    // Import supabase only when needed
+    const { supabase } = await import('./supabase');
 
-  // Get auth token
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    throw new Error('Authentication required. Please log in.');
-  }
-
-  // Prepare request
-  const requestBody = {
-    action,
-    params,
-    schoolId: userProfile.schoolId,
-    userId: userProfile.id,
-  };
-
-  // Get edge function URL
-  const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-proxy`;
-
-  // Make request with retry logic
-  const makeRequest = async () => {
-    const response = await fetch(edgeFunctionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-
-      // Handle rate limiting from server
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After') || '60';
-        throw new Error(
-          `Server rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
-        );
-      }
-
+    // Check client-side rate limit first
+    const rateLimitCheck = rateLimiter.checkLimit(action, userProfile.id);
+    if (!rateLimitCheck.allowed) {
       throw new Error(
-        errorData.details || errorData.error || 'Failed to process request'
+        `Rate limit exceeded for ${action}. Please wait ${rateLimitCheck.retryAfter} seconds before trying again.`
       );
     }
 
-    const result = await response.json();
+    // Get auth token
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (!result.success) {
-      throw new Error(result.error || 'Request failed');
+    if (!session) {
+      throw new Error('Authentication required. Please log in.');
     }
 
-    return result.data;
-  };
+    // Prepare request
+    const requestBody = {
+      action,
+      params,
+      schoolId: userProfile.schoolId,
+      userId: userProfile.id,
+    };
 
-  // Retry with exponential backoff
-  return retryWithBackoff(makeRequest, {
-    maxAttempts: 3,
-    initialDelayMs: 1000,
-    maxDelayMs: 10000,
-    backoffMultiplier: 2,
-  });
+    // Get edge function URL
+    const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-proxy`;
+
+    // Make request with retry logic
+    const makeRequest = async () => {
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        // Handle rate limiting from server
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After') || '60';
+          throw new Error(
+            `Server rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
+          );
+        }
+
+        throw new Error(
+          errorData.details || errorData.error || 'Failed to process request'
+        );
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Request failed');
+      }
+
+      return result.data;
+    };
+
+    // Retry with exponential backoff
+    return retryWithBackoff(makeRequest, {
+      maxAttempts: 3,
+      initialDelayMs: 1000,
+      maxDelayMs: 10000,
+      backoffMultiplier: 2,
+    });
+  } catch (error) {
+    console.error(`Gemini proxy error for action ${action}:`, error);
+    throw error instanceof Error ? error : new Error('Gemini service error');
+  }
 }
 
 // ============================================
@@ -136,39 +143,51 @@ let cachedProfile: UserProfile | null = null;
 async function getCurrentUserProfile(): Promise<UserProfile> {
   if (cachedProfile) return cachedProfile;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    // Import supabase only when needed
+    const { supabase } = await import('./supabase');
 
-  if (!user) throw new Error('User not authenticated');
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const { data } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+    if (!user) throw new Error('User not authenticated');
 
-  if (!data) throw new Error('User profile not found');
+    const { data } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
-  // Convert snake_case to camelCase
-  cachedProfile = {
-    id: data.id,
-    fullName: data.full_name,
-    email: data.email,
-    role: data.role,
-    schoolId: data.school_id,
-    admissionNumber: data.admission_number,
-    staffId: data.staff_id,
-    assignedClasses: data.assigned_classes,
-    assignedSubjects: data.assigned_subjects,
-    phoneNumber: data.phone_number,
-    profileImage: data.profile_image,
-    linkedStudents: data.linked_students,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-  };
+    if (!data) throw new Error('User profile not found');
 
-  return cachedProfile;
+    // Convert snake_case to camelCase
+    cachedProfile = {
+      id: data.id,
+      fullName: data.full_name,
+      email: data.email,
+      role: data.role,
+      schoolId: data.school_id,
+      admissionNumber: data.admission_number,
+      staffId: data.staff_id,
+      assignedClasses: data.assigned_classes,
+      assignedSubjects: data.assigned_subjects,
+      phoneNumber: data.phone_number,
+      profileImage: data.profile_image,
+      linkedStudents: data.linked_students,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+
+    return cachedProfile;
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : 'Failed to load user profile. Please refresh and try again.'
+    );
+  }
 }
 
 /**
@@ -252,7 +271,16 @@ export const geminiService = {
    */
   async extractTextFromPDF(fileData: ArrayBuffer): Promise<string> {
     try {
-      const pdfjsLib = await import('pdfjs-dist');
+      // Dynamic import with proper error handling
+      let pdfjsLib: any;
+      try {
+        const module = await import('pdfjs-dist');
+        pdfjsLib = module.default || module;
+      } catch (importError) {
+        console.error('Failed to import pdfjs-dist:', importError);
+        throw new Error('PDF processing library is not available');
+      }
+
       const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
       let fullText = '';
 

@@ -227,7 +227,7 @@ export const BulkStudentImport = ({ onSuccess, onClose, user: propUser, profile:
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {fileData.slice(0, 10).map((row, idx) => (
-                                    <tr key={`${row.admissionNumber || idx}`} className="hover:bg-white/5">
+                                    <tr key={`preview-${idx}-${row.admissionNumber || row.fullName || ''}`} className="hover:bg-white/5">
                                         <td className="px-4 py-3 text-white">{row.admissionNumber}</td>
                                         <td className="px-4 py-3 text-white">{row.fullName}</td>
                                         <td className="px-4 py-3 text-gray-400">{row.email || '-'}</td>

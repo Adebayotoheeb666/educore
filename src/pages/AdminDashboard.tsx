@@ -165,8 +165,11 @@ export const AdminDashboard = () => {
                 staffId: u.staff_id
             }));
 
-            setStaff(mappedUsers.filter((u: any) => u.role === 'staff' || u.role === 'admin' || u.role === 'bursar'));
-            setStudents(mappedUsers.filter((u: any) => u.role === 'student'));
+            // Deduplicate users by ID
+            const uniqueUsers = Array.from(new Map(mappedUsers.map(u => [u.id, u])).values());
+
+            setStaff(uniqueUsers.filter((u: any) => u.role === 'staff' || u.role === 'admin' || u.role === 'bursar'));
+            setStudents(uniqueUsers.filter((u: any) => u.role === 'student'));
 
             // Fetch Classes
             const { data: classData, error: classError } = await supabase
@@ -175,7 +178,9 @@ export const AdminDashboard = () => {
                 .eq('school_id', schoolId);
 
             if (classError) throw classError;
-            setClasses(classData || []);
+            // Deduplicate classes by ID
+            const uniqueClasses = Array.from(new Map((classData || []).map(c => [c.id, c])).values());
+            setClasses(uniqueClasses);
 
             // Fetch Subjects
             const { data: subjectData, error: subjectError } = await supabase
@@ -184,7 +189,9 @@ export const AdminDashboard = () => {
                 .eq('school_id', schoolId);
 
             if (subjectError) throw subjectError;
-            setSubjects(subjectData || []);
+            // Deduplicate subjects by ID
+            const uniqueSubjects = Array.from(new Map((subjectData || []).map(s => [s.id, s])).values());
+            setSubjects(uniqueSubjects);
 
             // Fetch Financials
             const { data: transData, error: transError } = await supabase

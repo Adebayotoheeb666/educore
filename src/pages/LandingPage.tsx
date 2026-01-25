@@ -435,8 +435,8 @@ const SolutionCard = ({ icon: Icon, title, description, features, onClick, image
             </div>
             <p className="text-gray-400 mb-6">{description}</p>
             <div className="space-y-2">
-                {features.map((feature: string, index: number) => (
-                    <div key={index} className="flex items-center gap-2 text-gray-300">
+                {features.map((feature: string) => (
+                    <div key={feature} className="flex items-center gap-2 text-gray-300">
                         <CheckCircle className="w-5 h-5 text-teal-400 flex-shrink-0" />
                         <span className="text-sm">{feature}</span>
                     </div>

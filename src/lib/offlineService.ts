@@ -42,31 +42,21 @@ export const initOfflineService = () => {
 };
 
 /**
- * Perform a real connectivity check
+ * Perform a connectivity check - relies on browser's navigator.onLine
+ * which is reliable for detecting online/offline status
  */
 export const checkConnection = async (): Promise<boolean> => {
-    if (!navigator.onLine) return false;
-
-    try {
-        // Ping a reliable endpoint
-        await fetch('https://raw.githubusercontent.com/favicon.ico', {
-            method: 'HEAD',
-            mode: 'no-cors',
-            cache: 'no-store'
-        });
-        return true;
-    } catch (error) {
-        return false;
-    }
+    return navigator.onLine;
 };
 
 const startHeartbeat = () => {
+    // Lightweight periodic check as a backup to browser events
     setInterval(async () => {
         const status = await checkConnection();
         if (status !== isOnline) {
             status ? handleOnline() : handleOffline();
         }
-    }, 10000); // Check every 10 seconds
+    }, 15000); // Check every 15 seconds as a fallback
 };
 
 /**
