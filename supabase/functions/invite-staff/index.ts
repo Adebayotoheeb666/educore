@@ -119,10 +119,22 @@ serve(async (req) => {
 
             if (authError) {
                 console.error("Auth creation error:", authError);
+                // Provide more helpful error messages
+                let errorDetails = authError.message || String(authError);
+                if (authError.message?.includes('already exists')) {
+                    errorDetails = `Email already registered in system. Try using a different email address.`;
+                } else if (authError.message?.includes('invalid')) {
+                    errorDetails = `Invalid email format. Please provide a valid email address.`;
+                } else if (authError.message?.includes('smtp')) {
+                    errorDetails = `Email service unavailable. Please try again later.`;
+                }
                 return new Response(
                     JSON.stringify({
                         error: "Failed to create Auth user",
-                        details: authError
+                        details: {
+                            message: errorDetails,
+                            originalError: authError.message
+                        }
                     }),
                     {
                         status: 500,
