@@ -76,8 +76,22 @@ export const StudentCreationModal = ({ onClose, onSuccess, initialData, classes 
                 });
             }
         } catch (err) {
-            console.error(err);
-            setError(err instanceof Error ? err.message : 'Failed to save student account');
+            console.error('Student creation error:', err);
+            let errorMessage = 'Failed to save student account';
+
+            if (err instanceof Error) {
+                errorMessage = err.message;
+                // Provide more specific error messages
+                if (err.message.includes('RLS')) {
+                    errorMessage = 'Permission denied. Please ensure you have admin rights for this school.';
+                } else if (err.message.includes('duplicate')) {
+                    errorMessage = 'A student with this admission number already exists.';
+                } else if (err.message.includes('email')) {
+                    errorMessage = 'Invalid email address or email already in use.';
+                }
+            }
+
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
