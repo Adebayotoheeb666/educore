@@ -745,7 +745,7 @@ export const AdminDashboard = () => {
                                 <tbody className="divide-y divide-white/5">
                                     {activeTab === 'staff' && filterStaff(staff).map(u => (
                                         <tr key={u.id} className="group hover:bg-white/5 transition-colors border-b border-white/5">
-                                            <td className="py-3 md:py-4 px-2 md:px-4">
+                                            <td className="py-3 md:py-4 px-3 sm:px-4">
                                                 <div className="flex items-center gap-2 md:gap-3">
                                                     <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400 font-bold text-sm">{u.fullName?.charAt(0) || 'U'}</div>
                                                     <div className="min-w-0">
@@ -754,9 +754,9 @@ export const AdminDashboard = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-3 md:py-4 px-2 md:px-4 text-gray-400 font-mono text-xs md:text-sm hidden sm:table-cell">{u.staffId || 'N/A'}</td>
-                                            <td className="py-3 md:py-4 px-2 md:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell truncate">{u.email}</td>
-                                            <td className="py-3 md:py-4 px-2 md:px-4">
+                                            <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 font-mono text-xs md:text-sm hidden sm:table-cell">{u.staffId || 'N/A'}</td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell truncate">{u.email}</td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4">
                                                 <div className="flex items-center gap-1 md:gap-2 flex-wrap justify-end md:justify-start">
                                                     <button
                                                         onClick={() => {
