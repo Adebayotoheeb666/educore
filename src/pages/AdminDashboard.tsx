@@ -977,7 +977,7 @@ const StatCard = ({ icon: Icon, label, value, color }: any) => (
 );
 
 const TabButton = ({ active, onClick, label }: any) => (
-    <button onClick={onClick} className={`px-8 py-4 font-bold text-sm transition-all relative ${active ? 'text-teal-400' : 'text-gray-500 hover:text-white'}`}>
+    <button onClick={onClick} className={`px-3 sm:px-6 py-3 sm:py-4 font-bold text-xs sm:text-sm transition-all relative flex-1 sm:flex-none ${active ? 'text-teal-400' : 'text-gray-500 hover:text-white'}`}>
         {label}
         {active && <div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-500" />}
     </button>
