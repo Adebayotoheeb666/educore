@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Save, AlertCircle, CheckCircle2, Plus, Trash2 } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle2, Plus, Trash2, X, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { ParentCreationModal } from './ParentCreationModal';
 import type { ParentStudentLink } from '../lib/types';
 
 interface ParentStudentLinkModalProps {
@@ -23,7 +24,7 @@ interface LinkData {
 }
 
 export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSuccess }: ParentStudentLinkModalProps) => {
-    const { schoolId } = useAuth();
+    const { schoolId, user, profile } = useAuth();
     const [parents, setParents] = useState<ParentOption[]>([]);
     const [links, setLinks] = useState<LinkData[]>([]);
     const [existingLinks, setExistingLinks] = useState<ParentStudentLink[]>([]);
@@ -31,6 +32,31 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [showParentCreation, setShowParentCreation] = useState(false);
+
+    const fetchParents = async () => {
+        if (!schoolId) return;
+
+        try {
+            // Fetch parent accounts
+            const { data: parentData, error: parentError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('school_id', schoolId)
+                .eq('role', 'parent');
+
+            if (parentError) throw parentError;
+
+            setParents(parentData.map(p => ({
+                id: p.id,
+                name: p.full_name,
+                phone: p.phone_number
+            })));
+        } catch (err) {
+            console.error('Failed to fetch parents:', err);
+            setError('Failed to load parents');
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -41,19 +67,7 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
             try {
                 // Fetch parent accounts
-                const { data: parentData, error: parentError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('school_id', schoolId)
-                    .eq('role', 'parent');
-
-                if (parentError) throw parentError;
-
-                setParents(parentData.map(p => ({
-                    id: p.id,
-                    name: p.full_name,
-                    phone: p.phone_number
-                })));
+                await fetchParents();
 
                 // Fetch existing parent-student links for this student
                 const { data: linkData, error: linkError } = await supabase
@@ -187,6 +201,24 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
         }
     };
 
+    // Show parent creation modal if requested
+    if (showParentCreation) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <ParentCreationModal
+                    user={user}
+                    profile={profile}
+                    schoolId={schoolId}
+                    onSuccess={async () => {
+                        setShowParentCreation(false);
+                        await fetchParents();
+                    }}
+                    onClose={() => setShowParentCreation(false)}
+                />
+            </div>
+        );
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center p-8">
@@ -217,10 +249,19 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
             )}
 
             {parents.length === 0 ? (
-                <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
-                    <p className="text-orange-300 text-sm">
-                        No parent accounts found. Please create parent accounts first in the school.
-                    </p>
+                <div className="space-y-4">
+                    <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+                        <p className="text-orange-300 text-sm mb-4">
+                            No parent accounts found. Create parent accounts to link them to students.
+                        </p>
+                        <button
+                            onClick={() => setShowParentCreation(true)}
+                            className="w-full px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 rounded-lg transition font-medium flex items-center justify-center gap-2"
+                        >
+                            <UserPlus className="w-4 h-4" />
+                            Create First Parent Account
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -262,13 +303,22 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
             )}
 
             {parents.length > 0 && (
-                <button
-                    onClick={handleAddLink}
-                    className="w-full px-4 py-3 border border-dashed border-teal-500/30 hover:bg-teal-500/10 text-teal-400 rounded-lg transition-colors font-bold flex items-center justify-center gap-2"
-                >
-                    <Plus className="w-5 h-5" />
-                    Add Parent Link
-                </button>
+                <div className="space-y-2">
+                    <button
+                        onClick={handleAddLink}
+                        className="w-full px-4 py-3 border border-dashed border-teal-500/30 hover:bg-teal-500/10 text-teal-400 rounded-lg transition-colors font-bold flex items-center justify-center gap-2"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Add Parent Link
+                    </button>
+                    <button
+                        onClick={() => setShowParentCreation(true)}
+                        className="w-full px-4 py-3 border border-dashed border-purple-500/30 hover:bg-purple-500/10 text-purple-400 rounded-lg transition-colors font-bold flex items-center justify-center gap-2"
+                    >
+                        <UserPlus className="w-5 h-5" />
+                        Create New Parent Account
+                    </button>
+                </div>
             )}
 
             <div className="flex gap-3 pt-4">

@@ -22,6 +22,7 @@ import { BulkStudentImport } from '../components/BulkStudentImport';
 import { StaffAssignmentModal } from '../components/StaffAssignmentModal';
 import { ParentStudentLinkModal } from '../components/ParentStudentLinkModal';
 import { StaffCreationModal } from '../components/StaffCreationModal';
+import { StudentCreationModal } from '../components/StudentCreationModal';
 import { SchoolSettingsModal } from '../components/SchoolSettingsModal';
 import { supabase } from '../lib/supabase';
 import type { ImportResult } from '../lib/bulkImportService';
@@ -44,6 +45,7 @@ export const AdminDashboard = () => {
     // Modals
     const [showBulkImport, setShowBulkImport] = useState(false);
     const [showStaffCreation, setShowStaffCreation] = useState(false);
+    const [showStudentCreation, setShowStudentCreation] = useState(false);
     const [showSubjectModal, setShowSubjectModal] = useState(false);
     const [showClassModal, setShowClassModal] = useState(false);
     const [showSchoolSettings, setShowSchoolSettings] = useState(false);
@@ -57,6 +59,7 @@ export const AdminDashboard = () => {
     const [editingSubject, setEditingSubject] = useState<any | null>(null);
     const [editingClass, setEditingClass] = useState<any | null>(null);
     const [editingStaff, setEditingStaff] = useState<any | null>(null);
+    const [editingStudent, setEditingStudent] = useState<any | null>(null);
 
     // Toast/Notification state
     const [toasts, setToasts] = useState<Omit<ToastProps, 'onClose'>[]>([]);
@@ -376,16 +379,14 @@ export const AdminDashboard = () => {
     }
 
     if (!profile) {
+        console.warn('[AdminDashboard] Profile is missing - this should not happen with localStorage caching');
         return (
             <div className="p-8 text-white">
                 <h2 className="text-2xl font-bold mb-4">Unable to Load Profile</h2>
-                <p className="text-gray-400 mb-4">We couldn't fetch your profile data. Please refresh the page or contact support.</p>
-                <button
-                    onClick={() => window.location.reload()}
-                    className="bg-teal-500 hover:bg-teal-400 text-dark-bg font-bold py-2 px-4 rounded"
-                >
-                    Refresh Page
-                </button>
+                <p className="text-gray-400 mb-4">We're having trouble loading your profile. The app will automatically try again.</p>
+                <div className="mt-8 flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                </div>
             </div>
         );
     }
@@ -395,8 +396,9 @@ export const AdminDashboard = () => {
         return <div className="p-8 text-white">Access Denied: Admins Only</div>;
     }
 
-    // Only show "School Setup Required" if we're done loading and schoolId is still missing
+    // Only show "School Setup Required" if we're done loading and schoolId is still missing (shouldn't happen with caching)
     if (!schoolId || schoolId === 'pending-setup') {
+        console.warn('[AdminDashboard] School setup required or pending setup');
         return (
             <div className="p-8 text-white">
                 <div className="max-w-md bg-dark-card border border-white/10 rounded-2xl p-8">
@@ -409,26 +411,6 @@ export const AdminDashboard = () => {
                         Register School
                     </button>
                 </div>
-            </div>
-        );
-    }
-
-    if (!schoolId && !authLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-dark-card border border-white/5 rounded-3xl m-8">
-                <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mb-6">
-                    <AlertCircle className="w-8 h-8 text-orange-400" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-2">School Context Missing</h2>
-                <p className="text-gray-400 max-w-sm mx-auto">
-                    We could not verify your school association. This can happen if your account setup is incomplete.
-                </p>
-                <button
-                    onClick={() => window.location.reload()}
-                    className="mt-6 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl transition-colors"
-                >
-                    Refresh Dashboard
-                </button>
             </div>
         );
     }
@@ -513,6 +495,23 @@ export const AdminDashboard = () => {
                     schoolId={schoolId}
                     onSuccess={() => { fetchData(); setShowStaffCreation(false); setEditingStaff(null); }}
                     onClose={() => { setShowStaffCreation(false); setEditingStaff(null); }}
+                />
+            </div>
+        );
+    }
+
+    // Student Creation Modal
+    if (showStudentCreation) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <StudentCreationModal
+                    initialData={editingStudent}
+                    user={user}
+                    profile={profile}
+                    schoolId={schoolId}
+                    classes={classes}
+                    onSuccess={() => { fetchData(); setShowStudentCreation(false); setEditingStudent(null); }}
+                    onClose={() => { setShowStudentCreation(false); setEditingStudent(null); }}
                 />
             </div>
         );
@@ -629,6 +628,7 @@ export const AdminDashboard = () => {
                         {showAddMenu && (
                             <div className="absolute right-0 mt-2 w-56 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
                                 <button onClick={() => { setEditingStaff(null); setShowStaffCreation(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Add Staff Member</button>
+                                <button onClick={() => { setEditingStudent(null); setShowStudentCreation(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Add Student</button>
                                 <button onClick={() => { setShowClassModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create New Class</button>
                                 <button onClick={() => { setShowSubjectModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create Subject</button>
                                 <button onClick={() => { setShowBulkImport(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 flex items-center justify-between">
@@ -708,7 +708,7 @@ export const AdminDashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
-                                    {activeTab === 'staff' && staff.map(u => (
+                                    {activeTab === 'staff' && filterStaff(staff).map(u => (
                                         <tr key={u.id} className="group hover:bg-white/5 transition-colors">
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-3">
@@ -752,7 +752,7 @@ export const AdminDashboard = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {activeTab === 'students' && students.map(u => (
+                                    {activeTab === 'students' && filterStudents(students).map(u => (
                                         <tr key={u.id} className="group hover:bg-white/5 transition-colors">
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-3">
@@ -767,7 +767,7 @@ export const AdminDashboard = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {activeTab === 'classes' && classes.map(c => (
+                                    {activeTab === 'classes' && filterClasses(classes).map(c => (
                                         <tr key={c.id} className="group hover:bg-white/5 transition-colors">
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-3">
@@ -801,7 +801,7 @@ export const AdminDashboard = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {activeTab === 'subjects' && subjects.map(s => (
+                                    {activeTab === 'subjects' && filterSubjects(subjects).map(s => (
                                         <tr key={s.id} className="group hover:bg-white/5 transition-colors">
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-3">
