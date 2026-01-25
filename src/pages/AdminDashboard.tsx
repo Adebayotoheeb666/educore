@@ -579,8 +579,8 @@ export const AdminDashboard = () => {
 
             {/* Class Creation Modal */}
             {showClassModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md p-6">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
+                    <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md p-4 md:p-6">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-bold text-white">{editingClass ? 'Edit Class' : 'Create New Class'}</h2>
                             <button onClick={() => { setShowClassModal(false); setEditingClass(null); setNewClass({ name: '', level: '' }); }} className="text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
