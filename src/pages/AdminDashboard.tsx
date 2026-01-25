@@ -827,17 +827,17 @@ export const AdminDashboard = () => {
                                         </tr>
                                     ))}
                                     {activeTab === 'classes' && filterClasses(classes).map(c => (
-                                        <tr key={c.id} className="group hover:bg-white/5 transition-colors">
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold"><BookOpen className="w-5 h-5" /></div>
-                                                    <span className="text-white font-medium">{c.name}</span>
+                                        <tr key={c.id} className="group hover:bg-white/5 transition-colors border-b border-white/5">
+                                            <td className="py-3 md:py-4 px-2 md:px-4">
+                                                <div className="flex items-center gap-2 md:gap-3">
+                                                    <div className="w-8 md:w-10 h-8 md:h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold"><BookOpen className="w-4 md:w-5 h-4 md:h-5" /></div>
+                                                    <span className="text-white font-medium text-sm md:text-base truncate">{c.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-4 text-gray-400 text-sm">{c.level || 'N/A'}</td>
-                                            <td className="py-4 px-4 text-gray-400 text-sm">{c.studentCount || 0} Students</td>
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-2">
+                                            <td className="py-3 md:py-4 px-2 md:px-4 text-gray-400 text-xs md:text-sm hidden sm:table-cell">{c.level || 'N/A'}</td>
+                                            <td className="py-3 md:py-4 px-2 md:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell">{c.studentCount || 0} Students</td>
+                                            <td className="py-3 md:py-4 px-2 md:px-4">
+                                                <div className="flex items-center gap-1 md:gap-2 justify-end md:justify-start">
                                                     <button
                                                         onClick={() => {
                                                             setEditingClass(c);
@@ -847,14 +847,14 @@ export const AdminDashboard = () => {
                                                         className="p-2 hover:bg-blue-500/10 rounded-lg text-gray-500 hover:text-blue-400 transition-colors"
                                                         title="Edit Class"
                                                     >
-                                                        <Edit2 className="w-4 h-4" />
+                                                        <Edit2 className="w-3 md:w-4 h-3 md:h-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteClass(c.id, c.name)}
                                                         className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
                                                         title="Delete Class"
                                                     >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <Trash2 className="w-3 md:w-4 h-3 md:h-4" />
                                                     </button>
                                                 </div>
                                             </td>
