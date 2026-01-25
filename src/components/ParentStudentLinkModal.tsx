@@ -93,7 +93,8 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
                 // Initialize with existing links
                 const initialLinks: LinkData[] = existing.flatMap(link =>
-                    link.parentIds.map(parentId => ({
+                    link.parentIds.map((parentId, idx) => ({
+                        id: `${link.id}-${idx}`, // Use existing link ID + index for uniqueness
                         parentId,
                         relationship: link.relationship
                     }))
