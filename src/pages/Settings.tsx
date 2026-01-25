@@ -43,7 +43,7 @@ export const Settings = () => {
     useEffect(() => {
         loadSettings();
         loadAcademicSettings();
-        const interval = setInterval(loadSettings, 5000); // Refresh every 5 seconds
+        const interval = setInterval(loadSettings, 30000); // Refresh every 30 seconds
 
         window.addEventListener('online', loadSettings);
         window.addEventListener('offline', loadSettings);
