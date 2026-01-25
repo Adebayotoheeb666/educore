@@ -371,6 +371,32 @@ export const AdminDashboard = () => {
         });
     };
 
+    const handleDeleteStudent = async (id: string, name: string) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Student',
+            message: `Are you sure you want to delete "${name}"? This will remove their profile and all associated data from the system.`,
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    const { error, count } = await supabase.from('users').delete({ count: 'exact' }).eq('id', id);
+                    if (error) throw error;
+                    if (count === 0) {
+                        showToast('Delete failed: access denied (RLS) or record not found.', 'error');
+                    } else {
+                        showToast('Student deleted successfully', 'success');
+                        fetchData();
+                    }
+                } catch (err) {
+                    showToast('Failed to delete student', 'error');
+                    console.error(err);
+                } finally {
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }
+            }
+        });
+    };
+
     useEffect(() => {
         if (schoolId) {
             fetchData();
