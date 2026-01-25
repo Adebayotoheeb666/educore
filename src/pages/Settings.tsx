@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ToggleLeft, ToggleRight, Wifi, CheckCircle, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Wifi, CheckCircle, AlertCircle, Trash2, RefreshCw, Bell, X } from 'lucide-react';
 import { storageService, type StorageStats, type SyncStatus } from '../lib/storageService';
+import { getNotifications, markAsRead, markAllAsRead, type Notification } from '../lib/notificationService';
 import { useAuth } from '../hooks/useAuth';
 
 const Toggle = ({ checked, onChange }: { checked: boolean, onChange: () => void }) => (
