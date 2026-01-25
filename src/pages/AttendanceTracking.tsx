@@ -122,11 +122,9 @@ export const AttendanceTracking = () => {
             const attendanceRecords = Object.entries(attendance).map(([studentId, status]) => ({
                 school_id: schoolId,
                 student_id: studentId,
-                class_id: selectedClass,
                 teacher_id: user.id,
                 date: today,
-                status,
-                created_at: new Date().toISOString() // Let Supabase handle it or explicit
+                status
             }));
 
             if (getOnlineStatus()) {
