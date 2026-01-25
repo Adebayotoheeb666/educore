@@ -22,6 +22,7 @@ import { BulkStudentImport } from '../components/BulkStudentImport';
 import { StaffAssignmentModal } from '../components/StaffAssignmentModal';
 import { ParentStudentLinkModal } from '../components/ParentStudentLinkModal';
 import { StaffCreationModal } from '../components/StaffCreationModal';
+import { StudentCreationModal } from '../components/StudentCreationModal';
 import { SchoolSettingsModal } from '../components/SchoolSettingsModal';
 import { supabase } from '../lib/supabase';
 import type { ImportResult } from '../lib/bulkImportService';
