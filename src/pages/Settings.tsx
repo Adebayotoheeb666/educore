@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ToggleLeft, ToggleRight, Wifi, CheckCircle, AlertCircle, Trash2, RefreshCw, Bell, X } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Wifi, CheckCircle, AlertCircle, Trash2, RefreshCw, Bell } from 'lucide-react';
 import { storageService, type StorageStats, type SyncStatus } from '../lib/storageService';
-import { getNotifications, markAsRead, markAllAsRead, type Notification } from '../lib/notificationService';
+import { getNotifications, markAsRead, markAllAsRead } from '../lib/notificationService';
 import { useAuth } from '../hooks/useAuth';
+import type { Notification } from '../lib/types';
 
 const Toggle = ({ checked, onChange }: { checked: boolean, onChange: () => void }) => (
     <button onClick={onChange} className={`transition-colors text-3xl ${checked ? 'text-teal-500' : 'text-gray-600'}`}>
