@@ -15,7 +15,6 @@
  * - Rate limiting warnings are shown to users
  */
 
-import { supabase } from './supabase';
 import type { UserProfile } from './types';
 import { rateLimiter, retryWithBackoff } from './rateLimiter';
 
