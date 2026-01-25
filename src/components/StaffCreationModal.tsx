@@ -59,6 +59,26 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
                     .eq('id', initialData.id);
 
                 if (updateError) throw updateError;
+
+                // Log the update action
+                if (schoolId && user?.id) {
+                    await logAction(
+                        schoolId,
+                        user.id,
+                        user.email || 'Unknown',
+                        'update',
+                        'staff',
+                        initialData.id,
+                        {
+                            full_name: { old: initialData.fullName, new: formData.fullName },
+                            email: { old: initialData.email, new: formData.email },
+                            role: { old: initialData.role, new: formData.role },
+                            phone_number: { old: initialData.phoneNumber, new: formData.phoneNumber },
+                            staff_id: { old: initialData.staffId, new: formData.staffId }
+                        }
+                    );
+                }
+
                 onSuccess();
             } else {
                 // CREATE flow
