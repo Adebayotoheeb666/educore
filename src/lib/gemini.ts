@@ -136,39 +136,48 @@ let cachedProfile: UserProfile | null = null;
 async function getCurrentUserProfile(): Promise<UserProfile> {
   if (cachedProfile) return cachedProfile;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) throw new Error('User not authenticated');
+    if (!user) throw new Error('User not authenticated');
 
-  const { data } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+    const { data } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
-  if (!data) throw new Error('User profile not found');
+    if (!data) throw new Error('User profile not found');
 
-  // Convert snake_case to camelCase
-  cachedProfile = {
-    id: data.id,
-    fullName: data.full_name,
-    email: data.email,
-    role: data.role,
-    schoolId: data.school_id,
-    admissionNumber: data.admission_number,
-    staffId: data.staff_id,
-    assignedClasses: data.assigned_classes,
-    assignedSubjects: data.assigned_subjects,
-    phoneNumber: data.phone_number,
-    profileImage: data.profile_image,
-    linkedStudents: data.linked_students,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-  };
+    // Convert snake_case to camelCase
+    cachedProfile = {
+      id: data.id,
+      fullName: data.full_name,
+      email: data.email,
+      role: data.role,
+      schoolId: data.school_id,
+      admissionNumber: data.admission_number,
+      staffId: data.staff_id,
+      assignedClasses: data.assigned_classes,
+      assignedSubjects: data.assigned_subjects,
+      phoneNumber: data.phone_number,
+      profileImage: data.profile_image,
+      linkedStudents: data.linked_students,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
 
-  return cachedProfile;
+    return cachedProfile;
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : 'Failed to load user profile. Please refresh and try again.'
+    );
+  }
 }
 
 /**
