@@ -105,17 +105,37 @@ export const StudentAssignment = () => {
         if (!selectedClass) return;
         setProcessing(true);
         try {
-            const { error } = await supabase
+            // Check if enrollment already exists
+            const { data: existing, error: checkError } = await supabase
                 .from('student_classes')
-                .upsert({
+                .select('id')
+                .eq('student_id', studentId)
+                .eq('class_id', selectedClass.id)
+                .single();
+
+            if (checkError && checkError.code !== 'PGRST116') {
+                throw checkError;
+            }
+
+            // If enrollment already exists, just refresh and return
+            if (existing) {
+                fetchClassStudents(selectedClass.id);
+                setShowAddModal(false);
+                return;
+            }
+
+            // Insert new enrollment
+            const { error: insertError } = await supabase
+                .from('student_classes')
+                .insert({
                     student_id: studentId,
                     class_id: selectedClass.id,
                     school_id: schoolId,
                     enrollment_date: new Date().toISOString().split('T')[0],
                     status: 'active'
-                }, { onConflict: 'student_id,class_id' });
+                });
 
-            if (error) throw error;
+            if (insertError) throw insertError;
             fetchClassStudents(selectedClass.id);
             setShowAddModal(false);
         } catch (err) {
