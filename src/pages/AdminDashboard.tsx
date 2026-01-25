@@ -919,13 +919,13 @@ export const AdminDashboard = () => {
 };
 
 const StatCard = ({ icon: Icon, label, value, color }: any) => (
-    <div className="bg-dark-card border border-white/5 p-6 rounded-2xl flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-xl bg-${color}-500/10 flex items-center justify-center`}>
-            <Icon className={`w-6 h-6 text-${color}-400`} />
+    <div className="bg-dark-card border border-white/5 p-4 sm:p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <div className={`w-10 sm:w-12 h-10 sm:h-12 rounded-xl bg-${color}-500/10 flex items-center justify-center flex-shrink-0`}>
+            <Icon className={`w-5 sm:w-6 h-5 sm:h-6 text-${color}-400`} />
         </div>
-        <div>
-            <div className="text-gray-500 text-sm font-bold">{label}</div>
-            <div className="text-2xl font-bold text-white tracking-tight">{value}</div>
+        <div className="min-w-0">
+            <div className="text-gray-500 text-xs sm:text-sm font-bold">{label}</div>
+            <div className="text-xl sm:text-2xl font-bold text-white tracking-tight">{value}</div>
         </div>
     </div>
 );
