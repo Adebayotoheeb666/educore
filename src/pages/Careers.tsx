@@ -59,8 +59,8 @@ export const Careers: React.FC = () => {
                         </div>
 
                         <div className="space-y-4">
-                            {roles.map((role, index) => (
-                                <div key={index} className="p-8 bg-dark-card border border-white/5 rounded-[32px] hover:border-teal-500/30 transition-all group flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer">
+                            {roles.map((role) => (
+                                <div key={role.title} className="p-8 bg-dark-card border border-white/5 rounded-[32px] hover:border-teal-500/30 transition-all group flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer">
                                     <div>
                                         <div className="text-xs font-bold text-teal-400 uppercase tracking-widest mb-2">{role.department}</div>
                                         <h3 className="text-2xl font-bold text-white mb-2">{role.title}</h3>
