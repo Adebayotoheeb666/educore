@@ -459,7 +459,7 @@ export const AdminDashboard = () => {
                         <h1 className="text-2xl font-bold text-white">Assign Classes & Subjects</h1>
                         <button onClick={() => setSelectedStaffForAssignment(null)} className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white"><X className="w-6 h-6" /></button>
                     </div>
-                    <div className="p-6">
+                    <div className="p-4 md:p-6">
                         <StaffAssignmentModal
                             staffId={selectedStaffForAssignment.id}
                             staffName={selectedStaffForAssignment.name}
