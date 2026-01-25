@@ -147,9 +147,10 @@ export const ClassManager = () => {
         setProcessing(true);
         try {
             const { error } = await supabase
-                .from('users')
-                .update({ class_id: null })
-                .eq('id', studentId);
+                .from('student_classes')
+                .delete()
+                .eq('student_id', studentId)
+                .eq('class_id', selectedClass?.id);
 
             if (error) throw error;
             fetchEnrolledStudents(selectedClass.id);
