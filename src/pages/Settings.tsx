@@ -253,8 +253,67 @@ export const Settings = () => {
 
     return (
         <div className="max-w-xl mx-auto space-y-8">
-            <header className="flex items-center gap-4 mb-8">
+            <header className="flex items-center justify-between gap-4 mb-8">
                 <h1 className="text-xl font-bold text-white">Connectivity & Storage</h1>
+                <div className="relative">
+                    <button
+                        onClick={() => setShowNotifications(!showNotifications)}
+                        className="relative p-2 text-white hover:text-teal-400 transition-colors"
+                    >
+                        <Bell className="w-6 h-6" />
+                        {notifications.some(n => !n.read) && (
+                            <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                        )}
+                    </button>
+
+                    {showNotifications && (
+                        <div className="absolute right-0 top-12 w-80 max-h-96 bg-dark-card border border-white/10 rounded-2xl overflow-hidden shadow-lg z-50">
+                            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                                <h3 className="text-white font-bold">Notifications</h3>
+                                {notifications.some(n => !n.read) && (
+                                    <button
+                                        onClick={handleMarkAllNotificationsRead}
+                                        className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
+                                    >
+                                        Mark all as read
+                                    </button>
+                                )}
+                            </div>
+                            <div className="overflow-y-auto max-h-80">
+                                {notificationsLoading ? (
+                                    <div className="p-4 text-gray-400 text-sm text-center">Loading...</div>
+                                ) : notifications.length === 0 ? (
+                                    <div className="p-4 text-gray-400 text-sm text-center">No notifications</div>
+                                ) : (
+                                    notifications.map(notif => (
+                                        <div
+                                            key={notif.id}
+                                            className={`p-4 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors ${
+                                                !notif.read ? 'bg-teal-500/5' : ''
+                                            }`}
+                                            onClick={() => handleNotificationRead(notif.id)}
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1">
+                                                    <div className="text-white font-bold text-sm">{notif.title}</div>
+                                                    <div className="text-gray-400 text-xs mt-1">{notif.message}</div>
+                                                    {notif.createdAt && (
+                                                        <div className="text-gray-500 text-[10px] mt-2">
+                                                            {new Date(notif.createdAt).toLocaleString('en-NG')}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {!notif.read && (
+                                                    <div className="w-2 h-2 bg-teal-500 rounded-full flex-shrink-0 mt-1.5"></div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </header>
 
             {/* Success Alert */}
