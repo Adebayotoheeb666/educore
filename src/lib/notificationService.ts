@@ -395,12 +395,18 @@ export const getNotifications = async (schoolId: string, userId: string, limit =
 
 export const markAsRead = async (notificationId: string) => {
     try {
-        await supabase
+        const { error } = await supabase
             .from('notifications')
             .update({ read: true })
             .eq('id', notificationId);
+
+        if (error) {
+            console.warn('Failed to mark notification as read:', error);
+            // Don't throw - marking as read is not critical
+        }
     } catch (error) {
-        console.error('Failed to mark notification as read:', error);
+        console.warn('Failed to mark notification as read:', error);
+        // Silently fail - this is not critical
     }
 };
 
@@ -408,11 +414,17 @@ export const markAllAsRead = async (notificationIds: string[]) => {
     try {
         if (notificationIds.length === 0) return;
 
-        await supabase
+        const { error } = await supabase
             .from('notifications')
             .update({ read: true })
             .in('id', notificationIds);
+
+        if (error) {
+            console.warn('Failed to mark all notifications as read:', error);
+            // Don't throw - marking as read is not critical
+        }
     } catch (error) {
-        console.error('Failed to mark all as read:', error);
+        console.warn('Failed to mark all notifications as read:', error);
+        // Silently fail - this is not critical
     }
 };
