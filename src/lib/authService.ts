@@ -271,7 +271,16 @@ export const loginWithAdmissionNumber = async (schoolId: string, admissionNumber
 
             if (authResponse.user) {
                 // Post-Activation: Link/Clone Profile
-                await linkProfileAfterActivation(schoolId, authResponse.user.id, admissionNumber, 'student');
+                try {
+                    await linkProfileAfterActivation(schoolId, authResponse.user.id, admissionNumber, 'student');
+                } catch (linkError) {
+                    console.error("Profile linking error during student activation:", {
+                        message: linkError instanceof Error ? linkError.message : String(linkError),
+                        error: linkError
+                    });
+                    // Continue anyway - user is already authenticated
+                    // The profile might have been partially created
+                }
                 return authResponse;
             }
         } catch (activationError) {
