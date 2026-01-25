@@ -280,7 +280,7 @@ export const PaperScanner = () => {
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {grading.missingKeywords.slice(0, 5).map((keyword, idx) => (
-                            <span key={idx} className="px-3 py-1 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 text-xs font-bold">
+                            <span key={`keyword-${keyword}`} className="px-3 py-1 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 text-xs font-bold">
                                 {keyword}
                             </span>
                         ))}
