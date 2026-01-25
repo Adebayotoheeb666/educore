@@ -82,7 +82,7 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
                 const existing = linkData.map(l => ({
                     id: l.id,
                     schoolId: l.school_id,
-                    parentIds: l.parent_ids,
+                    parentId: l.parent_id,
                     studentId: l.student_id,
                     relationship: l.relationship,
                     createdAt: l.created_at,
@@ -91,14 +91,12 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
                 setExistingLinks(existing);
 
-                // Initialize with existing links
-                const initialLinks: LinkData[] = existing.flatMap(link =>
-                    link.parentIds.map((parentId, idx) => ({
-                        id: `${link.id}-${idx}`, // Use existing link ID + index for uniqueness
-                        parentId,
-                        relationship: link.relationship
-                    }))
-                );
+                // Initialize with existing links - one row per parent-student link
+                const initialLinks: LinkData[] = existing.map(link => ({
+                    id: link.id || '',
+                    parentId: link.parentId,
+                    relationship: link.relationship
+                }));
                 setLinks(initialLinks.length > 0 ? initialLinks : []);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load data');
