@@ -54,6 +54,9 @@ async function geminiProxyRequest(
   userProfile: UserProfile
 ): Promise<any> {
   try {
+    // Import supabase only when needed
+    const { supabase } = await import('./supabase');
+
     // Check client-side rate limit first
     const rateLimitCheck = rateLimiter.checkLimit(action, userProfile.id);
     if (!rateLimitCheck.allowed) {
