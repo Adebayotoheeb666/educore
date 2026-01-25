@@ -95,21 +95,26 @@ export const TermManagement = () => {
         }
     };
 
-    const handleDelete = async (termId: string) => {
-        if (!confirm('Are you sure you want to delete this term? This action cannot be undone.')) {
-            return;
-        }
+    const handleDeleteClick = (termId: string, termName: string) => {
+        setConfirmModal({
+            isOpen: true,
+            termId,
+            termName
+        });
+    };
 
+    const handleConfirmDelete = async () => {
         setLoading(true);
         setError('');
         try {
-            await deleteTerm(termId);
+            await deleteTerm(confirmModal.termId);
             setSuccess('Term deleted successfully');
             await loadTerms();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to delete term');
         } finally {
             setLoading(false);
+            setConfirmModal({ isOpen: false, termId: '', termName: '' });
         }
     };
 
