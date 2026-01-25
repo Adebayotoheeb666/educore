@@ -9,6 +9,7 @@ export const Dashboard = () => {
     const displayName = profile?.fullName || user?.user_metadata?.full_name || 'Teacher';
     const [pendingCount, setPendingCount] = useState(0);
     const [classStats, setClassStats] = useState<any[]>([]);
+    const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const { schoolId } = useAuth();
 
