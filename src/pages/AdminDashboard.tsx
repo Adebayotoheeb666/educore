@@ -632,6 +632,7 @@ export const AdminDashboard = () => {
                         {showAddMenu && (
                             <div className="absolute right-0 mt-2 w-56 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
                                 <button onClick={() => { setEditingStaff(null); setShowStaffCreation(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Add Staff Member</button>
+                                <button onClick={() => { setEditingStudent(null); setShowStudentCreation(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Add Student</button>
                                 <button onClick={() => { setShowClassModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create New Class</button>
                                 <button onClick={() => { setShowSubjectModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create Subject</button>
                                 <button onClick={() => { setShowBulkImport(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 flex items-center justify-between">
