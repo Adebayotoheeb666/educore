@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { createTerm, updateTerm, deleteTerm, setActiveTerm, getAllTerms } from '../lib/termService';
+import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import type { Term } from '../lib/types';
 
 export const TermManagement = () => {
@@ -12,6 +13,15 @@ export const TermManagement = () => {
     const [editingTerm, setEditingTerm] = useState<(Term & { id: string }) | null>(null);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        termId: string;
+        termName: string;
+    }>({
+        isOpen: false,
+        termId: '',
+        termName: ''
+    });
 
     // Form state
     const [formData, setFormData] = useState({
@@ -85,21 +95,26 @@ export const TermManagement = () => {
         }
     };
 
-    const handleDelete = async (termId: string) => {
-        if (!confirm('Are you sure you want to delete this term? This action cannot be undone.')) {
-            return;
-        }
+    const handleDeleteClick = (termId: string, termName: string) => {
+        setConfirmModal({
+            isOpen: true,
+            termId,
+            termName
+        });
+    };
 
+    const handleConfirmDelete = async () => {
         setLoading(true);
         setError('');
         try {
-            await deleteTerm(termId);
+            await deleteTerm(confirmModal.termId);
             setSuccess('Term deleted successfully');
             await loadTerms();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to delete term');
         } finally {
             setLoading(false);
+            setConfirmModal({ isOpen: false, termId: '', termName: '' });
         }
     };
 
@@ -131,17 +146,17 @@ export const TermManagement = () => {
 
     return (
         <div className="space-y-8">
-            <header className="flex items-center justify-between">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Term Management</h1>
-                    <p className="text-gray-400 mt-2">Manage academic terms and sessions</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white">Term Management</h1>
+                    <p className="text-gray-400 mt-2 text-sm md:text-base">Manage academic terms and sessions</p>
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl transition-colors"
+                    className="flex items-center justify-center sm:justify-start gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl transition-colors w-full sm:w-auto"
                 >
                     <Plus className="w-5 h-5" />
-                    Create Term
+                    <span>Create Term</span>
                 </button>
             </header>
 
@@ -176,26 +191,26 @@ export const TermManagement = () => {
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {terms.map(term => (
                         <div
                             key={term.id}
-                            className={`bg-dark-card border rounded-2xl p-6 transition-all ${term.isActive
+                            className={`bg-dark-card border rounded-2xl p-4 md:p-6 transition-all ${term.isActive
                                 ? 'border-teal-500/50 bg-teal-500/5'
                                 : 'border-white/5 hover:border-white/10'
                                 }`}
                         >
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-bold text-white mb-1">{term.name}</h3>
+                            <div className="flex items-start justify-between mb-4 gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-base md:text-lg font-bold text-white mb-1 truncate">{term.name}</h3>
                                     {term.isActive && (
                                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-teal-500/20 text-teal-400 text-xs font-bold rounded">
-                                            <CheckCircle2 className="w-3 h-3" />
-                                            Active
+                                            <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
+                                            <span className="hidden sm:inline">Active</span>
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-1 flex-shrink-0">
                                     <button
                                         onClick={() => handleEdit(term)}
                                         className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
@@ -203,7 +218,7 @@ export const TermManagement = () => {
                                         <Edit2 className="w-4 h-4" />
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(term.id)}
+                                        onClick={() => handleDeleteClick(term.id, term.name)}
                                         className="p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition-colors"
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -211,17 +226,17 @@ export const TermManagement = () => {
                                 </div>
                             </div>
 
-                            <div className="space-y-2 text-sm mb-4">
+                            <div className="space-y-2 text-xs md:text-sm mb-4">
                                 <div className="flex items-center gap-2 text-gray-400">
-                                    <Calendar className="w-4 h-4" />
-                                    <span>{new Date(term.startDate).toLocaleDateString()} - {new Date(term.endDate).toLocaleDateString()}</span>
+                                    <Calendar className="w-3 md:w-4 h-3 md:h-4 flex-shrink-0" />
+                                    <span className="truncate">{new Date(term.startDate).toLocaleDateString()} - {new Date(term.endDate).toLocaleDateString()}</span>
                                 </div>
                             </div>
 
                             {!term.isActive && (
                                 <button
                                     onClick={() => handleSetActive(term.id)}
-                                    className="w-full px-4 py-2 bg-teal-600/20 hover:bg-teal-600/30 text-teal-400 rounded-lg transition-colors text-sm font-bold"
+                                    className="w-full px-4 py-2 bg-teal-600/20 hover:bg-teal-600/30 text-teal-400 rounded-lg transition-colors text-xs md:text-sm font-bold"
                                 >
                                     Set as Active Term
                                 </button>
@@ -307,6 +322,19 @@ export const TermManagement = () => {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Delete Term Confirmation Modal */}
+            {confirmModal.isOpen && (
+                <ConfirmationModal
+                    isOpen={confirmModal.isOpen}
+                    title="Delete Term"
+                    message={`Are you sure you want to delete the term "${confirmModal.termName}"? This action cannot be undone and may affect associated academic records.`}
+                    type="danger"
+                    onConfirm={handleConfirmDelete}
+                    confirmLabel="Delete"
+                    onCancel={() => setConfirmModal({ isOpen: false, termId: '', termName: '' })}
+                />
             )}
         </div>
     );
