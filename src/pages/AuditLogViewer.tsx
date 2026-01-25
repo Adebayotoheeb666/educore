@@ -241,45 +241,46 @@ export const AuditLogViewer = () => {
                         <table className="w-full text-sm">
                             <thead className="bg-white/5 border-b border-white/5">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-gray-400 font-bold">Timestamp</th>
-                                    <th className="px-6 py-4 text-left text-gray-400 font-bold">User</th>
-                                    <th className="px-6 py-4 text-left text-gray-400 font-bold">Action</th>
-                                    <th className="px-6 py-4 text-left text-gray-400 font-bold">Resource</th>
-                                    <th className="px-6 py-4 text-left text-gray-400 font-bold">Details</th>
+                                    <th className="px-3 md:px-6 py-4 text-left text-gray-400 font-bold text-xs md:text-sm">Timestamp</th>
+                                    <th className="px-3 md:px-6 py-4 text-left text-gray-400 font-bold text-xs md:text-sm hidden sm:table-cell">User</th>
+                                    <th className="px-3 md:px-6 py-4 text-left text-gray-400 font-bold text-xs md:text-sm">Action</th>
+                                    <th className="px-3 md:px-6 py-4 text-left text-gray-400 font-bold text-xs md:text-sm">Resource</th>
+                                    <th className="px-3 md:px-6 py-4 text-left text-gray-400 font-bold text-xs md:text-sm hidden lg:table-cell">Details</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {filteredLogs.map(log => (
                                     <tr key={log.id} className="hover:bg-white/5 transition-colors">
-                                        <td className="px-6 py-4 text-gray-400 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                <Calendar className="w-4 h-4" />
-                                                {formatTimestamp(log.timestamp)}
+                                        <td className="px-3 md:px-6 py-4 text-gray-400 whitespace-nowrap text-xs md:text-sm">
+                                            <div className="flex items-center gap-1 md:gap-2">
+                                                <Calendar className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                                                <span className="hidden md:inline">{formatTimestamp(log.timestamp)}</span>
+                                                <span className="md:hidden">{new Date(log.timestamp).toLocaleDateString('en-NG')}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-3 md:px-6 py-4 hidden sm:table-cell">
                                             <div className="flex items-center gap-2">
-                                                <User className="w-4 h-4 text-gray-500" />
-                                                <div>
-                                                    <div className="text-white font-medium">{log.userName}</div>
+                                                <User className="w-3 h-3 md:w-4 md:h-4 text-gray-500 flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <div className="text-white font-medium truncate text-xs md:text-sm">{log.userName}</div>
                                                     {log.userEmail && (
-                                                        <div className="text-xs text-gray-500">{log.userEmail}</div>
+                                                        <div className="text-xs text-gray-500 truncate">{log.userEmail}</div>
                                                     )}
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-3 md:px-6 py-4">
                                             <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${getActionColor(log.action)}`}>
                                                 {log.action}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-white font-medium">{log.resourceType}</div>
+                                        <td className="px-3 md:px-6 py-4">
+                                            <div className="text-white font-medium text-xs md:text-sm">{log.resourceType}</div>
                                             {log.resourceId && (
-                                                <div className="text-xs text-gray-500 font-mono">{log.resourceId}</div>
+                                                <div className="text-xs text-gray-500 font-mono truncate">{log.resourceId}</div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 text-gray-400 max-w-xs truncate">
+                                        <td className="px-3 md:px-6 py-4 text-gray-400 max-w-xs truncate hidden lg:table-cell text-xs md:text-sm">
                                             {log.changes && Object.keys(log.changes).length > 0 ? (
                                                 <span className="text-xs">
                                                     {Object.keys(log.changes).join(', ')} changed
