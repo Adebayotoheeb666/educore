@@ -323,6 +323,19 @@ export const TermManagement = () => {
                     </div>
                 </div>
             )}
+
+            {/* Delete Term Confirmation Modal */}
+            {confirmModal.isOpen && (
+                <ConfirmationModal
+                    isOpen={confirmModal.isOpen}
+                    title="Delete Term"
+                    message={`Are you sure you want to delete the term "${confirmModal.termName}"? This action cannot be undone and may affect associated academic records.`}
+                    type="danger"
+                    onConfirm={handleConfirmDelete}
+                    confirmLabel="Delete"
+                    onCancel={() => setConfirmModal({ isOpen: false, termId: '', termName: '' })}
+                />
+            )}
         </div>
     );
 };
