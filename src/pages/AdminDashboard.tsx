@@ -41,6 +41,7 @@ export const AdminDashboard = () => {
     const [financials, setFinancials] = useState({ totalRevenue: 0, outstanding: 0 });
     const [loading, setLoading] = useState(true);
     const [showAddMenu, setShowAddMenu] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     // Modals
