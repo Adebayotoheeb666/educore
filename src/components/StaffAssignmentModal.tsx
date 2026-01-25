@@ -210,7 +210,7 @@ export const StaffAssignmentModal = ({ staffId, staffName, onClose, onSuccess }:
             ) : (
                 <div className="space-y-3">
                     {assignments.map((assignment, index) => (
-                        <div key={index} className="flex gap-3">
+                        <div key={assignment.id} className="flex gap-3">
                             <select
                                 value={assignment.classId}
                                 onChange={(e) => handleAssignmentChange(index, 'classId', e.target.value)}
