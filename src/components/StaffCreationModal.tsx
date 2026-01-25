@@ -120,21 +120,23 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
 
     if (createdCredentials) {
         const isDevelopmentFallback = createdCredentials.message.includes('development mode');
+        const hasWarning = !!createdCredentials.warning;
+        const isWarningState = isDevelopmentFallback || hasWarning;
 
         return (
             <div className="bg-dark-card p-6 w-full max-w-md space-y-6">
                 <div className="text-center space-y-2">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isDevelopmentFallback ? 'bg-yellow-500/20' : 'bg-green-500/20'
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isWarningState ? 'bg-yellow-500/20' : 'bg-green-500/20'
                         }`}>
-                        <CheckCircle2 className={`w-8 h-8 ${isDevelopmentFallback ? 'text-yellow-500' : 'text-green-500'}`} />
+                        <CheckCircle2 className={`w-8 h-8 ${isWarningState ? 'text-yellow-500' : 'text-green-500'}`} />
                     </div>
-                    <h2 className={`text-2xl font-bold ${isDevelopmentFallback ? 'text-yellow-500' : 'text-green-500'}`}>
-                        {isDevelopmentFallback ? 'Staff Created (Dev Mode)' : 'Staff Invited!'}
+                    <h2 className={`text-2xl font-bold ${isWarningState ? 'text-yellow-500' : 'text-green-500'}`}>
+                        {isWarningState ? 'Staff Profile Created' : 'Staff Invited!'}
                     </h2>
                     <p className="text-gray-400 text-sm">{createdCredentials.message}</p>
                 </div>
 
-                <div className={`border rounded-xl p-6 space-y-4 ${isDevelopmentFallback
+                <div className={`border rounded-xl p-6 space-y-4 ${isWarningState
                     ? 'bg-yellow-500/10 border-yellow-500/30'
                     : 'bg-white/5 border-white/10'
                     }`}>
@@ -156,6 +158,19 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
                                 <li>Auth account <strong>not created</strong> (Edge Function not deployed)</li>
                                 <li>Staff cannot log in yet</li>
                                 <li>Deploy functions to enable authentication</li>
+                            </ul>
+                        </div>
+                    )}
+
+                    {hasWarning && !isDevelopmentFallback && (
+                        <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/30 text-sm text-yellow-100">
+                            <p className="font-semibold mb-2">⚠️ Partial Success</p>
+                            <p className="text-xs text-yellow-100/80 mb-2">{createdCredentials.warning}</p>
+                            <ul className="list-disc list-inside space-y-1 text-xs text-yellow-100/80">
+                                <li>Staff profile has been created and is active</li>
+                                <li>Auth account creation encountered a temporary issue</li>
+                                <li>Staff can be manually linked to Auth accounts later if needed</li>
+                                <li>Try creating the Auth account again after a few moments</li>
                             </ul>
                         </div>
                     )}
