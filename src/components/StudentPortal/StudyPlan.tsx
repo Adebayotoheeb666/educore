@@ -310,8 +310,8 @@ function ActionCard({ action }: { action: StudyAction }) {
             <div className="text-xs text-dark-text/60">
               <p className="mb-1 font-semibold">Resources:</p>
               <ul className="list-disc list-inside">
-                {action.resources.slice(0, 2).map((resource, idx) => (
-                  <li key={idx}>{resource}</li>
+                {action.resources.slice(0, 2).map((resource) => (
+                  <li key={`resource-${resource}`}>{resource}</li>
                 ))}
                 {action.resources.length > 2 && (
                   <li>+{action.resources.length - 2} more</li>
