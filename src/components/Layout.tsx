@@ -211,7 +211,7 @@ export const Layout = ({ children }: LayoutProps) => {
                                             <div className="divide-y divide-white/5">
                                                 {notifications.map((notification, idx) => (
                                                     <div
-                                                        key={(notification as any).id || idx}
+                                                        key={(notification as any).id ? `notif-${(notification as any).id}` : `notif-fallback-${idx}`}
                                                         onClick={() => handleNotificationClick(notification)}
                                                         className={cn(
                                                             "p-4 cursor-pointer hover:bg-white/5 transition-colors",

@@ -167,9 +167,9 @@ export function StudyPlan({ results, attendanceRate, userId }: StudyPlanProps) {
                 <h3 className="text-lg font-bold text-green-400">Your Strengths</h3>
               </div>
               <ul className="space-y-2">
-                {plan.strengths.map((strength, idx) => (
+                {plan.strengths.map((strength) => (
                   <li
-                    key={idx}
+                    key={`strength-${strength}`}
                     className="p-3 bg-green-500/10 rounded border border-green-500/20 text-dark-text text-sm"
                   >
                     ✓ {strength}
@@ -185,9 +185,9 @@ export function StudyPlan({ results, attendanceRate, userId }: StudyPlanProps) {
                 <h3 className="text-lg font-bold text-yellow-400">Areas to Improve</h3>
               </div>
               <ul className="space-y-2">
-                {plan.improvements.map((improvement, idx) => (
+                {plan.improvements.map((improvement) => (
                   <li
-                    key={idx}
+                    key={`improvement-${improvement}`}
                     className="p-3 bg-yellow-500/10 rounded border border-yellow-500/20 text-dark-text text-sm"
                   >
                     ⚠ {improvement}
@@ -215,7 +215,7 @@ export function StudyPlan({ results, attendanceRate, userId }: StudyPlanProps) {
                   {plan.studyPlan
                     .filter((a) => a.priority === 'high')
                     .map((action, idx) => (
-                      <ActionCard key={idx} action={action} />
+                      <ActionCard key={`high-${idx}-${action.action}`} action={action} />
                     ))}
                 </div>
               </div>
@@ -232,7 +232,7 @@ export function StudyPlan({ results, attendanceRate, userId }: StudyPlanProps) {
                   {plan.studyPlan
                     .filter((a) => a.priority === 'medium')
                     .map((action, idx) => (
-                      <ActionCard key={idx} action={action} />
+                      <ActionCard key={`medium-${idx}-${action.action}`} action={action} />
                     ))}
                 </div>
               </div>
@@ -249,7 +249,7 @@ export function StudyPlan({ results, attendanceRate, userId }: StudyPlanProps) {
                   {plan.studyPlan
                     .filter((a) => a.priority === 'low')
                     .map((action, idx) => (
-                      <ActionCard key={idx} action={action} />
+                      <ActionCard key={`low-${idx}-${action.action}`} action={action} />
                     ))}
                 </div>
               </div>
@@ -310,8 +310,8 @@ function ActionCard({ action }: { action: StudyAction }) {
             <div className="text-xs text-dark-text/60">
               <p className="mb-1 font-semibold">Resources:</p>
               <ul className="list-disc list-inside">
-                {action.resources.slice(0, 2).map((resource, idx) => (
-                  <li key={idx}>{resource}</li>
+                {action.resources.slice(0, 2).map((resource) => (
+                  <li key={`resource-${resource}`}>{resource}</li>
                 ))}
                 {action.resources.length > 2 && (
                   <li>+{action.resources.length - 2} more</li>

@@ -351,7 +351,7 @@ export const ExamBuilder = () => {
                             {q.type === 'mcq' && q.options && (
                                 <div className="space-y-2">
                                     {q.options.map((opt, i) => (
-                                        <div key={i} className={cn(
+                                        <div key={`option-${i}-${opt.substring(0, 20)}`} className={cn(
                                             "p-3 rounded-lg border text-sm font-medium",
                                             q.answer === opt.substring(0, 1)
                                                 ? "bg-teal-500/10 border-teal-500/50 text-teal-100"

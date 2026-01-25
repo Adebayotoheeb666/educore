@@ -22,6 +22,7 @@ interface SubjectOption {
 }
 
 interface AssignmentData {
+    id: string; // Unique ID for this assignment entry
     classId: string;
     subjectId: string;
 }
@@ -86,7 +87,7 @@ export const StaffAssignmentModal = ({ staffId, staffName, onClose, onSuccess }:
                 setExistingAssignments(existing);
 
                 // Initialize with existing assignments
-                setAssignments(existing.map(a => ({ classId: a.classId, subjectId: a.subjectId })));
+                setAssignments(existing.map(a => ({ id: a.id, classId: a.classId, subjectId: a.subjectId })));
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load data');
             } finally {
@@ -98,7 +99,8 @@ export const StaffAssignmentModal = ({ staffId, staffName, onClose, onSuccess }:
     }, [schoolId, staffId]);
 
     const handleAddAssignment = () => {
-        setAssignments([...assignments, { classId: '', subjectId: '' }]);
+        const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        setAssignments([...assignments, { id: newId, classId: '', subjectId: '' }]);
     };
 
     const handleRemoveAssignment = (index: number) => {
@@ -208,7 +210,7 @@ export const StaffAssignmentModal = ({ staffId, staffName, onClose, onSuccess }:
             ) : (
                 <div className="space-y-3">
                     {assignments.map((assignment, index) => (
-                        <div key={index} className="flex gap-3">
+                        <div key={assignment.id} className="flex gap-3">
                             <select
                                 value={assignment.classId}
                                 onChange={(e) => handleAssignmentChange(index, 'classId', e.target.value)}

@@ -227,7 +227,7 @@ export const BulkStudentImport = ({ onSuccess, onClose, user: propUser, profile:
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {fileData.slice(0, 10).map((row, idx) => (
-                                    <tr key={idx} className="hover:bg-white/5">
+                                    <tr key={`${row.admissionNumber || idx}`} className="hover:bg-white/5">
                                         <td className="px-4 py-3 text-white">{row.admissionNumber}</td>
                                         <td className="px-4 py-3 text-white">{row.fullName}</td>
                                         <td className="px-4 py-3 text-gray-400">{row.email || '-'}</td>
@@ -325,7 +325,7 @@ export const BulkStudentImport = ({ onSuccess, onClose, user: propUser, profile:
                         <p className="text-red-300 font-bold mb-3">Errors ({result.errors.length})</p>
                         <div className="space-y-2 text-sm text-red-200/80">
                             {result.errors.slice(0, 5).map((err: any, idx: number) => (
-                                <p key={idx}>
+                                <p key={`error-row-${err.row}-${idx}`}>
                                     <span className="font-mono">Row {err.row}</span>: {err.error}
                                 </p>
                             ))}

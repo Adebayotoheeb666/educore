@@ -170,7 +170,7 @@ export function ReportCard({
               {results.map((result, idx) => {
                 const grade = getGrade(result.totalScore);
                 return (
-                  <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-50' : ''}>
+                  <tr key={(result as any).id || `result-${idx}`} className={idx % 2 === 0 ? 'bg-gray-50' : ''}>
                     <td className="border border-gray-400 p-2 font-semibold">{(result as any).subject || result.subjectId}</td>
                     <td className="border border-gray-400 p-2 text-center">{result.caScore}/40</td>
                     <td className="border border-gray-400 p-2 text-center">{result.examScore}/60</td>

@@ -19,6 +19,7 @@ interface ParentOption {
 }
 
 interface LinkData {
+    id: string; // Unique ID for this link entry
     parentId: string;
     relationship: 'Father' | 'Mother' | 'Guardian' | 'Other';
 }
@@ -92,7 +93,8 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
                 // Initialize with existing links
                 const initialLinks: LinkData[] = existing.flatMap(link =>
-                    link.parentIds.map(parentId => ({
+                    link.parentIds.map((parentId, idx) => ({
+                        id: `${link.id}-${idx}`, // Use existing link ID + index for uniqueness
                         parentId,
                         relationship: link.relationship
                     }))
@@ -109,7 +111,8 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
     }, [schoolId, studentId]);
 
     const handleAddLink = () => {
-        setLinks([...links, { parentId: '', relationship: 'Father' }]);
+        const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        setLinks([...links, { id: newId, parentId: '', relationship: 'Father' }]);
     };
 
     const handleRemoveLink = (index: number) => {
@@ -266,7 +269,7 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
             ) : (
                 <div className="space-y-3">
                     {links.map((link, index) => (
-                        <div key={index} className="flex gap-3">
+                        <div key={link.id} className="flex gap-3">
                             <select
                                 value={link.parentId}
                                 onChange={(e) => handleLinkChange(index, 'parentId', e.target.value)}
