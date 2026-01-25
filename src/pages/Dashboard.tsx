@@ -71,7 +71,9 @@ export const Dashboard = () => {
                                 studentCount: studentCount || 0
                             };
                         }));
-                        setClassStats(stats);
+                        // Deduplicate by classId to prevent duplicate key errors
+                        const uniqueStats = Array.from(new Map(stats.map(s => [s.classId, s])).values());
+                        setClassStats(uniqueStats);
                         console.log('[Dashboard] Staff assignments loaded:', stats.length);
                     } else if (!assignError) {
                         console.log('[Dashboard] No assignments found for this staff');
