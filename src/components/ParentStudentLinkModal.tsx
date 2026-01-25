@@ -249,10 +249,19 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
             )}
 
             {parents.length === 0 ? (
-                <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
-                    <p className="text-orange-300 text-sm">
-                        No parent accounts found. Please create parent accounts first in the school.
-                    </p>
+                <div className="space-y-4">
+                    <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+                        <p className="text-orange-300 text-sm mb-4">
+                            No parent accounts found. Create parent accounts to link them to students.
+                        </p>
+                        <button
+                            onClick={() => setShowParentCreation(true)}
+                            className="w-full px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 rounded-lg transition font-medium flex items-center justify-center gap-2"
+                        >
+                            <UserPlus className="w-4 h-4" />
+                            Create First Parent Account
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-3">
