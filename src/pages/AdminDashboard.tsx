@@ -453,9 +453,9 @@ export const AdminDashboard = () => {
     // Staff Assignment Modal
     if (selectedStaffForAssignment) {
         return (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
                 <div className="bg-dark-card border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <div className="sticky top-0 bg-dark-card border-b border-white/10 p-6 flex items-center justify-between">
+                    <div className="sticky top-0 bg-dark-card border-b border-white/10 p-4 md:p-6 flex items-center justify-between">
                         <h1 className="text-2xl font-bold text-white">Assign Classes & Subjects</h1>
                         <button onClick={() => setSelectedStaffForAssignment(null)} className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white"><X className="w-6 h-6" /></button>
                     </div>
