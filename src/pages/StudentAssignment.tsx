@@ -105,13 +105,39 @@ export const StudentAssignment = () => {
         if (!selectedClass) return;
         setProcessing(true);
         try {
-            const { error } = await supabase
-                .from('users')
-                .update({ class_id: selectedClass.id })
-                .eq('id', studentId);
+            // Check if enrollment already exists
+            const { data: existing, error: checkError } = await supabase
+                .from('student_classes')
+                .select('id')
+                .eq('student_id', studentId)
+                .eq('class_id', selectedClass.id)
+                .single();
 
-            if (error) throw error;
+            if (checkError && checkError.code !== 'PGRST116') {
+                throw checkError;
+            }
+
+            // If enrollment already exists, just refresh and return
+            if (existing) {
+                fetchClassStudents(selectedClass.id);
+                setShowAddModal(false);
+                return;
+            }
+
+            // Insert new enrollment
+            const { error: insertError } = await supabase
+                .from('student_classes')
+                .insert({
+                    student_id: studentId,
+                    class_id: selectedClass.id,
+                    school_id: schoolId,
+                    enrollment_date: new Date().toISOString().split('T')[0],
+                    status: 'active'
+                });
+
+            if (insertError) throw insertError;
             fetchClassStudents(selectedClass.id);
+            setShowAddModal(false);
         } catch (err) {
             alert("Failed to add student to class");
         } finally {
@@ -123,9 +149,10 @@ export const StudentAssignment = () => {
         setProcessing(true);
         try {
             const { error } = await supabase
-                .from('users')
-                .update({ class_id: null })
-                .eq('id', studentId);
+                .from('student_classes')
+                .delete()
+                .eq('student_id', studentId)
+                .eq('class_id', selectedClass?.id);
 
             if (error) throw error;
             fetchClassStudents(selectedClass.id);
@@ -139,7 +166,7 @@ export const StudentAssignment = () => {
     const filteredStudents = allStudents.filter(s =>
         (s.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.admission_number?.toLowerCase().includes(searchQuery.toLowerCase())) &&
-        s.class_id !== selectedClass?.id
+        !classStudents.find(cs => cs.id === s.id)
     );
 
     if (loading) {

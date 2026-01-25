@@ -16,37 +16,36 @@ DECLARE
   v_class_name TEXT;
   v_school_id UUID;
   v_parent_id UUID;
-  v_parent_email TEXT;
-  v_parent_name TEXT;
 BEGIN
   -- Only trigger for absent records
   IF NEW.status = 'absent' THEN
     -- Get student and class info
-    SELECT u.id, u.full_name, sc.id, sc.name, a.school_id
+    SELECT u.id, u.full_name, c.id, c.name, NEW.school_id
     INTO v_student_id, v_student_name, v_class_id, v_class_name, v_school_id
     FROM users u
-    JOIN student_classes sc ON u.id = sc.student_id
-    JOIN attendance a ON a.class_id = sc.class_id
-    WHERE u.id = NEW.student_id AND sc.id = NEW.class_id
-    LIMIT 1;
+    LEFT JOIN classes c ON c.id = NEW.class_id
+    WHERE u.id = NEW.student_id;
 
-    -- Send notification to each parent linked to student
-    FOR v_parent_id IN 
-      SELECT parent_id FROM parent_student_links 
-      WHERE student_id = v_student_id AND school_id = v_school_id
-    LOOP
-      -- Insert notification record
-      INSERT INTO notifications (school_id, user_id, title, message, type, link, read)
-      VALUES (
-        v_school_id,
-        v_parent_id,
-        '📋 Attendance Alert',
-        v_student_name || ' was marked absent on ' || NEW.date::TEXT,
-        'warning',
-        '/parent/attendance',
-        false
-      );
-    END LOOP;
+    -- Only send notification if we found the student
+    IF v_student_id IS NOT NULL THEN
+      -- Send notification to each parent linked to student
+      FOR v_parent_id IN
+        SELECT parent_id FROM parent_student_links
+        WHERE student_id = v_student_id AND school_id = v_school_id
+      LOOP
+        -- Insert notification record
+        INSERT INTO notifications (school_id, user_id, title, message, type, link, read)
+        VALUES (
+          v_school_id,
+          v_parent_id,
+          '📋 Attendance Alert',
+          v_student_name || ' was marked absent on ' || NEW.date::TEXT || COALESCE(' in ' || v_class_name, ''),
+          'warning',
+          '/parent/attendance',
+          false
+        );
+      END LOOP;
+    END IF;
   END IF;
 
   RETURN NEW;
