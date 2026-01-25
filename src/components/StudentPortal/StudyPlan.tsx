@@ -249,7 +249,7 @@ export function StudyPlan({ results, attendanceRate, userId }: StudyPlanProps) {
                   {plan.studyPlan
                     .filter((a) => a.priority === 'low')
                     .map((action, idx) => (
-                      <ActionCard key={idx} action={action} />
+                      <ActionCard key={`low-${idx}-${action.action}`} action={action} />
                     ))}
                 </div>
               </div>
