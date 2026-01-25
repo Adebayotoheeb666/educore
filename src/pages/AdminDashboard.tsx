@@ -693,34 +693,34 @@ export const AdminDashboard = () => {
 
                 {/* Quick Access Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 p-4 sm:p-6 border-b border-white/5">
-                    <div className="bg-dark-card border border-white/5 rounded-2xl p-6 hover:border-teal-500/30 transition-colors">
+                    <div className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-6 hover:border-teal-500/30 transition-colors">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                                <TrendingUp className="w-6 h-6 text-orange-400" />
+                            <div className="w-10 sm:w-12 h-10 sm:h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                <TrendingUp className="w-5 sm:w-6 h-5 sm:h-6 text-orange-400" />
                             </div>
                         </div>
-                        <h3 className="text-2xl font-bold text-white mb-1">₦{(financials.outstanding / 1000000).toFixed(2)}M</h3>
-                        <p className="text-gray-400 text-sm">Outstanding Fees</p>
+                        <h3 className="text-lg sm:text-2xl font-bold text-white mb-1">₦{(financials.outstanding / 1000000).toFixed(2)}M</h3>
+                        <p className="text-gray-400 text-xs sm:text-sm">Outstanding Fees</p>
                     </div>
 
-                    <div onClick={() => window.location.href = '/admin/terms'} className="bg-dark-card border border-white/5 rounded-2xl p-6 hover:border-teal-500/30 transition-colors cursor-pointer">
+                    <div onClick={() => window.location.href = '/admin/terms'} className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-6 hover:border-teal-500/30 transition-colors cursor-pointer">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center">
-                                <Calendar className="w-6 h-6 text-teal-400" />
+                            <div className="w-10 sm:w-12 h-10 sm:h-12 bg-teal-500/20 rounded-xl flex items-center justify-center">
+                                <Calendar className="w-5 sm:w-6 h-5 sm:h-6 text-teal-400" />
                             </div>
                         </div>
-                        <h3 className="text-lg font-bold text-white mb-1">Term Management</h3>
-                        <p className="text-gray-400 text-sm">Manage academic terms</p>
+                        <h3 className="text-base sm:text-lg font-bold text-white mb-1">Term Management</h3>
+                        <p className="text-gray-400 text-xs sm:text-sm">Manage academic terms</p>
                     </div>
 
-                    <div onClick={() => window.location.href = '/admin/audit-logs'} className="bg-dark-card border border-white/5 rounded-2xl p-6 hover:border-teal-500/30 transition-colors cursor-pointer">
+                    <div onClick={() => window.location.href = '/admin/audit-logs'} className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-6 hover:border-teal-500/30 transition-colors cursor-pointer">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                                <FileText className="w-6 h-6 text-purple-400" />
+                            <div className="w-10 sm:w-12 h-10 sm:h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                <FileText className="w-5 sm:w-6 h-5 sm:h-6 text-purple-400" />
                             </div>
                         </div>
-                        <h3 className="text-lg font-bold text-white mb-1">Audit Logs</h3>
-                        <p className="text-gray-400 text-sm">View system activity</p>
+                        <h3 className="text-base sm:text-lg font-bold text-white mb-1">Audit Logs</h3>
+                        <p className="text-gray-400 text-xs sm:text-sm">View system activity</p>
                     </div>
                 </div>
 
