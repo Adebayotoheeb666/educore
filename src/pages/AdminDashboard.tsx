@@ -730,11 +730,11 @@ export const AdminDashboard = () => {
 
             {/* Interactive Tabs */}
             <div className="bg-dark-card border border-white/5 rounded-[32px] overflow-hidden">
-                <div className="flex border-b border-white/5 bg-white/5">
-                    <TabButton active={activeTab === 'staff'} onClick={() => setActiveTab('staff')} label="Staff Members" />
-                    <TabButton active={activeTab === 'students'} onClick={() => setActiveTab('students')} label="Student List" />
-                    <TabButton active={activeTab === 'classes'} onClick={() => setActiveTab('classes')} label="Class Arms" />
-                    <TabButton active={activeTab === 'subjects'} onClick={() => setActiveTab('subjects')} label="Subjects" />
+                <div className="flex flex-wrap border-b border-white/5 bg-white/5">
+                    <TabButton active={activeTab === 'staff'} onClick={() => { setActiveTab('staff'); setShowMobileMenu(false); }} label="Staff Members" />
+                    <TabButton active={activeTab === 'students'} onClick={() => { setActiveTab('students'); setShowMobileMenu(false); }} label="Student List" />
+                    <TabButton active={activeTab === 'classes'} onClick={() => { setActiveTab('classes'); setShowMobileMenu(false); }} label="Class Arms" />
+                    <TabButton active={activeTab === 'subjects'} onClick={() => { setActiveTab('subjects'); setShowMobileMenu(false); }} label="Subjects" />
                 </div>
 
                 {/* Quick Access Cards */}
