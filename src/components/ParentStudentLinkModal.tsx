@@ -79,7 +79,7 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
                 if (linkError) throw linkError;
 
-                const existing = linkData.map(l => ({
+                const existing = (linkData || []).map(l => ({
                     id: l.id,
                     schoolId: l.school_id,
                     parentId: l.parent_id,
