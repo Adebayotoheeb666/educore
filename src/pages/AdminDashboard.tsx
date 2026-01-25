@@ -626,12 +626,12 @@ export const AdminDashboard = () => {
                 </div>
             )}
 
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">School Management</h1>
-                    <p className="text-gray-400">Manage your institution's staff, students, and curriculum.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white">School Management</h1>
+                    <p className="text-gray-400 text-sm md:text-base">Manage your institution's staff, students, and curriculum.</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <button
                         onClick={() => setShowSchoolSettings(true)}
                         className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl text-gray-400 hover:text-teal-400 transition-colors"
