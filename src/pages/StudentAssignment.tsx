@@ -36,7 +36,14 @@ export const StudentAssignment = () => {
 
             if (assignError) throw assignError;
 
-            const classes = assignments?.map(a => a.classes).filter(Boolean) || [];
+            // Deduplicate classes by id to avoid duplicate key errors
+            const classMap = new Map();
+            assignments?.forEach(a => {
+                if (a.classes && a.classes.id) {
+                    classMap.set(a.classes.id, a.classes);
+                }
+            });
+            const classes = Array.from(classMap.values());
             setAssignedClasses(classes);
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : String(err);
