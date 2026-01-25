@@ -78,6 +78,14 @@ export const createStaffAccount = async (
     const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-staff`;
     const isProduction = import.meta.env.PROD;
 
+    console.log('Creating staff account with:', {
+        email: data.email,
+        schoolId,
+        role: data.role,
+        edgeFunctionUrl,
+        isProduction
+    });
+
     try {
         // Try to use edge function (production or if deployed in development)
         const response = await fetch(edgeFunctionUrl, {
@@ -97,6 +105,8 @@ export const createStaffAccount = async (
                 staffId: data.staffId
             })
         });
+
+        console.log('Edge function response status:', response.status);
 
         const result = await response.json();
 
