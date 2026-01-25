@@ -91,6 +91,24 @@ export const Dashboard = () => {
                     } else if (!assignError) {
                         console.log('[Dashboard] No assignments found for this staff');
                     }
+
+                    // Fetch recent attendance records
+                    const classIdList = [...new Set(assignments.map(a => a.class_id))];
+                    if (classIdList.length > 0) {
+                        const { data: attendance, error: attendError } = await supabase
+                            .from('attendance')
+                            .select('*, users(full_name), classes(name)')
+                            .in('class_id', classIdList)
+                            .order('date', { ascending: false })
+                            .limit(10);
+
+                        if (!attendError && attendance) {
+                            setAttendanceRecords(attendance);
+                            console.log('[Dashboard] Attendance records loaded:', attendance.length);
+                        } else if (attendError) {
+                            console.error('[Dashboard] Error fetching attendance:', attendError);
+                        }
+                    }
                 } else {
                     console.warn('[Dashboard] schoolId not available');
                 }
