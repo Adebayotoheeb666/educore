@@ -361,30 +361,36 @@ export const sendMessageNotification = async (
 };
 
 export const getNotifications = async (schoolId: string, userId: string, limit = 20): Promise<DocWithId<Notification>[]> => {
-    const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('school_id', schoolId)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
+    try {
+        const { data, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('school_id', schoolId)
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(limit);
 
-    if (error) {
-        console.error('Error fetching notifications:', error);
+        if (error) {
+            console.error('Error fetching notifications:', error);
+            return [];
+        }
+
+        return (data || []).map(doc => ({
+            id: doc.id,
+            schoolId: doc.school_id,
+            userId: doc.user_id,
+            title: doc.title,
+            message: doc.message,
+            type: doc.type,
+            link: doc.link,
+            read: doc.read,
+            createdAt: doc.created_at
+        })) as DocWithId<Notification>[];
+    } catch (error) {
+        console.error('Exception while fetching notifications:', error);
+        // Return empty array on network or other errors
         return [];
     }
-
-    return (data || []).map(doc => ({
-        id: doc.id,
-        schoolId: doc.school_id,
-        userId: doc.user_id,
-        title: doc.title,
-        message: doc.message,
-        type: doc.type,
-        link: doc.link,
-        read: doc.read,
-        createdAt: doc.created_at
-    })) as DocWithId<Notification>[];
 };
 
 export const markAsRead = async (notificationId: string) => {
