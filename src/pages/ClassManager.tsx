@@ -72,10 +72,17 @@ export const ClassManager = () => {
 
             if (error) throw error;
 
-            const students = (data || []).map(enrollment => ({
-                ...enrollment.users,
-                enrollment_id: enrollment.id
-            }));
+            // Deduplicate by student ID to prevent duplicate key errors
+            const studentMap = new Map();
+            (data || []).forEach(enrollment => {
+                if (enrollment.users && enrollment.users.id) {
+                    studentMap.set(enrollment.users.id, {
+                        ...enrollment.users,
+                        enrollment_id: enrollment.id
+                    });
+                }
+            });
+            const students = Array.from(studentMap.values());
             setEnrolledStudents(students);
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : String(err);
