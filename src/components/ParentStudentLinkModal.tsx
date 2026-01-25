@@ -19,6 +19,7 @@ interface ParentOption {
 }
 
 interface LinkData {
+    id: string; // Unique ID for this link entry
     parentId: string;
     relationship: 'Father' | 'Mother' | 'Guardian' | 'Other';
 }
