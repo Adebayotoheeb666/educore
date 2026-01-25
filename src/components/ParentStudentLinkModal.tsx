@@ -34,6 +34,30 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
     const [success, setSuccess] = useState(false);
     const [showParentCreation, setShowParentCreation] = useState(false);
 
+    const fetchParents = async () => {
+        if (!schoolId) return;
+
+        try {
+            // Fetch parent accounts
+            const { data: parentData, error: parentError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('school_id', schoolId)
+                .eq('role', 'parent');
+
+            if (parentError) throw parentError;
+
+            setParents(parentData.map(p => ({
+                id: p.id,
+                name: p.full_name,
+                phone: p.phone_number
+            })));
+        } catch (err) {
+            console.error('Failed to fetch parents:', err);
+            setError('Failed to load parents');
+        }
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             if (!schoolId) return;
@@ -43,19 +67,7 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
             try {
                 // Fetch parent accounts
-                const { data: parentData, error: parentError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('school_id', schoolId)
-                    .eq('role', 'parent');
-
-                if (parentError) throw parentError;
-
-                setParents(parentData.map(p => ({
-                    id: p.id,
-                    name: p.full_name,
-                    phone: p.phone_number
-                })));
+                await fetchParents();
 
                 // Fetch existing parent-student links for this student
                 const { data: linkData, error: linkError } = await supabase
