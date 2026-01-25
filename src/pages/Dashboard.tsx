@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText, Users } from 'lucide-react';
+import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText, Users, CheckCircle2, XCircle, Download } from 'lucide-react';
 import { NavLink, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -9,6 +9,7 @@ export const Dashboard = () => {
     const displayName = profile?.fullName || user?.user_metadata?.full_name || 'Teacher';
     const [pendingCount, setPendingCount] = useState(0);
     const [classStats, setClassStats] = useState<any[]>([]);
+    const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const { schoolId } = useAuth();
 
@@ -23,6 +24,43 @@ export const Dashboard = () => {
     if (role === 'student' || role === 'parent') {
         return <Navigate to="/portal" replace />;
     }
+
+    // Export attendance for a specific date
+    const exportAttendanceForDate = (date: string) => {
+        const recordsForDate = attendanceRecords.filter(r => r.date === date);
+        const present = recordsForDate.filter(r => r.status === 'present').length;
+        const absent = recordsForDate.filter(r => r.status === 'absent').length;
+
+        // Create CSV content
+        const headers = ['Student Name', 'Student ID', 'Status', 'Date', 'Class'];
+        const rows = recordsForDate.map(record => [
+            record.student_name,
+            record.student_id,
+            record.status.toUpperCase(),
+            new Date(record.date).toLocaleDateString(),
+            record.class_id
+        ]);
+
+        // Add summary row
+        rows.push(['', '', '', '', '']);
+        rows.push(['Summary', '', `Present: ${present}, Absent: ${absent}`, '', '']);
+
+        const csv = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        // Download file
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `attendance-${date}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -56,27 +94,85 @@ export const Dashboard = () => {
                     }
 
                     if (!assignError && assignments && assignments.length > 0) {
-                        const stats = await Promise.all(assignments.map(async (a: any) => {
-                            // Get student count for each class
-                            const { count: studentCount } = await supabase
-                                .from('student_classes')
-                                .select('*', { count: 'exact', head: true })
-                                .eq('class_id', a.class_id)
-                                .eq('school_id', schoolId);
+                        // Get all student counts in a single query
+                        const classIds = [...new Set(assignments.map(a => a.class_id))];
+                        const { data: allStudentCounts } = await supabase
+                            .from('student_classes')
+                            .select('class_id')
+                            .eq('school_id', schoolId)
+                            .in('class_id', classIds);
 
-                            return {
-                                classId: a.class_id,
-                                className: a.classes?.name || 'Unknown Class',
-                                subjectName: a.subjects?.name,
-                                studentCount: studentCount || 0
-                            };
-                        }));
-                        // Deduplicate by classId to prevent duplicate key errors
-                        const uniqueStats = Array.from(new Map(stats.map(s => [s.classId, s])).values());
+                        // Count students per class
+                        const countByClass = new Map<string, number>();
+                        allStudentCounts?.forEach(sc => {
+                            const count = (countByClass.get(sc.class_id) || 0) + 1;
+                            countByClass.set(sc.class_id, count);
+                        });
+
+                        // Build stats from assignments with dedupe
+                        const statsMap = new Map<string, any>();
+                        assignments.forEach((a: any) => {
+                            if (!statsMap.has(a.class_id)) {
+                                statsMap.set(a.class_id, {
+                                    classId: a.class_id,
+                                    className: a.classes?.name || 'Unknown Class',
+                                    subjectName: a.subjects?.name,
+                                    studentCount: countByClass.get(a.class_id) || 0
+                                });
+                            }
+                        });
+
+                        const uniqueStats = Array.from(statsMap.values());
                         setClassStats(uniqueStats);
-                        console.log('[Dashboard] Staff assignments loaded:', stats.length);
+                        console.log('[Dashboard] Staff assignments loaded:', uniqueStats.length);
                     } else if (!assignError) {
                         console.log('[Dashboard] No assignments found for this staff');
+                    }
+
+                    // Fetch recent attendance records with student names
+                    const classIdList = [...new Set(assignments.map(a => a.class_id))];
+                    if (classIdList.length > 0) {
+                        try {
+                            const { data: attendance, error: attendError } = await supabase
+                                .from('attendance')
+                                .select('*')
+                                .in('class_id', classIdList)
+                                .eq('school_id', schoolId)
+                                .order('date', { ascending: false })
+                                .limit(50); // Get more records for daily summaries
+
+                            if (!attendError && attendance) {
+                                // Get unique student IDs and fetch their names
+                                const studentIds = [...new Set(attendance.map(a => a.student_id))];
+                                const { data: students } = await supabase
+                                    .from('users')
+                                    .select('id, full_name')
+                                    .in('id', studentIds);
+
+                                // Create a map of student ID to name
+                                const studentNameMap = new Map(students?.map(s => [s.id, s.full_name]) || []);
+
+                                // Enrich attendance records with student names
+                                const enrichedRecords = attendance.map(record => ({
+                                    ...record,
+                                    student_name: studentNameMap.get(record.student_id) || 'Unknown Student'
+                                }));
+
+                                setAttendanceRecords(enrichedRecords);
+                                console.log('[Dashboard] Attendance records loaded:', enrichedRecords.length);
+                            } else if (attendError) {
+                                console.warn('[Dashboard] Attendance fetch warning:', {
+                                    message: attendError.message,
+                                    details: attendError.details,
+                                    hint: attendError.hint,
+                                    code: attendError.code
+                                });
+                                setAttendanceRecords([]);
+                            }
+                        } catch (attendanceErr) {
+                            console.warn('[Dashboard] Attendance fetch exception:', attendanceErr);
+                            setAttendanceRecords([]);
+                        }
                     }
                 } else {
                     console.warn('[Dashboard] schoolId not available');
@@ -201,6 +297,104 @@ export const Dashboard = () => {
                     ) : (
                         <div className="text-center py-8 text-gray-500">
                             <p>No classes assigned yet.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Recent Attendance */}
+            <div>
+                <div className="flex items-center justify-between mb-6 pt-4">
+                    <h2 className="text-xl font-bold text-white">Attendance Summary</h2>
+                    <NavLink to="/attendance" className="text-teal-500 text-sm font-bold hover:text-teal-400">
+                        View All →
+                    </NavLink>
+                </div>
+
+                <div className="space-y-4">
+                    {loading ? (
+                        <div className="text-center py-8 text-gray-500">Loading attendance...</div>
+                    ) : attendanceRecords.length > 0 ? (
+                        (() => {
+                            // Group records by date and show summaries
+                            const recordsByDate = new Map<string, any[]>();
+                            attendanceRecords.forEach(record => {
+                                if (!recordsByDate.has(record.date)) {
+                                    recordsByDate.set(record.date, []);
+                                }
+                                recordsByDate.get(record.date)!.push(record);
+                            });
+
+                            // Get unique dates sorted by most recent
+                            const uniqueDates = Array.from(recordsByDate.keys()).sort().reverse().slice(0, 5);
+
+                            return uniqueDates.map((date) => {
+                                const recordsForDate = recordsByDate.get(date) || [];
+                                const present = recordsForDate.filter(r => r.status === 'present').length;
+                                const absent = recordsForDate.filter(r => r.status === 'absent').length;
+                                const total = recordsForDate.length;
+                                const displayDate = new Date(date).toLocaleDateString('en-NG', { weekday: 'short', month: 'short', day: 'numeric' });
+
+                                return (
+                                    <div key={date} className="bg-dark-card border border-white/5 rounded-2xl p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h3 className="text-white font-bold text-lg">{displayDate}</h3>
+                                                <p className="text-gray-400 text-sm">{total} students marked</p>
+                                            </div>
+                                            <button
+                                                onClick={() => exportAttendanceForDate(date)}
+                                                className="flex items-center gap-2 px-4 py-2 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 rounded-lg text-sm font-bold transition-colors"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                                Export
+                                            </button>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-3 mb-4">
+                                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                                                <p className="text-emerald-400 text-xs font-bold uppercase mb-1">Present</p>
+                                                <p className="text-white text-2xl font-bold">{present}</p>
+                                            </div>
+                                            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                                                <p className="text-red-400 text-xs font-bold uppercase mb-1">Absent</p>
+                                                <p className="text-white text-2xl font-bold">{absent}</p>
+                                            </div>
+                                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
+                                                <p className="text-blue-400 text-xs font-bold uppercase mb-1">Total</p>
+                                                <p className="text-white text-2xl font-bold">{total}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            {recordsForDate.slice(0, 3).map((record: any, idx: number) => (
+                                                <div key={idx} className="flex items-center justify-between p-2 bg-white/[0.02] rounded-lg">
+                                                    <div className="flex items-center gap-2 flex-1">
+                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${record.status === 'present' ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}>
+                                                            {record.status === 'present' ? (
+                                                                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                                            ) : (
+                                                                <XCircle className="w-4 h-4 text-red-500" />
+                                                            )}
+                                                        </div>
+                                                        <p className="text-white text-sm font-semibold">{record.student_name}</p>
+                                                    </div>
+                                                    <span className={`text-xs font-bold px-2 py-1 rounded ${record.status === 'present' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                        {record.status === 'present' ? 'Present' : 'Absent'}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            {recordsForDate.length > 3 && (
+                                                <p className="text-gray-400 text-xs pt-2">+{recordsForDate.length - 3} more students</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            });
+                        })()
+                    ) : (
+                        <div className="text-center py-8 text-gray-500">
+                            <p>No attendance records yet.</p>
                         </div>
                     )}
                 </div>
