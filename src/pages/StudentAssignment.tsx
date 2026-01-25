@@ -129,9 +129,10 @@ export const StudentAssignment = () => {
         setProcessing(true);
         try {
             const { error } = await supabase
-                .from('users')
-                .update({ class_id: null })
-                .eq('id', studentId);
+                .from('student_classes')
+                .delete()
+                .eq('student_id', studentId)
+                .eq('class_id', selectedClass?.id);
 
             if (error) throw error;
             fetchClassStudents(selectedClass.id);
