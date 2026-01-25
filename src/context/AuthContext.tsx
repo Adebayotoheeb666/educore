@@ -31,6 +31,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const FETCH_TIMEOUT = 20000; // 20 seconds timeout (increased from 10 for slow connections)
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
         let timedOut = false;
+        let retryCount = 0;
+        const MAX_RETRIES = 1; // Only retry once to avoid loops
 
         try {
             console.log('[AuthContext] Attempting to fetch profile from database');
