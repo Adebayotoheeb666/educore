@@ -109,10 +109,12 @@ export const createStaffAccount = async (
         console.log('Edge function response status:', response.status);
 
         const result = await response.json();
+        console.log('Edge function result:', result);
 
         if (!response.ok) {
             // If in development and function not deployed, fall back to direct insert
             if (!isProduction && (response.status === 404 || response.status === 0)) {
+                console.log('Function not deployed (404), using fallback...');
                 return await createStaffAccountFallback(schoolId, data);
             }
 
@@ -130,10 +132,12 @@ export const createStaffAccount = async (
             throw new Error(errorMessage);
         }
 
+        // Handle both successful auth creation and fallback profile-only creation
         return {
             staffId: result.staffId,
             docId: result.authId,
-            message: "Staff invited successfully. Confirmation email sent."
+            message: result.message || "Staff invited successfully. Confirmation email sent.",
+            warning: result.warning || undefined
         };
     } catch (error) {
         console.error('Staff creation attempt failed:', error);
