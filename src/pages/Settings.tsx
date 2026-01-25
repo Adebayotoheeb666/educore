@@ -5,9 +5,19 @@ import { useAuth } from '../hooks/useAuth';
 import { NotificationSettings } from '../components/settings/NotificationSettings';
 import { getOnlineStatus, getQueuedActionsCount, syncQueuedActions } from '../lib/offlineService';
 
-const Toggle = ({ checked, onChange }: { checked: boolean, onChange: () => void }) => (
-    <button onClick={onChange} className={`transition-colors text-3xl ${checked ? 'text-teal-500' : 'text-gray-600'}`}>
-        {checked ? <ToggleRight className="w-12 h-12 fill-current" /> : <ToggleLeft className="w-12 h-12" />}
+const Toggle = ({ checked, onChange, disabled, isLoading }: { checked: boolean, onChange: () => void, disabled?: boolean, isLoading?: boolean }) => (
+    <button
+        onClick={onChange}
+        disabled={disabled}
+        className={`transition-colors text-3xl disabled:opacity-50 disabled:cursor-not-allowed ${checked ? 'text-teal-500' : 'text-gray-600'}`}
+    >
+        {isLoading ? (
+            <div className="w-12 h-12 flex items-center justify-center">
+                <div className="w-4 h-4 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin"></div>
+            </div>
+        ) : (
+            checked ? <ToggleRight className="w-12 h-12 fill-current" /> : <ToggleLeft className="w-12 h-12" />
+        )}
     </button>
 );
 
