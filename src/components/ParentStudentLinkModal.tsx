@@ -201,6 +201,24 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
         }
     };
 
+    // Show parent creation modal if requested
+    if (showParentCreation) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <ParentCreationModal
+                    user={user}
+                    profile={profile}
+                    schoolId={schoolId}
+                    onSuccess={async () => {
+                        setShowParentCreation(false);
+                        await fetchParents();
+                    }}
+                    onClose={() => setShowParentCreation(false)}
+                />
+            </div>
+        );
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center p-8">
