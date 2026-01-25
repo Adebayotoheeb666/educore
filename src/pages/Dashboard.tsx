@@ -96,23 +96,43 @@ export const Dashboard = () => {
                     const classIdList = [...new Set(assignments.map(a => a.class_id))];
                     if (classIdList.length > 0) {
                         try {
-                            const { data: attendance, error: attendError } = await supabase
+                            // First attempt: try with relations
+                            let { data: attendance, error: attendError } = await supabase
                                 .from('attendance')
-                                .select('id, date, status, student_id, class_id, school_id, users(full_name), classes(name)')
+                                .select('id, date, status, student_id, class_id, school_id, users!student_id(full_name), classes!class_id(name)')
                                 .in('class_id', classIdList)
                                 .eq('school_id', schoolId)
                                 .order('date', { ascending: false })
                                 .limit(10);
+
+                            // If relation query fails, try simpler query
+                            if (attendError && attendError.code === 'PGRST100') {
+                                console.log('[Dashboard] Retrying attendance without relations...');
+                                const { data: simpleAttendance, error: simpleError } = await supabase
+                                    .from('attendance')
+                                    .select('id, date, status, student_id, class_id, school_id')
+                                    .in('class_id', classIdList)
+                                    .eq('school_id', schoolId)
+                                    .order('date', { ascending: false })
+                                    .limit(10);
+
+                                if (!simpleError && simpleAttendance) {
+                                    attendance = simpleAttendance;
+                                    attendError = null;
+                                } else {
+                                    attendError = simpleError;
+                                }
+                            }
 
                             if (!attendError && attendance) {
                                 setAttendanceRecords(attendance);
                                 console.log('[Dashboard] Attendance records loaded:', attendance.length);
                             } else if (attendError) {
                                 console.warn('[Dashboard] Attendance fetch warning:', {
-                                    message: attendError.message,
-                                    details: attendError.details,
-                                    hint: attendError.hint,
-                                    code: attendError.code
+                                    message: attendError?.message,
+                                    details: attendError?.details,
+                                    hint: attendError?.hint,
+                                    code: attendError?.code
                                 });
                                 // Don't fail - just show no records
                                 setAttendanceRecords([]);
