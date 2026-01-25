@@ -56,25 +56,37 @@ export const Dashboard = () => {
                     }
 
                     if (!assignError && assignments && assignments.length > 0) {
-                        const stats = await Promise.all(assignments.map(async (a: any) => {
-                            // Get student count for each class
-                            const { count: studentCount } = await supabase
-                                .from('student_classes')
-                                .select('*', { count: 'exact', head: true })
-                                .eq('class_id', a.class_id)
-                                .eq('school_id', schoolId);
+                        // Get all student counts in a single query
+                        const classIds = [...new Set(assignments.map(a => a.class_id))];
+                        const { data: allStudentCounts } = await supabase
+                            .from('student_classes')
+                            .select('class_id')
+                            .eq('school_id', schoolId)
+                            .in('class_id', classIds);
 
-                            return {
-                                classId: a.class_id,
-                                className: a.classes?.name || 'Unknown Class',
-                                subjectName: a.subjects?.name,
-                                studentCount: studentCount || 0
-                            };
-                        }));
-                        // Deduplicate by classId to prevent duplicate key errors
-                        const uniqueStats = Array.from(new Map(stats.map(s => [s.classId, s])).values());
+                        // Count students per class
+                        const countByClass = new Map<string, number>();
+                        allStudentCounts?.forEach(sc => {
+                            const count = (countByClass.get(sc.class_id) || 0) + 1;
+                            countByClass.set(sc.class_id, count);
+                        });
+
+                        // Build stats from assignments with dedupe
+                        const statsMap = new Map<string, any>();
+                        assignments.forEach((a: any) => {
+                            if (!statsMap.has(a.class_id)) {
+                                statsMap.set(a.class_id, {
+                                    classId: a.class_id,
+                                    className: a.classes?.name || 'Unknown Class',
+                                    subjectName: a.subjects?.name,
+                                    studentCount: countByClass.get(a.class_id) || 0
+                                });
+                            }
+                        });
+
+                        const uniqueStats = Array.from(statsMap.values());
                         setClassStats(uniqueStats);
-                        console.log('[Dashboard] Staff assignments loaded:', stats.length);
+                        console.log('[Dashboard] Staff assignments loaded:', uniqueStats.length);
                     } else if (!assignError) {
                         console.log('[Dashboard] No assignments found for this staff');
                     }
