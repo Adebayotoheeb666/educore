@@ -237,6 +237,47 @@ export const Dashboard = () => {
                 </div>
             </div>
 
+            {/* Recent Attendance */}
+            <div>
+                <div className="flex items-center justify-between mb-6 pt-4">
+                    <h2 className="text-xl font-bold text-white">Recent Attendance</h2>
+                    <NavLink to="/attendance" className="text-teal-500 text-sm font-bold hover:text-teal-400">
+                        View All →
+                    </NavLink>
+                </div>
+
+                <div className="space-y-2">
+                    {loading ? (
+                        <div className="text-center py-8 text-gray-500">Loading attendance...</div>
+                    ) : attendanceRecords.length > 0 ? (
+                        attendanceRecords.slice(0, 5).map((record, idx) => (
+                            <div key={idx} className="bg-dark-card border border-white/5 rounded-xl p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                                <div className="flex items-center gap-3 flex-1">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${record.status === 'present' ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}>
+                                        {record.status === 'present' ? (
+                                            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                        ) : (
+                                            <XCircle className="w-5 h-5 text-red-500" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-white font-semibold text-sm">{record.users?.full_name || 'Unknown'}</p>
+                                        <p className="text-gray-500 text-xs">{record.classes?.name} • {new Date(record.date).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                                <span className={`text-xs font-bold px-3 py-1 rounded-full ${record.status === 'present' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                    {record.status === 'present' ? 'Present' : 'Absent'}
+                                </span>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center py-8 text-gray-500">
+                            <p>No attendance records yet.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {/* Pending Grading */}
             <div className="relative overflow-hidden bg-dark-card border border-white/5 rounded-[32px] p-8">
                 <div className="flex items-start justify-between relative z-10">
