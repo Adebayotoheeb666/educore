@@ -56,7 +56,7 @@ const startHeartbeat = () => {
         if (status !== isOnline) {
             status ? handleOnline() : handleOffline();
         }
-    }, 15000); // Check every 15 seconds as a fallback
+    }, 30000); // Check every 30 seconds as a fallback
 };
 
 /**
