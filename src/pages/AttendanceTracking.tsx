@@ -181,11 +181,27 @@ export const AttendanceTracking = () => {
         if (!selectedClass || !schoolId) return;
         setPredicting(true);
         try {
-            // Fetch recent attendance for this class
+            // Fetch students in the selected class first
+            const { data: classStudents, error: studentError } = await supabase
+                .from('student_classes')
+                .select('student_id')
+                .eq('class_id', selectedClass)
+                .eq('status', 'active');
+
+            if (studentError) throw studentError;
+
+            const studentIds = classStudents?.map(s => s.student_id) || [];
+            if (studentIds.length === 0) {
+                alert("No students in this class");
+                setPredicting(false);
+                return;
+            }
+
+            // Fetch recent attendance for these students
             const { data, error } = await supabase
                 .from('attendance')
                 .select('*, users(full_name)')
-                .eq('class_id', selectedClass)
+                .in('student_id', studentIds)
                 .order('date', { ascending: false })
                 .limit(100);
 
