@@ -44,8 +44,8 @@ export const Blog: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
-                        {posts.map((post, index) => (
-                            <Link key={index} to={`/blog/${post.slug}`} className="group cursor-pointer">
+                        {posts.map((post) => (
+                            <Link key={post.slug} to={`/blog/${post.slug}`} className="group cursor-pointer">
                                 <div className="relative aspect-[16/10] rounded-3xl overflow-hidden mb-6 border border-white/5 bg-dark-card transition-all group-hover:border-teal-500/30">
                                     <img
                                         src={post.image}
