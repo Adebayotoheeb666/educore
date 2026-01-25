@@ -119,8 +119,8 @@ export const AuditLogViewer = () => {
             </header>
 
             {/* Filters */}
-            <div className="bg-dark-card border border-white/5 rounded-2xl p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-dark-card border border-white/5 rounded-2xl p-4 md:p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                     {/* Search */}
                     <div className="lg:col-span-2">
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
