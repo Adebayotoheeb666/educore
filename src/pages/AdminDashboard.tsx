@@ -675,7 +675,7 @@ export const AdminDashboard = () => {
             </header>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <StatCard icon={Users} label="Total Staff" value={staff.filter(u => u.role === 'staff').length} color="teal" />
                 <StatCard icon={GraduationCap} label="Total Students" value={students.length} color="emerald" />
                 <StatCard icon={BookOpen} label="Classes" value={classes.length} color="blue" />
