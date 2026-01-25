@@ -104,43 +104,114 @@ export const Settings = () => {
     };
 
     const handleAddClass = () => {
-        if (newClass.trim()) {
-            setClasses([...classes, newClass.trim()]);
+        if (newClass.trim() && !classes.includes(newClass.trim())) {
+            const updatedClasses = [...classes, newClass.trim()];
+            setClasses(updatedClasses);
+            localStorage.setItem('academicClasses', JSON.stringify(updatedClasses));
             setNewClass('');
+            setSuccess('Class added successfully');
+            setTimeout(() => setSuccess(''), 2000);
         }
     };
 
     const handleRemoveClass = (c: string) => {
-        setClasses(classes.filter(item => item !== c));
+        const updatedClasses = classes.filter(item => item !== c);
+        setClasses(updatedClasses);
+        localStorage.setItem('academicClasses', JSON.stringify(updatedClasses));
+        setSuccess('Class removed successfully');
+        setTimeout(() => setSuccess(''), 2000);
     };
 
     const handleAddSubject = () => {
-        if (newSubject.trim()) {
-            setSubjects([...subjects, newSubject.trim()]);
+        if (newSubject.trim() && !subjects.includes(newSubject.trim())) {
+            const updatedSubjects = [...subjects, newSubject.trim()];
+            setSubjects(updatedSubjects);
+            localStorage.setItem('academicSubjects', JSON.stringify(updatedSubjects));
             setNewSubject('');
+            setSuccess('Subject added successfully');
+            setTimeout(() => setSuccess(''), 2000);
         }
     };
 
     const handleRemoveSubject = (s: string) => {
-        setSubjects(subjects.filter(item => item !== s));
+        const updatedSubjects = subjects.filter(item => item !== s);
+        setSubjects(updatedSubjects);
+        localStorage.setItem('academicSubjects', JSON.stringify(updatedSubjects));
+        setSuccess('Subject removed successfully');
+        setTimeout(() => setSuccess(''), 2000);
     };
 
-    const handleToggleDataSaver = () => {
-        const newValue = !dataSaver;
-        setDataSaver(newValue);
-        storageService.setDataSaverMode(newValue);
+    const handleToggleDataSaver = async () => {
+        setDataSaverLoading(true);
+        try {
+            const newValue = !dataSaver;
+            setDataSaver(newValue);
+            storageService.setDataSaverMode(newValue);
+            setSuccess(`Data Saver Mode ${newValue ? 'enabled' : 'disabled'}`);
+            setTimeout(() => setSuccess(''), 2000);
+        } catch (err) {
+            setError('Failed to update Data Saver Mode');
+            setDataSaver(dataSaver);
+        } finally {
+            setDataSaverLoading(false);
+        }
     };
 
-    const handleToggleGeminiNano = () => {
-        const newValue = !geminiNano;
-        setGeminiNano(newValue);
-        storageService.setGeminiNanoMode(newValue);
+    const handleToggleGeminiNano = async () => {
+        setGeminiLoading(true);
+        try {
+            const newValue = !geminiNano;
+            setGeminiNano(newValue);
+            storageService.setGeminiNanoMode(newValue);
+            setSuccess(`Gemini Nano (Local AI) ${newValue ? 'enabled' : 'disabled'}`);
+            setTimeout(() => setSuccess(''), 2000);
+        } catch (err) {
+            setError('Failed to update Gemini Nano setting');
+            setGeminiNano(geminiNano);
+        } finally {
+            setGeminiLoading(false);
+        }
     };
 
-    const handleToggleAutoSync = () => {
-        const newValue = !autoSync;
-        setAutoSync(newValue);
-        storageService.setAutoSyncOnWifi(newValue);
+    const handleToggleAutoSync = async () => {
+        setAutoSyncLoading(true);
+        try {
+            const newValue = !autoSync;
+            setAutoSync(newValue);
+            storageService.setAutoSyncOnWifi(newValue);
+            setSuccess(`Auto-sync on Wi-Fi ${newValue ? 'enabled' : 'disabled'}`);
+            setTimeout(() => setSuccess(''), 2000);
+        } catch (err) {
+            setError('Failed to update Auto-sync setting');
+            setAutoSync(autoSync);
+        } finally {
+            setAutoSyncLoading(false);
+        }
+    };
+
+    const handleNotificationRead = async (notificationId: string) => {
+        try {
+            await markAsRead(notificationId);
+            setNotifications(notifications.map(n =>
+                n.id === notificationId ? { ...n, read: true } : n
+            ));
+        } catch (err) {
+            console.error('Error marking notification as read:', err);
+        }
+    };
+
+    const handleMarkAllNotificationsRead = async () => {
+        try {
+            const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+            if (unreadIds.length > 0) {
+                await markAllAsRead(unreadIds);
+                setNotifications(notifications.map(n => ({ ...n, read: true })));
+                setSuccess('All notifications marked as read');
+                setTimeout(() => setSuccess(''), 2000);
+            }
+        } catch (err) {
+            console.error('Error marking notifications as read:', err);
+        }
     };
 
     const handleClearCache = async () => {
