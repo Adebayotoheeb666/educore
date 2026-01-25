@@ -137,13 +137,22 @@ export const AdminDashboard = () => {
             let allUsers;
             let usersError;
 
-            // Try to fetch via RPC first (preferred method)
-            const rpcResult = await supabase
-                .rpc('get_school_users', { p_school_id: schoolId });
+            // Try to fetch via RPC first (preferred method) with proper error handling
+            let rpcResult;
+            try {
+                rpcResult = await supabase
+                    .rpc('get_school_users', { p_school_id: schoolId });
+            } catch (rpcFetchError) {
+                // Network error or RPC function doesn't exist, fall back to direct query
+                console.warn('RPC fetch failed, falling back to direct query:', rpcFetchError);
+                rpcResult = { data: null, error: rpcFetchError };
+            }
 
-            if (rpcResult.error) {
+            if (rpcResult.error || !rpcResult.data) {
                 // RPC failed, fall back to direct table query
-                console.warn('RPC call failed, falling back to direct query:', rpcResult.error);
+                if (rpcResult.error) {
+                    console.warn('RPC call error, falling back to direct query:', rpcResult.error);
+                }
                 const directResult = await supabase
                     .from('users')
                     .select('*')
@@ -174,44 +183,66 @@ export const AdminDashboard = () => {
             setStudents(uniqueUsers.filter((u: any) => u.role === 'student'));
 
             // Fetch Classes
-            const { data: classData, error: classError } = await supabase
-                .from('classes')
-                .select('*')
-                .eq('school_id', schoolId);
+            try {
+                const { data: classData, error: classError } = await supabase
+                    .from('classes')
+                    .select('*')
+                    .eq('school_id', schoolId);
 
-            if (classError) throw classError;
-            // Deduplicate classes by ID
-            const uniqueClasses = Array.from(new Map((classData || []).map(c => [c.id, c])).values());
-            setClasses(uniqueClasses);
+                if (classError) throw classError;
+                // Deduplicate classes by ID
+                const uniqueClasses = Array.from(new Map((classData || []).map(c => [c.id, c])).values());
+                setClasses(uniqueClasses);
+            } catch (classErr) {
+                console.error("Classes fetch error:", classErr);
+                setClasses([]);
+            }
 
             // Fetch Subjects
-            const { data: subjectData, error: subjectError } = await supabase
-                .from('subjects')
-                .select('*')
-                .eq('school_id', schoolId);
+            try {
+                const { data: subjectData, error: subjectError } = await supabase
+                    .from('subjects')
+                    .select('*')
+                    .eq('school_id', schoolId);
 
-            if (subjectError) throw subjectError;
-            // Deduplicate subjects by ID
-            const uniqueSubjects = Array.from(new Map((subjectData || []).map(s => [s.id, s])).values());
-            setSubjects(uniqueSubjects);
+                if (subjectError) throw subjectError;
+                // Deduplicate subjects by ID
+                const uniqueSubjects = Array.from(new Map((subjectData || []).map(s => [s.id, s])).values());
+                setSubjects(uniqueSubjects);
+            } catch (subjectErr) {
+                console.error("Subjects fetch error:", subjectErr);
+                setSubjects([]);
+            }
 
             // Fetch Financials
-            const { data: transData, error: transError } = await supabase
-                .from('financial_transactions')
-                .select('amount')
-                .eq('school_id', schoolId);
+            try {
+                const { data: transData, error: transError } = await supabase
+                    .from('financial_transactions')
+                    .select('amount')
+                    .eq('school_id', schoolId);
 
-            if (transError) console.error("Financial fetch error", transError);
+                if (transError) throw transError;
 
-            const total = (transData || []).reduce((acc, curr) => acc + (curr.amount || 0), 0);
-            const totalExpected = mappedUsers.filter((u: any) => u.role === 'student').length * 150000;
+                const total = (transData || []).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+                const totalExpected = mappedUsers.filter((u: any) => u.role === 'student').length * 150000;
 
-            setFinancials({
-                totalRevenue: total,
-                outstanding: totalExpected - total
-            });
+                setFinancials({
+                    totalRevenue: total,
+                    outstanding: totalExpected - total
+                });
+            } catch (transErr) {
+                console.error("Financial fetch error:", transErr);
+                setFinancials({ totalRevenue: 0, outstanding: 0 });
+            }
         } catch (err) {
             console.error("Error fetching school data:", err);
+            showToast('Failed to load school data. Please try refreshing the page.', 'error');
+            // Set empty defaults to prevent UI from breaking
+            setStaff([]);
+            setStudents([]);
+            setClasses([]);
+            setSubjects([]);
+            setFinancials({ totalRevenue: 0, outstanding: 0 });
         } finally {
             setLoading(false);
         }
