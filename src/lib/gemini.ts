@@ -144,6 +144,9 @@ async function getCurrentUserProfile(): Promise<UserProfile> {
   if (cachedProfile) return cachedProfile;
 
   try {
+    // Import supabase only when needed
+    const { supabase } = await import('./supabase');
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
