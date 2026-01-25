@@ -164,7 +164,7 @@ export const ClassManager = () => {
     const filteredStudents = schoolStudents.filter(s =>
         (s.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.admission_number?.toLowerCase().includes(searchQuery.toLowerCase())) &&
-        s.class_id !== selectedClass?.id
+        !enrolledStudents.find(es => es.id === s.id)
     );
 
     if (loading) {
