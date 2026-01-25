@@ -731,13 +731,13 @@ export const AdminDashboard = () => {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                            <table className="w-full text-left text-sm md:text-base">
                                 <thead>
-                                    <tr className="text-gray-500 text-sm uppercase tracking-wider font-bold">
-                                        <th className="pb-4 px-4">Name/Title</th>
-                                        <th className="pb-4 px-4">ID/Code</th>
-                                        <th className="pb-4 px-4">{activeTab === 'staff' ? 'Contact' : activeTab === 'students' ? 'Class' : activeTab === 'classes' ? 'Stats' : 'Stats'}</th>
-                                        <th className="pb-4 px-4">Action</th>
+                                    <tr className="text-gray-500 text-xs md:text-sm uppercase tracking-wider font-bold">
+                                        <th className="pb-4 px-2 md:px-4">Name/Title</th>
+                                        <th className="pb-4 px-2 md:px-4 hidden sm:table-cell">ID/Code</th>
+                                        <th className="pb-4 px-2 md:px-4 hidden md:table-cell">{activeTab === 'staff' ? 'Contact' : activeTab === 'students' ? 'Class' : activeTab === 'classes' ? 'Stats' : 'Stats'}</th>
+                                        <th className="pb-4 px-2 md:px-4 text-right md:text-left">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
