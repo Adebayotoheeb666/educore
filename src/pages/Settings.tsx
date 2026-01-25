@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ToggleLeft, ToggleRight, Wifi, CheckCircle, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Wifi, CheckCircle, AlertCircle, Trash2, RefreshCw, Bell } from 'lucide-react';
 import { storageService, type StorageStats, type SyncStatus } from '../lib/storageService';
+import { getNotifications, markAsRead, markAllAsRead } from '../lib/notificationService';
 import { useAuth } from '../hooks/useAuth';
+import type { Notification } from '../lib/types';
 
 const Toggle = ({ checked, onChange }: { checked: boolean, onChange: () => void }) => (
     <button onClick={onChange} className={`transition-colors text-3xl ${checked ? 'text-teal-500' : 'text-gray-600'}`}>
@@ -12,32 +14,42 @@ const Toggle = ({ checked, onChange }: { checked: boolean, onChange: () => void 
 export const Settings = () => {
     const { user } = useAuth();
     const [dataSaver, setDataSaver] = useState(false);
+    const [dataSaverLoading, setDataSaverLoading] = useState(false);
     const [geminiNano, setGeminiNano] = useState(false);
+    const [geminiLoading, setGeminiLoading] = useState(false);
     const [autoSync, setAutoSync] = useState(true);
+    const [autoSyncLoading, setAutoSyncLoading] = useState(false);
     const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
     const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notificationsLoading, setNotificationsLoading] = useState(false);
 
-    const [classes, setClasses] = useState(['Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6', 'JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']);
+    const [classes, setClasses] = useState<string[]>([]);
     const [newClass, setNewClass] = useState('');
-    const [subjects, setSubjects] = useState(['Mathematics', 'English', 'Basic Science', 'Physics', 'Chemistry']);
+    const [subjects, setSubjects] = useState<string[]>([]);
     const [newSubject, setNewSubject] = useState('');
 
     useEffect(() => {
         loadSettings();
+        loadAcademicSettings();
+        loadNotifications();
         const interval = setInterval(loadSettings, 5000); // Refresh every 5 seconds
+        const notifInterval = setInterval(loadNotifications, 30000); // Refresh notifications every 30 seconds
 
         window.addEventListener('online', loadSettings);
         window.addEventListener('offline', loadSettings);
 
         return () => {
             clearInterval(interval);
+            clearInterval(notifInterval);
             window.removeEventListener('online', loadSettings);
             window.removeEventListener('offline', loadSettings);
         };
-    }, []);
+    }, [user]);
 
     const loadSettings = async () => {
         try {
@@ -55,44 +67,152 @@ export const Settings = () => {
         }
     };
 
+    const loadAcademicSettings = () => {
+        try {
+            const savedClasses = localStorage.getItem('academicClasses');
+            const savedSubjects = localStorage.getItem('academicSubjects');
+
+            if (savedClasses) {
+                setClasses(JSON.parse(savedClasses));
+            } else {
+                setClasses(['Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6', 'JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']);
+            }
+
+            if (savedSubjects) {
+                setSubjects(JSON.parse(savedSubjects));
+            } else {
+                setSubjects(['Mathematics', 'English', 'Basic Science', 'Physics', 'Chemistry']);
+            }
+        } catch (err) {
+            console.error('Error loading academic settings:', err);
+            setClasses(['Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6', 'JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']);
+            setSubjects(['Mathematics', 'English', 'Basic Science', 'Physics', 'Chemistry']);
+        }
+    };
+
+    const loadNotifications = async () => {
+        if (!user?.schoolId || !user?.id) return;
+
+        setNotificationsLoading(true);
+        try {
+            const notifs = await getNotifications(user.schoolId, user.id, 10);
+            setNotifications(notifs);
+        } catch (err) {
+            console.error('Error loading notifications:', err);
+        } finally {
+            setNotificationsLoading(false);
+        }
+    };
+
     const handleAddClass = () => {
-        if (newClass.trim()) {
-            setClasses([...classes, newClass.trim()]);
+        if (newClass.trim() && !classes.includes(newClass.trim())) {
+            const updatedClasses = [...classes, newClass.trim()];
+            setClasses(updatedClasses);
+            localStorage.setItem('academicClasses', JSON.stringify(updatedClasses));
             setNewClass('');
+            setSuccess('Class added successfully');
+            setTimeout(() => setSuccess(''), 2000);
         }
     };
 
     const handleRemoveClass = (c: string) => {
-        setClasses(classes.filter(item => item !== c));
+        const updatedClasses = classes.filter(item => item !== c);
+        setClasses(updatedClasses);
+        localStorage.setItem('academicClasses', JSON.stringify(updatedClasses));
+        setSuccess('Class removed successfully');
+        setTimeout(() => setSuccess(''), 2000);
     };
 
     const handleAddSubject = () => {
-        if (newSubject.trim()) {
-            setSubjects([...subjects, newSubject.trim()]);
+        if (newSubject.trim() && !subjects.includes(newSubject.trim())) {
+            const updatedSubjects = [...subjects, newSubject.trim()];
+            setSubjects(updatedSubjects);
+            localStorage.setItem('academicSubjects', JSON.stringify(updatedSubjects));
             setNewSubject('');
+            setSuccess('Subject added successfully');
+            setTimeout(() => setSuccess(''), 2000);
         }
     };
 
     const handleRemoveSubject = (s: string) => {
-        setSubjects(subjects.filter(item => item !== s));
+        const updatedSubjects = subjects.filter(item => item !== s);
+        setSubjects(updatedSubjects);
+        localStorage.setItem('academicSubjects', JSON.stringify(updatedSubjects));
+        setSuccess('Subject removed successfully');
+        setTimeout(() => setSuccess(''), 2000);
     };
 
-    const handleToggleDataSaver = () => {
-        const newValue = !dataSaver;
-        setDataSaver(newValue);
-        storageService.setDataSaverMode(newValue);
+    const handleToggleDataSaver = async () => {
+        setDataSaverLoading(true);
+        try {
+            const newValue = !dataSaver;
+            setDataSaver(newValue);
+            storageService.setDataSaverMode(newValue);
+            setSuccess(`Data Saver Mode ${newValue ? 'enabled' : 'disabled'}`);
+            setTimeout(() => setSuccess(''), 2000);
+        } catch (err) {
+            setError('Failed to update Data Saver Mode');
+            setDataSaver(dataSaver);
+        } finally {
+            setDataSaverLoading(false);
+        }
     };
 
-    const handleToggleGeminiNano = () => {
-        const newValue = !geminiNano;
-        setGeminiNano(newValue);
-        storageService.setGeminiNanoMode(newValue);
+    const handleToggleGeminiNano = async () => {
+        setGeminiLoading(true);
+        try {
+            const newValue = !geminiNano;
+            setGeminiNano(newValue);
+            storageService.setGeminiNanoMode(newValue);
+            setSuccess(`Gemini Nano (Local AI) ${newValue ? 'enabled' : 'disabled'}`);
+            setTimeout(() => setSuccess(''), 2000);
+        } catch (err) {
+            setError('Failed to update Gemini Nano setting');
+            setGeminiNano(geminiNano);
+        } finally {
+            setGeminiLoading(false);
+        }
     };
 
-    const handleToggleAutoSync = () => {
-        const newValue = !autoSync;
-        setAutoSync(newValue);
-        storageService.setAutoSyncOnWifi(newValue);
+    const handleToggleAutoSync = async () => {
+        setAutoSyncLoading(true);
+        try {
+            const newValue = !autoSync;
+            setAutoSync(newValue);
+            storageService.setAutoSyncOnWifi(newValue);
+            setSuccess(`Auto-sync on Wi-Fi ${newValue ? 'enabled' : 'disabled'}`);
+            setTimeout(() => setSuccess(''), 2000);
+        } catch (err) {
+            setError('Failed to update Auto-sync setting');
+            setAutoSync(autoSync);
+        } finally {
+            setAutoSyncLoading(false);
+        }
+    };
+
+    const handleNotificationRead = async (notificationId: string) => {
+        try {
+            await markAsRead(notificationId);
+            setNotifications(notifications.map(n =>
+                n.id === notificationId ? { ...n, read: true } : n
+            ));
+        } catch (err) {
+            console.error('Error marking notification as read:', err);
+        }
+    };
+
+    const handleMarkAllNotificationsRead = async () => {
+        try {
+            const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+            if (unreadIds.length > 0) {
+                await markAllAsRead(unreadIds);
+                setNotifications(notifications.map(n => ({ ...n, read: true })));
+                setSuccess('All notifications marked as read');
+                setTimeout(() => setSuccess(''), 2000);
+            }
+        } catch (err) {
+            console.error('Error marking notifications as read:', err);
+        }
     };
 
     const handleClearCache = async () => {
@@ -134,8 +254,67 @@ export const Settings = () => {
 
     return (
         <div className="max-w-xl mx-auto space-y-8">
-            <header className="flex items-center gap-4 mb-8">
+            <header className="flex items-center justify-between gap-4 mb-8">
                 <h1 className="text-xl font-bold text-white">Connectivity & Storage</h1>
+                <div className="relative">
+                    <button
+                        onClick={() => setShowNotifications(!showNotifications)}
+                        className="relative p-2 text-white hover:text-teal-400 transition-colors"
+                    >
+                        <Bell className="w-6 h-6" />
+                        {notifications.some(n => !n.read) && (
+                            <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                        )}
+                    </button>
+
+                    {showNotifications && (
+                        <div className="absolute right-0 top-12 w-80 max-h-96 bg-dark-card border border-white/10 rounded-2xl overflow-hidden shadow-lg z-50">
+                            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                                <h3 className="text-white font-bold">Notifications</h3>
+                                {notifications.some(n => !n.read) && (
+                                    <button
+                                        onClick={handleMarkAllNotificationsRead}
+                                        className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
+                                    >
+                                        Mark all as read
+                                    </button>
+                                )}
+                            </div>
+                            <div className="overflow-y-auto max-h-80">
+                                {notificationsLoading ? (
+                                    <div className="p-4 text-gray-400 text-sm text-center">Loading...</div>
+                                ) : notifications.length === 0 ? (
+                                    <div className="p-4 text-gray-400 text-sm text-center">No notifications</div>
+                                ) : (
+                                    notifications.map(notif => (
+                                        <div
+                                            key={notif.id}
+                                            className={`p-4 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors ${
+                                                !notif.read ? 'bg-teal-500/5' : ''
+                                            }`}
+                                            onClick={() => handleNotificationRead(notif.id)}
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1">
+                                                    <div className="text-white font-bold text-sm">{notif.title}</div>
+                                                    <div className="text-gray-400 text-xs mt-1">{notif.message}</div>
+                                                    {notif.createdAt && (
+                                                        <div className="text-gray-500 text-[10px] mt-2">
+                                                            {new Date(notif.createdAt).toLocaleString('en-NG')}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {!notif.read && (
+                                                    <div className="w-2 h-2 bg-teal-500 rounded-full flex-shrink-0 mt-1.5"></div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </header>
 
             {/* Success Alert */}
@@ -213,7 +392,19 @@ export const Settings = () => {
                             <div className="text-white font-bold mb-1">Data Saver Mode</div>
                             <p className="text-gray-500 text-xs w-48">Disables images and heavy media to reduce bandwidth costs.</p>
                         </div>
-                        <Toggle checked={dataSaver} onChange={handleToggleDataSaver} />
+                        <button
+                            onClick={handleToggleDataSaver}
+                            disabled={dataSaverLoading}
+                            className="transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {dataSaverLoading ? (
+                                <div className="w-12 h-12 flex items-center justify-center">
+                                    <div className="w-4 h-4 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin"></div>
+                                </div>
+                            ) : (
+                                <Toggle checked={dataSaver} onChange={() => {}} />
+                            )}
+                        </button>
                     </div>
 
                     <div className="bg-dark-card border border-white/5 p-4 rounded-2xl flex justify-between items-center">
@@ -224,7 +415,19 @@ export const Settings = () => {
                             </div>
                             <p className="text-gray-500 text-xs w-48">Generate lesson notes without internet using on-device processing.</p>
                         </div>
-                        <Toggle checked={geminiNano} onChange={handleToggleGeminiNano} />
+                        <button
+                            onClick={handleToggleGeminiNano}
+                            disabled={geminiLoading}
+                            className="transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {geminiLoading ? (
+                                <div className="w-12 h-12 flex items-center justify-center">
+                                    <div className="w-4 h-4 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin"></div>
+                                </div>
+                            ) : (
+                                <Toggle checked={geminiNano} onChange={() => {}} />
+                            )}
+                        </button>
                     </div>
 
                     <div className="bg-dark-card border border-white/5 p-4 rounded-2xl flex justify-between items-center">
@@ -232,7 +435,19 @@ export const Settings = () => {
                             <div className="text-white font-bold mb-1">Auto-sync on Wi-Fi</div>
                             <p className="text-gray-500 text-xs w-48">Background data upload only when connected to unlimited networks.</p>
                         </div>
-                        <Toggle checked={autoSync} onChange={handleToggleAutoSync} />
+                        <button
+                            onClick={handleToggleAutoSync}
+                            disabled={autoSyncLoading}
+                            className="transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {autoSyncLoading ? (
+                                <div className="w-12 h-12 flex items-center justify-center">
+                                    <div className="w-4 h-4 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin"></div>
+                                </div>
+                            ) : (
+                                <Toggle checked={autoSync} onChange={() => {}} />
+                            )}
+                        </button>
                     </div>
                 </div>
             </section>
