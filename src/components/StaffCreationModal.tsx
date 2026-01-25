@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import type { User } from '@supabase/supabase-js';
 import type { UserProfile } from '../lib/types';
 import { supabase } from '../lib/supabase';
+import { logAction } from '../lib/auditService';
 import { createStaffAccount, type CreateStaffParams } from '../lib/staffService';
 
 interface StaffCreationModalProps {
