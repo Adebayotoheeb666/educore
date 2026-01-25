@@ -157,8 +157,13 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         });
 
     if (insertError) {
-        console.error("Failed to link profile:", insertError);
-        return;
+        console.error("Failed to link profile:", {
+            message: insertError.message,
+            code: insertError.code,
+            details: insertError.details,
+            hint: insertError.hint
+        });
+        throw new Error(`Failed to link profile: ${insertError.message}`);
     }
 
     // 3. Migrate Related Records
