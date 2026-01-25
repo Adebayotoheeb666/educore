@@ -59,6 +59,7 @@ export const AdminDashboard = () => {
     const [editingSubject, setEditingSubject] = useState<any | null>(null);
     const [editingClass, setEditingClass] = useState<any | null>(null);
     const [editingStaff, setEditingStaff] = useState<any | null>(null);
+    const [editingStudent, setEditingStudent] = useState<any | null>(null);
 
     // Toast/Notification state
     const [toasts, setToasts] = useState<Omit<ToastProps, 'onClose'>[]>([]);
