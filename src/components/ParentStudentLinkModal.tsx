@@ -184,7 +184,13 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
                 }, 1500);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to save links');
+            let errorMessage = 'Failed to save links';
+            if (err instanceof Error) {
+                errorMessage = err.message;
+            } else if (err && typeof err === 'object' && 'message' in err) {
+                errorMessage = String((err as any).message);
+            }
+            setError(errorMessage);
         } finally {
             setSaving(false);
         }
