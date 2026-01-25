@@ -105,7 +105,19 @@ export const createStaffAccount = async (
             if (!isProduction && (response.status === 404 || response.status === 0)) {
                 return await createStaffAccountFallback(schoolId, data);
             }
-            throw new Error(result.error || `Failed to invite staff (HTTP ${response.status})`);
+
+            // Build detailed error message with any available details
+            let errorMessage = result.error || `Failed to invite staff (HTTP ${response.status})`;
+            if (result.details) {
+                console.error('Edge function error details:', result.details);
+                // Include specific error info if available
+                if (typeof result.details === 'object') {
+                    if (result.details.message) {
+                        errorMessage += `: ${result.details.message}`;
+                    }
+                }
+            }
+            throw new Error(errorMessage);
         }
 
         return {
