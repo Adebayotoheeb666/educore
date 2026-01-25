@@ -42,29 +42,11 @@ export const initOfflineService = () => {
 };
 
 /**
- * Perform a real connectivity check
+ * Perform a connectivity check - relies on browser's navigator.onLine
+ * which is reliable for detecting online/offline status
  */
 export const checkConnection = async (): Promise<boolean> => {
-    if (!navigator.onLine) return false;
-
-    try {
-        // Use a small 1x1 pixel image from a reliable CDN with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-
-        const response = await fetch('https://www.google.com/favicon.ico', {
-            method: 'HEAD',
-            mode: 'no-cors',
-            cache: 'no-store',
-            signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-        return true;
-    } catch (error) {
-        // Network error or timeout - treat as offline
-        return false;
-    }
+    return navigator.onLine;
 };
 
 const startHeartbeat = () => {
