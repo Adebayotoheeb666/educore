@@ -34,17 +34,21 @@ export const Settings = () => {
 
     useEffect(() => {
         loadSettings();
+        loadAcademicSettings();
+        loadNotifications();
         const interval = setInterval(loadSettings, 5000); // Refresh every 5 seconds
+        const notifInterval = setInterval(loadNotifications, 30000); // Refresh notifications every 30 seconds
 
         window.addEventListener('online', loadSettings);
         window.addEventListener('offline', loadSettings);
 
         return () => {
             clearInterval(interval);
+            clearInterval(notifInterval);
             window.removeEventListener('online', loadSettings);
             window.removeEventListener('offline', loadSettings);
         };
-    }, []);
+    }, [user]);
 
     const loadSettings = async () => {
         try {
