@@ -303,13 +303,22 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
             )}
 
             {parents.length > 0 && (
-                <button
-                    onClick={handleAddLink}
-                    className="w-full px-4 py-3 border border-dashed border-teal-500/30 hover:bg-teal-500/10 text-teal-400 rounded-lg transition-colors font-bold flex items-center justify-center gap-2"
-                >
-                    <Plus className="w-5 h-5" />
-                    Add Parent Link
-                </button>
+                <div className="space-y-2">
+                    <button
+                        onClick={handleAddLink}
+                        className="w-full px-4 py-3 border border-dashed border-teal-500/30 hover:bg-teal-500/10 text-teal-400 rounded-lg transition-colors font-bold flex items-center justify-center gap-2"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Add Parent Link
+                    </button>
+                    <button
+                        onClick={() => setShowParentCreation(true)}
+                        className="w-full px-4 py-3 border border-dashed border-purple-500/30 hover:bg-purple-500/10 text-purple-400 rounded-lg transition-colors font-bold flex items-center justify-center gap-2"
+                    >
+                        <UserPlus className="w-5 h-5" />
+                        Create New Parent Account
+                    </button>
+                </div>
             )}
 
             <div className="flex gap-3 pt-4">
