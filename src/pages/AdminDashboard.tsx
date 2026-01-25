@@ -786,17 +786,17 @@ export const AdminDashboard = () => {
                                         </tr>
                                     ))}
                                     {activeTab === 'students' && filterStudents(students).map(u => (
-                                        <tr key={u.id} className="group hover:bg-white/5 transition-colors">
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">{u.fullName?.charAt(0) || 'S'}</div>
-                                                    <span className="text-white font-medium">{u.fullName}</span>
+                                        <tr key={u.id} className="group hover:bg-white/5 transition-colors border-b border-white/5">
+                                            <td className="py-3 md:py-4 px-2 md:px-4">
+                                                <div className="flex items-center gap-2 md:gap-3">
+                                                    <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">{u.fullName?.charAt(0) || 'S'}</div>
+                                                    <span className="text-white font-medium text-sm md:text-base truncate">{u.fullName}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-4 text-gray-400 font-mono text-sm">{u.admissionNumber}</td>
-                                            <td className="py-4 px-4 text-gray-400 text-sm">{u.classId || 'Not Assigned'}</td>
-                                            <td className="py-4 px-4">
-                                                <div className="flex flex-wrap items-center gap-2">
+                                            <td className="py-3 md:py-4 px-2 md:px-4 text-gray-400 font-mono text-xs md:text-sm hidden sm:table-cell">{u.admissionNumber}</td>
+                                            <td className="py-3 md:py-4 px-2 md:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell">{u.classId || 'Not Assigned'}</td>
+                                            <td className="py-3 md:py-4 px-2 md:px-4">
+                                                <div className="flex flex-wrap items-center gap-1 md:gap-2 justify-end md:justify-start">
                                                     <button
                                                         onClick={() => {
                                                             setEditingStudent({
@@ -812,16 +812,16 @@ export const AdminDashboard = () => {
                                                         className="p-2 hover:bg-emerald-500/10 rounded-lg text-gray-500 hover:text-emerald-400 transition-colors"
                                                         title="Edit Student"
                                                     >
-                                                        <Edit2 className="w-4 h-4" />
+                                                        <Edit2 className="w-3 md:w-4 h-3 md:h-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteStudent(u.id, u.fullName || u.email)}
                                                         className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
                                                         title="Delete Student"
                                                     >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <Trash2 className="w-3 md:w-4 h-3 md:h-4" />
                                                     </button>
-                                                    <button onClick={() => setSelectedStudentForLinking({ id: u.id, name: u.fullName })} className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-colors text-xs sm:text-sm font-bold whitespace-nowrap">Link Parents</button>
+                                                    <button onClick={() => setSelectedStudentForLinking({ id: u.id, name: u.fullName })} className="px-2 md:px-3 py-1 md:py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-colors text-xs md:text-sm font-bold whitespace-nowrap">Link Parents</button>
                                                 </div>
                                             </td>
                                         </tr>
