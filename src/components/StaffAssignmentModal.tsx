@@ -87,7 +87,7 @@ export const StaffAssignmentModal = ({ staffId, staffName, onClose, onSuccess }:
                 setExistingAssignments(existing);
 
                 // Initialize with existing assignments
-                setAssignments(existing.map(a => ({ classId: a.classId, subjectId: a.subjectId })));
+                setAssignments(existing.map(a => ({ id: a.id, classId: a.classId, subjectId: a.subjectId })));
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load data');
             } finally {
