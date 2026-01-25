@@ -309,7 +309,16 @@ export const loginWithStaffId = async (schoolId: string, staffId: string, passwo
             console.log("Login failed, attempting activation...");
             const authResponse = await activateAccount(schoolId, staffId, password, 'staff');
             if (authResponse.user) {
-                await linkProfileAfterActivation(schoolId, authResponse.user.id, staffId, 'staff');
+                try {
+                    await linkProfileAfterActivation(schoolId, authResponse.user.id, staffId, 'staff');
+                } catch (linkError) {
+                    console.error("Profile linking error during staff activation:", {
+                        message: linkError instanceof Error ? linkError.message : String(linkError),
+                        error: linkError
+                    });
+                    // Continue anyway - user is already authenticated
+                    // The profile might have been partially created
+                }
                 return authResponse;
             }
         } catch (activationError) {
