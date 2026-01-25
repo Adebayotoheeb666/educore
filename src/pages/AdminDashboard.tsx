@@ -735,11 +735,11 @@ export const AdminDashboard = () => {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm md:text-base min-w-max md:min-w-full">
                                 <thead>
-                                    <tr className="text-gray-500 text-xs md:text-sm uppercase tracking-wider font-bold">
-                                        <th className="pb-4 px-2 md:px-4">Name/Title</th>
-                                        <th className="pb-4 px-2 md:px-4 hidden sm:table-cell">ID/Code</th>
-                                        <th className="pb-4 px-2 md:px-4 hidden md:table-cell">{activeTab === 'staff' ? 'Contact' : activeTab === 'students' ? 'Class' : activeTab === 'classes' ? 'Stats' : 'Stats'}</th>
-                                        <th className="pb-4 px-2 md:px-4 text-right md:text-left">Action</th>
+                                    <tr className="text-gray-500 text-xs md:text-sm uppercase tracking-wider font-bold bg-dark-card sticky top-0 z-10">
+                                        <th className="py-4 px-3 sm:px-4">Name/Title</th>
+                                        <th className="py-4 px-3 sm:px-4 hidden sm:table-cell">ID/Code</th>
+                                        <th className="py-4 px-3 sm:px-4 hidden md:table-cell">{activeTab === 'staff' ? 'Contact' : activeTab === 'students' ? 'Class' : activeTab === 'classes' ? 'Stats' : 'Stats'}</th>
+                                        <th className="py-4 px-3 sm:px-4 text-right md:text-left">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
