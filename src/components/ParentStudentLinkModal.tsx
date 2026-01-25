@@ -99,7 +99,13 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
                 }));
                 setLinks(initialLinks.length > 0 ? initialLinks : []);
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to load data');
+                let errorMessage = 'Failed to load data';
+                if (err instanceof Error) {
+                    errorMessage = err.message;
+                } else if (err && typeof err === 'object' && 'message' in err) {
+                    errorMessage = String((err as any).message);
+                }
+                setError(errorMessage);
             } finally {
                 setLoading(false);
             }
