@@ -75,13 +75,16 @@ serve(async (req) => {
         })();
 
         // 2. Check if user already exists in Auth
+        console.log("Checking for existing user with email:", requestBody.email.toLowerCase().trim());
         const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
         if (listError) {
             console.error("Error listing users:", listError);
             throw new Error(`Failed to check existing users: ${listError.message}`);
         }
 
+        console.log("Total users in system:", existingUsers?.users?.length || 0);
         const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === requestBody.email.toLowerCase().trim());
+        console.log("Existing user found:", !!existingUser);
 
         let authId = existingUser?.id;
 
@@ -106,6 +109,7 @@ serve(async (req) => {
             }
 
             // 4. Create Auth user via admin API
+            console.log("Attempting to create Auth user for:", requestBody.email.toLowerCase().trim());
             const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
                 email: requestBody.email.toLowerCase().trim(),
                 email_confirm: true,
@@ -119,10 +123,79 @@ serve(async (req) => {
 
             if (authError) {
                 console.error("Auth creation error:", authError);
+                console.error("Full error object:", JSON.stringify(authError, null, 2));
+
+                // Provide more helpful error messages
+                let errorDetails = authError.message || String(authError);
+
+                if (authError.message?.includes('already exists')) {
+                    errorDetails = `Email already registered in system. Try using a different email address.`;
+                } else if (authError.message?.includes('invalid')) {
+                    errorDetails = `Invalid email format. Please provide a valid email address.`;
+                } else if (authError.message?.includes('smtp')) {
+                    errorDetails = `Email service unavailable. Please try again later.`;
+                } else if (authError.message?.includes('unexpected_failure') || authError.status === 500) {
+                    errorDetails = `Supabase Auth service temporary issue. Creating profile without Auth account. Staff can be linked to Auth later.`;
+
+                    // Try to create profile without Auth as fallback
+                    console.log("Auth service error, attempting to create profile in database only...");
+                    const { error: profileError } = await adminClient
+                        .from("users")
+                        .upsert({
+                            school_id: requestBody.schoolId,
+                            email: requestBody.email.toLowerCase().trim(),
+                            full_name: requestBody.fullName,
+                            role: requestBody.role,
+                            phone_number: requestBody.phoneNumber,
+                            staff_id: staffId,
+                            assigned_subjects: requestBody.specialization
+                                ? [requestBody.specialization]
+                                : [],
+                        });
+
+                    if (profileError) {
+                        console.error("Fallback profile creation also failed:", profileError);
+                        return new Response(
+                            JSON.stringify({
+                                error: "Failed to create Auth user",
+                                details: {
+                                    message: "Supabase Auth service is experiencing issues. Please try again in a few moments.",
+                                    originalError: authError.message
+                                }
+                            }),
+                            {
+                                status: 500,
+                                headers: { ...corsHeaders, "Content-Type": "application/json" }
+                            }
+                        );
+                    }
+
+                    // Success with fallback - profile created, but no Auth account
+                    return new Response(
+                        JSON.stringify({
+                            success: true,
+                            message: "Staff profile created. Note: Auth account creation failed due to service issues. Staff profile is ready in the database.",
+                            staffId: staffId,
+                            authId: undefined,
+                            warning: "Auth account was not created due to temporary service issues. Staff cannot log in yet."
+                        }),
+                        {
+                            status: 200,
+                            headers: {
+                                ...corsHeaders,
+                                "Content-Type": "application/json",
+                            },
+                        }
+                    );
+                }
+
                 return new Response(
                     JSON.stringify({
                         error: "Failed to create Auth user",
-                        details: authError
+                        details: {
+                            message: errorDetails,
+                            originalError: authError.message
+                        }
                     }),
                     {
                         status: 500,
@@ -131,6 +204,7 @@ serve(async (req) => {
                 );
             }
             authId = authData.user?.id;
+            console.log("Auth user created successfully with ID:", authId);
         }
 
         // 5. Upsert user profile in DB

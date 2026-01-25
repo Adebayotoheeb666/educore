@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import type { User } from '@supabase/supabase-js';
 import type { UserProfile } from '../lib/types';
 import { supabase } from '../lib/supabase';
+import { logAction } from '../lib/auditService';
 import { createStaffAccount, type CreateStaffParams } from '../lib/staffService';
 
 interface StaffCreationModalProps {
@@ -31,7 +32,7 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [createdCredentials, setCreatedCredentials] = useState<{ staffId: string; message: string } | null>(null);
+    const [createdCredentials, setCreatedCredentials] = useState<{ staffId: string; message: string; warning?: string } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -58,18 +59,55 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
                     .eq('id', initialData.id);
 
                 if (updateError) throw updateError;
+
+                // Log the update action
+                if (schoolId && user?.id) {
+                    await logAction(
+                        schoolId,
+                        user.id,
+                        user.email || 'Unknown',
+                        'update',
+                        'staff',
+                        initialData.id,
+                        {
+                            full_name: { old: initialData.fullName, new: formData.fullName },
+                            email: { old: initialData.email, new: formData.email },
+                            role: { old: initialData.role, new: formData.role },
+                            phone_number: { old: initialData.phoneNumber, new: formData.phoneNumber },
+                            staff_id: { old: initialData.staffId, new: formData.staffId }
+                        }
+                    );
+                }
+
                 onSuccess();
             } else {
                 // CREATE flow
                 const result = await createStaffAccount(schoolId, user.id, formData);
                 setCreatedCredentials({
                     staffId: result.staffId,
-                    message: result.message
+                    message: result.message,
+                    warning: result.warning
                 });
             }
         } catch (err) {
-            console.error(err);
-            setError(err instanceof Error ? err.message : 'Failed to save staff account');
+            console.error('Staff creation error:', err);
+            let errorMessage = 'Failed to save staff account';
+
+            if (err instanceof Error) {
+                errorMessage = err.message;
+                // Provide more specific guidance for common errors
+                if (err.message.includes('Email already registered')) {
+                    errorMessage = 'Email already registered in system. Try using a different email address.';
+                } else if (err.message.includes('Invalid email')) {
+                    errorMessage = 'Invalid email format. Please provide a valid email address.';
+                } else if (err.message.includes('Not an admin')) {
+                    errorMessage = 'You do not have permission to create staff accounts. Admin access required.';
+                } else if (err.message.includes('RLS')) {
+                    errorMessage = 'Permission denied. Please ensure you have admin rights for this school.';
+                }
+            }
+
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -82,21 +120,23 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
 
     if (createdCredentials) {
         const isDevelopmentFallback = createdCredentials.message.includes('development mode');
+        const hasWarning = !!createdCredentials.warning;
+        const isWarningState = isDevelopmentFallback || hasWarning;
 
         return (
             <div className="bg-dark-card p-6 w-full max-w-md space-y-6">
                 <div className="text-center space-y-2">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isDevelopmentFallback ? 'bg-yellow-500/20' : 'bg-green-500/20'
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isWarningState ? 'bg-yellow-500/20' : 'bg-green-500/20'
                         }`}>
-                        <CheckCircle2 className={`w-8 h-8 ${isDevelopmentFallback ? 'text-yellow-500' : 'text-green-500'}`} />
+                        <CheckCircle2 className={`w-8 h-8 ${isWarningState ? 'text-yellow-500' : 'text-green-500'}`} />
                     </div>
-                    <h2 className={`text-2xl font-bold ${isDevelopmentFallback ? 'text-yellow-500' : 'text-green-500'}`}>
-                        {isDevelopmentFallback ? 'Staff Created (Dev Mode)' : 'Staff Invited!'}
+                    <h2 className={`text-2xl font-bold ${isWarningState ? 'text-yellow-500' : 'text-green-500'}`}>
+                        {isWarningState ? 'Staff Profile Created' : 'Staff Invited!'}
                     </h2>
                     <p className="text-gray-400 text-sm">{createdCredentials.message}</p>
                 </div>
 
-                <div className={`border rounded-xl p-6 space-y-4 ${isDevelopmentFallback
+                <div className={`border rounded-xl p-6 space-y-4 ${isWarningState
                     ? 'bg-yellow-500/10 border-yellow-500/30'
                     : 'bg-white/5 border-white/10'
                     }`}>
@@ -118,6 +158,19 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
                                 <li>Auth account <strong>not created</strong> (Edge Function not deployed)</li>
                                 <li>Staff cannot log in yet</li>
                                 <li>Deploy functions to enable authentication</li>
+                            </ul>
+                        </div>
+                    )}
+
+                    {hasWarning && !isDevelopmentFallback && (
+                        <div className="bg-black/30 rounded-lg p-4 border border-yellow-500/30 text-sm text-yellow-100">
+                            <p className="font-semibold mb-2">⚠️ Partial Success</p>
+                            <p className="text-xs text-yellow-100/80 mb-2">{createdCredentials.warning}</p>
+                            <ul className="list-disc list-inside space-y-1 text-xs text-yellow-100/80">
+                                <li>Staff profile has been created and is active</li>
+                                <li>Auth account creation encountered a temporary issue</li>
+                                <li>Staff can be manually linked to Auth accounts later if needed</li>
+                                <li>Try creating the Auth account again after a few moments</li>
                             </ul>
                         </div>
                     )}

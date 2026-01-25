@@ -1,23 +1,14 @@
 import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, FileText, Camera, BarChart2, Settings, LogOut, DollarSign, CheckCircle2, Calculator, Users } from 'lucide-react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-import { useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, BookOpen, FileText, Camera, BarChart2, Settings, LogOut, DollarSign, CheckCircle2, Calculator, Users, ShieldCheck, Bell } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { cn } from '../lib/cn';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { clearUserContext } from '../lib/sentry';
-import { ShieldCheck, Bell } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
 import { getNotifications, markAsRead, markAllAsRead } from '../lib/notificationService';
 import type { Notification } from '../lib/types';
 import { OfflineIndicator } from './common/OfflineIndicator';
-
-// Helper for Tailwind classes
-export function cn(...inputs: (string | undefined | null | false)[]) {
-    return twMerge(clsx(inputs));
-}
 
 interface LayoutProps {
     children: ReactNode;
@@ -51,9 +42,16 @@ export const Layout = ({ children }: LayoutProps) => {
     useEffect(() => {
         const fetchNotifications = async () => {
             if (schoolId && user) {
-                const data = await getNotifications(schoolId, user.id);
-                setNotifications(data);
-                setUnreadCount(data.filter(n => !n.read).length);
+                try {
+                    const data = await getNotifications(schoolId, user.id);
+                    setNotifications(data);
+                    setUnreadCount(data.filter(n => !n.read).length);
+                } catch (error) {
+                    // Silently fail - notifications are not critical
+                    console.warn('Failed to fetch notifications (non-critical):', error);
+                    setNotifications([]);
+                    setUnreadCount(0);
+                }
             }
         };
 
@@ -261,11 +259,16 @@ export const Layout = ({ children }: LayoutProps) => {
             </main>
 
             {/* Mobile Nav (Bottom) */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-dark-card border-t border-white/10 p-4 flex justify-around z-50 pb-safe">
-                <NavLink to="/" className={({ isActive }) => isActive ? "text-teal-500" : "text-gray-500"}><LayoutDashboard /></NavLink>
-                <NavLink to="/lessons" className={({ isActive }) => isActive ? "text-teal-500" : "text-gray-500"}><BookOpen /></NavLink>
-                <NavLink to="/exams" className={({ isActive }) => isActive ? "text-teal-500" : "text-gray-500"}><FileText /></NavLink>
-                <NavLink to="/analytics" className={({ isActive }) => isActive ? "text-teal-500" : "text-gray-500"}><BarChart2 /></NavLink>
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-dark-card border-t border-white/10 p-4 flex justify-around z-50 pb-safe overflow-x-auto">
+                {profile?.role === 'admin' && (
+                    <NavLink to="/admin" className={({ isActive }) => isActive ? "text-teal-500 flex-shrink-0" : "text-gray-500 flex-shrink-0"} title="School Admin">
+                        <ShieldCheck className="w-6 h-6" />
+                    </NavLink>
+                )}
+                <NavLink to="/" className={({ isActive }) => isActive ? "text-teal-500 flex-shrink-0" : "text-gray-500 flex-shrink-0"}><LayoutDashboard className="w-6 h-6" /></NavLink>
+                <NavLink to="/lessons" className={({ isActive }) => isActive ? "text-teal-500 flex-shrink-0" : "text-gray-500 flex-shrink-0"}><BookOpen className="w-6 h-6" /></NavLink>
+                <NavLink to="/exams" className={({ isActive }) => isActive ? "text-teal-500 flex-shrink-0" : "text-gray-500 flex-shrink-0"}><FileText className="w-6 h-6" /></NavLink>
+                <NavLink to="/analytics" className={({ isActive }) => isActive ? "text-teal-500 flex-shrink-0" : "text-gray-500 flex-shrink-0"}><BarChart2 className="w-6 h-6" /></NavLink>
             </nav>
         </div>
     );

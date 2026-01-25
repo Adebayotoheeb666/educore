@@ -26,6 +26,7 @@ import { StaffCreationModal } from '../components/StaffCreationModal';
 import { StudentCreationModal } from '../components/StudentCreationModal';
 import { SchoolSettingsModal } from '../components/SchoolSettingsModal';
 import { supabase } from '../lib/supabase';
+import { logAction } from '../lib/auditService';
 import type { ImportResult } from '../lib/bulkImportService';
 import { ToastContainer, type ToastProps } from '../components/common/Toast';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
@@ -270,6 +271,21 @@ export const AdminDashboard = () => {
                     showToast('Update failed: access denied (RLS) or record not found.', 'error');
                     return;
                 }
+                // Log the update action
+                if (schoolId && user?.id && profile?.full_name) {
+                    await logAction(
+                        schoolId,
+                        user.id,
+                        profile.full_name,
+                        'update',
+                        'subject',
+                        editingSubject.id,
+                        {
+                            name: { old: editingSubject.name, new: newSubject.name },
+                            code: { old: editingSubject.code, new: newSubject.code }
+                        }
+                    );
+                }
                 showToast('Subject updated successfully!', 'success');
             } else {
                 const { error } = await supabase.from('subjects').insert({
@@ -306,6 +322,21 @@ export const AdminDashboard = () => {
                     showToast('Update failed: access denied (RLS) or record not found.', 'error');
                     return;
                 }
+                // Log the update action
+                if (schoolId && user?.id && profile?.full_name) {
+                    await logAction(
+                        schoolId,
+                        user.id,
+                        profile.full_name,
+                        'update',
+                        'class',
+                        editingClass.id,
+                        {
+                            name: { old: editingClass.name, new: newClass.name },
+                            level: { old: editingClass.level, new: newClass.level }
+                        }
+                    );
+                }
                 showToast('Class updated successfully!', 'success');
             } else {
                 const { error } = await supabase.from('classes').insert({
@@ -339,6 +370,18 @@ export const AdminDashboard = () => {
                     if (count === 0) {
                         showToast('Delete failed: access denied (RLS) or record not found.', 'error');
                     } else {
+                        // Log the delete action
+                        if (schoolId && user?.id && profile?.full_name) {
+                            await logAction(
+                                schoolId,
+                                user.id,
+                                profile.full_name,
+                                'delete',
+                                'subject',
+                                id,
+                                { name }
+                            );
+                        }
                         showToast('Subject deleted successfully', 'success');
                         fetchData();
                     }
@@ -365,6 +408,18 @@ export const AdminDashboard = () => {
                     if (count === 0) {
                         showToast('Delete failed: access denied (RLS) or record not found.', 'error');
                     } else {
+                        // Log the delete action
+                        if (schoolId && user?.id && profile?.full_name) {
+                            await logAction(
+                                schoolId,
+                                user.id,
+                                profile.full_name,
+                                'delete',
+                                'class',
+                                id,
+                                { name }
+                            );
+                        }
                         showToast('Class deleted successfully', 'success');
                         fetchData();
                     }
@@ -391,6 +446,18 @@ export const AdminDashboard = () => {
                     if (count === 0) {
                         showToast('Delete failed: access denied (RLS) or record not found.', 'error');
                     } else {
+                        // Log the delete action
+                        if (schoolId && user?.id && profile?.full_name) {
+                            await logAction(
+                                schoolId,
+                                user.id,
+                                profile.full_name,
+                                'delete',
+                                'staff',
+                                id,
+                                { name }
+                            );
+                        }
                         showToast('Staff member deleted successfully', 'success');
                         fetchData();
                     }
@@ -417,6 +484,18 @@ export const AdminDashboard = () => {
                     if (count === 0) {
                         showToast('Delete failed: access denied (RLS) or record not found.', 'error');
                     } else {
+                        // Log the delete action
+                        if (schoolId && user?.id && profile?.full_name) {
+                            await logAction(
+                                schoolId,
+                                user.id,
+                                profile.full_name,
+                                'delete',
+                                'student',
+                                id,
+                                { name }
+                            );
+                        }
                         showToast('Student deleted successfully', 'success');
                         fetchData();
                     }
