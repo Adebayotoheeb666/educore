@@ -185,9 +185,9 @@ export function StudyPlan({ results, attendanceRate, userId }: StudyPlanProps) {
                 <h3 className="text-lg font-bold text-yellow-400">Areas to Improve</h3>
               </div>
               <ul className="space-y-2">
-                {plan.improvements.map((improvement, idx) => (
+                {plan.improvements.map((improvement) => (
                   <li
-                    key={idx}
+                    key={`improvement-${improvement}`}
                     className="p-3 bg-yellow-500/10 rounded border border-yellow-500/20 text-dark-text text-sm"
                   >
                     ⚠ {improvement}
