@@ -89,8 +89,24 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
                 });
             }
         } catch (err) {
-            console.error(err);
-            setError(err instanceof Error ? err.message : 'Failed to save staff account');
+            console.error('Staff creation error:', err);
+            let errorMessage = 'Failed to save staff account';
+
+            if (err instanceof Error) {
+                errorMessage = err.message;
+                // Provide more specific guidance for common errors
+                if (err.message.includes('Email already registered')) {
+                    errorMessage = 'Email already registered in system. Try using a different email address.';
+                } else if (err.message.includes('Invalid email')) {
+                    errorMessage = 'Invalid email format. Please provide a valid email address.';
+                } else if (err.message.includes('Not an admin')) {
+                    errorMessage = 'You do not have permission to create staff accounts. Admin access required.';
+                } else if (err.message.includes('RLS')) {
+                    errorMessage = 'Permission denied. Please ensure you have admin rights for this school.';
+                }
+            }
+
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
