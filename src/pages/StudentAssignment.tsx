@@ -106,12 +106,18 @@ export const StudentAssignment = () => {
         setProcessing(true);
         try {
             const { error } = await supabase
-                .from('users')
-                .update({ class_id: selectedClass.id })
-                .eq('id', studentId);
+                .from('student_classes')
+                .upsert({
+                    student_id: studentId,
+                    class_id: selectedClass.id,
+                    school_id: schoolId,
+                    enrollment_date: new Date().toISOString().split('T')[0],
+                    status: 'active'
+                }, { onConflict: 'student_id,class_id' });
 
             if (error) throw error;
             fetchClassStudents(selectedClass.id);
+            setShowAddModal(false);
         } catch (err) {
             alert("Failed to add student to class");
         } finally {
