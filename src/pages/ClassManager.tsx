@@ -312,10 +312,7 @@ export const ClassManager = () => {
                                         </div>
                                         <div>
                                             <div className="text-white font-bold">{s.full_name}</div>
-                                            <div className="flex items-center gap-3 text-sm text-gray-500">
-                                                <span className="font-mono">{s.admission_number}</span>
-                                                {s.class_id && <span className="bg-white/5 px-2 py-0.5 rounded text-xs">Moved from other class</span>}
-                                            </div>
+                                            <div className="text-xs text-gray-500 font-mono">{s.admission_number}</div>
                                         </div>
                                     </div>
                                     <button
