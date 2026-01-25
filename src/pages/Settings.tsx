@@ -13,17 +13,23 @@ const Toggle = ({ checked, onChange }: { checked: boolean, onChange: () => void 
 export const Settings = () => {
     const { user } = useAuth();
     const [dataSaver, setDataSaver] = useState(false);
+    const [dataSaverLoading, setDataSaverLoading] = useState(false);
     const [geminiNano, setGeminiNano] = useState(false);
+    const [geminiLoading, setGeminiLoading] = useState(false);
     const [autoSync, setAutoSync] = useState(true);
+    const [autoSyncLoading, setAutoSyncLoading] = useState(false);
     const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
     const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notificationsLoading, setNotificationsLoading] = useState(false);
 
-    const [classes, setClasses] = useState(['Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6', 'JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']);
+    const [classes, setClasses] = useState<string[]>([]);
     const [newClass, setNewClass] = useState('');
-    const [subjects, setSubjects] = useState(['Mathematics', 'English', 'Basic Science', 'Physics', 'Chemistry']);
+    const [subjects, setSubjects] = useState<string[]>([]);
     const [newSubject, setNewSubject] = useState('');
 
     useEffect(() => {
