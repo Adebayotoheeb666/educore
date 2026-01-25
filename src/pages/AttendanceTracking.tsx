@@ -127,12 +127,34 @@ export const AttendanceTracking = () => {
                 status
             }));
 
+            if (attendanceRecords.length === 0) {
+                alert("No students to mark attendance for");
+                setSaving(false);
+                return;
+            }
+
             if (getOnlineStatus()) {
-                const { error } = await supabase
+                // Check for existing records for today and delete them before inserting new ones
+                const { error: deleteError } = await supabase
+                    .from('attendance')
+                    .delete()
+                    .eq('date', today)
+                    .eq('teacher_id', user.id);
+
+                if (deleteError) {
+                    console.error('Error deleting old attendance records:', deleteError);
+                    // Continue anyway, as insert might handle duplicates
+                }
+
+                const { error: insertError } = await supabase
                     .from('attendance')
                     .insert(attendanceRecords);
 
-                if (error) throw error;
+                if (insertError) {
+                    const errorMsg = insertError.message || JSON.stringify(insertError);
+                    console.error('Attendance insert error:', { code: insertError.code, message: errorMsg, details: insertError.details });
+                    throw new Error(`Failed to save attendance: ${errorMsg}`);
+                }
             } else {
                 // Queue action for offline support
                 await queueAction('attendance', 'mark_attendance', attendanceRecords);
@@ -170,8 +192,9 @@ export const AttendanceTracking = () => {
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
         } catch (err) {
-            console.error("Error saving attendance:", err);
-            alert("Failed to save attendance");
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error("Error saving attendance:", errorMsg);
+            alert(`Failed to save attendance: ${errorMsg}`);
         } finally {
             setSaving(false);
         }
