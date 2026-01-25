@@ -305,44 +305,93 @@ export const Dashboard = () => {
             {/* Recent Attendance */}
             <div>
                 <div className="flex items-center justify-between mb-6 pt-4">
-                    <h2 className="text-xl font-bold text-white">Recent Attendance</h2>
+                    <h2 className="text-xl font-bold text-white">Attendance Summary</h2>
                     <NavLink to="/attendance" className="text-teal-500 text-sm font-bold hover:text-teal-400">
                         View All →
                     </NavLink>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-4">
                     {loading ? (
                         <div className="text-center py-8 text-gray-500">Loading attendance...</div>
                     ) : attendanceRecords.length > 0 ? (
-                        attendanceRecords.slice(0, 5).map((record: any, idx: number) => {
-                            // Try to get class name from loaded classStats, fallback to class_id
-                            const classInfo = classStats.find(c => c.classId === record.class_id);
-                            const className = classInfo?.className || `Class ${record.class_id?.substring(0, 8)}` || 'Class';
-                            const studentId = record.student_id?.substring(0, 8) || record.student_id;
-                            const recordDate = new Date(record.date).toLocaleDateString();
+                        (() => {
+                            // Group records by date and show summaries
+                            const recordsByDate = new Map<string, any[]>();
+                            attendanceRecords.forEach(record => {
+                                if (!recordsByDate.has(record.date)) {
+                                    recordsByDate.set(record.date, []);
+                                }
+                                recordsByDate.get(record.date)!.push(record);
+                            });
 
-                            return (
-                                <div key={idx} className="bg-dark-card border border-white/5 rounded-xl p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
-                                    <div className="flex items-center gap-3 flex-1">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${record.status === 'present' ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}>
-                                            {record.status === 'present' ? (
-                                                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                                            ) : (
-                                                <XCircle className="w-5 h-5 text-red-500" />
+                            // Get unique dates sorted by most recent
+                            const uniqueDates = Array.from(recordsByDate.keys()).sort().reverse().slice(0, 5);
+
+                            return uniqueDates.map((date) => {
+                                const recordsForDate = recordsByDate.get(date) || [];
+                                const present = recordsForDate.filter(r => r.status === 'present').length;
+                                const absent = recordsForDate.filter(r => r.status === 'absent').length;
+                                const total = recordsForDate.length;
+                                const displayDate = new Date(date).toLocaleDateString('en-NG', { weekday: 'short', month: 'short', day: 'numeric' });
+
+                                return (
+                                    <div key={date} className="bg-dark-card border border-white/5 rounded-2xl p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h3 className="text-white font-bold text-lg">{displayDate}</h3>
+                                                <p className="text-gray-400 text-sm">{total} students marked</p>
+                                            </div>
+                                            <button
+                                                onClick={() => exportAttendanceForDate(date)}
+                                                className="flex items-center gap-2 px-4 py-2 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 rounded-lg text-sm font-bold transition-colors"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                                Export
+                                            </button>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-3 mb-4">
+                                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                                                <p className="text-emerald-400 text-xs font-bold uppercase mb-1">Present</p>
+                                                <p className="text-white text-2xl font-bold">{present}</p>
+                                            </div>
+                                            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                                                <p className="text-red-400 text-xs font-bold uppercase mb-1">Absent</p>
+                                                <p className="text-white text-2xl font-bold">{absent}</p>
+                                            </div>
+                                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
+                                                <p className="text-blue-400 text-xs font-bold uppercase mb-1">Total</p>
+                                                <p className="text-white text-2xl font-bold">{total}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            {recordsForDate.slice(0, 3).map((record: any, idx: number) => (
+                                                <div key={idx} className="flex items-center justify-between p-2 bg-white/[0.02] rounded-lg">
+                                                    <div className="flex items-center gap-2 flex-1">
+                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${record.status === 'present' ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}>
+                                                            {record.status === 'present' ? (
+                                                                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                                            ) : (
+                                                                <XCircle className="w-4 h-4 text-red-500" />
+                                                            )}
+                                                        </div>
+                                                        <p className="text-white text-sm font-semibold">{record.student_name}</p>
+                                                    </div>
+                                                    <span className={`text-xs font-bold px-2 py-1 rounded ${record.status === 'present' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                        {record.status === 'present' ? 'Present' : 'Absent'}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            {recordsForDate.length > 3 && (
+                                                <p className="text-gray-400 text-xs pt-2">+{recordsForDate.length - 3} more students</p>
                                             )}
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="text-white font-semibold text-sm">Student {studentId}</p>
-                                            <p className="text-gray-500 text-xs">{className} • {recordDate}</p>
-                                        </div>
                                     </div>
-                                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${record.status === 'present' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                                        {record.status === 'present' ? 'Present' : 'Absent'}
-                                    </span>
-                                </div>
-                            );
-                        })
+                                );
+                            });
+                        })()
                     ) : (
                         <div className="text-center py-8 text-gray-500">
                             <p>No attendance records yet.</p>
