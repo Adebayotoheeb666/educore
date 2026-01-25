@@ -521,6 +521,23 @@ export const AdminDashboard = () => {
         );
     }
 
+    // Student Creation Modal
+    if (showStudentCreation) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <StudentCreationModal
+                    initialData={editingStudent}
+                    user={user}
+                    profile={profile}
+                    schoolId={schoolId}
+                    classes={classes}
+                    onSuccess={() => { fetchData(); setShowStudentCreation(false); setEditingStudent(null); }}
+                    onClose={() => { setShowStudentCreation(false); setEditingStudent(null); }}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-8">
             {/* Subject Creation Modal */}
