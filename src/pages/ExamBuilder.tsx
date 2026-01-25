@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Upload, CheckSquare, Trash2, AlertCircle, Download } from 'lucide-react';
-import { cn } from '../components/Layout';
+import { cn } from '../lib/cn';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
