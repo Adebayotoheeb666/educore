@@ -92,27 +92,34 @@ export const Dashboard = () => {
                         console.log('[Dashboard] No assignments found for this staff');
                     }
 
-                    // Fetch recent attendance records
+                    // Fetch recent attendance records (non-blocking)
                     const classIdList = [...new Set(assignments.map(a => a.class_id))];
                     if (classIdList.length > 0) {
-                        const { data: attendance, error: attendError } = await supabase
-                            .from('attendance')
-                            .select('id, date, status, student_id, class_id, school_id, users(full_name), classes(name)')
-                            .in('class_id', classIdList)
-                            .eq('school_id', schoolId)
-                            .order('date', { ascending: false })
-                            .limit(10);
+                        try {
+                            const { data: attendance, error: attendError } = await supabase
+                                .from('attendance')
+                                .select('id, date, status, student_id, class_id, school_id, users(full_name), classes(name)')
+                                .in('class_id', classIdList)
+                                .eq('school_id', schoolId)
+                                .order('date', { ascending: false })
+                                .limit(10);
 
-                        if (!attendError && attendance) {
-                            setAttendanceRecords(attendance);
-                            console.log('[Dashboard] Attendance records loaded:', attendance.length);
-                        } else if (attendError) {
-                            console.error('[Dashboard] Error fetching attendance:', {
-                                message: attendError.message,
-                                details: attendError.details,
-                                hint: attendError.hint,
-                                code: attendError.code
-                            });
+                            if (!attendError && attendance) {
+                                setAttendanceRecords(attendance);
+                                console.log('[Dashboard] Attendance records loaded:', attendance.length);
+                            } else if (attendError) {
+                                console.warn('[Dashboard] Attendance fetch warning:', {
+                                    message: attendError.message,
+                                    details: attendError.details,
+                                    hint: attendError.hint,
+                                    code: attendError.code
+                                });
+                                // Don't fail - just show no records
+                                setAttendanceRecords([]);
+                            }
+                        } catch (attendanceErr) {
+                            console.warn('[Dashboard] Attendance fetch exception:', attendanceErr);
+                            setAttendanceRecords([]);
                         }
                     }
                 } else {
