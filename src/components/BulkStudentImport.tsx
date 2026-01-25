@@ -325,7 +325,7 @@ export const BulkStudentImport = ({ onSuccess, onClose, user: propUser, profile:
                         <p className="text-red-300 font-bold mb-3">Errors ({result.errors.length})</p>
                         <div className="space-y-2 text-sm text-red-200/80">
                             {result.errors.slice(0, 5).map((err: any, idx: number) => (
-                                <p key={idx}>
+                                <p key={`error-row-${err.row}-${idx}`}>
                                     <span className="font-mono">Row {err.row}</span>: {err.error}
                                 </p>
                             ))}
