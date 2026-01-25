@@ -322,6 +322,21 @@ export const AdminDashboard = () => {
                     showToast('Update failed: access denied (RLS) or record not found.', 'error');
                     return;
                 }
+                // Log the update action
+                if (schoolId && user?.id && profile?.full_name) {
+                    await logAction(
+                        schoolId,
+                        user.id,
+                        profile.full_name,
+                        'update',
+                        'class',
+                        editingClass.id,
+                        {
+                            name: { old: editingClass.name, new: newClass.name },
+                            level: { old: editingClass.level, new: newClass.level }
+                        }
+                    );
+                }
                 showToast('Class updated successfully!', 'success');
             } else {
                 const { error } = await supabase.from('classes').insert({
