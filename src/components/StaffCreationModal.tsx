@@ -85,7 +85,8 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
                 const result = await createStaffAccount(schoolId, user.id, formData);
                 setCreatedCredentials({
                     staffId: result.staffId,
-                    message: result.message
+                    message: result.message,
+                    warning: result.warning
                 });
             }
         } catch (err) {
