@@ -175,16 +175,20 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
     // 3. Migrate Related Records
     if (placeholder.id) {
         // Migrate Classes (Students)
-        if (role === 'student') {
-            const { error: classError } = await supabase
-                .from('student_classes')
-                .update({ student_id: authUid })
-                .eq('student_id', placeholder.id);
+                if (role === 'student') {
+                    const { error: classError } = await supabase
+                        .from('student_classes')
+                        .update({ student_id: authUid })
+                        .eq('student_id', placeholder.id);
 
-            if (classError) {
-                console.warn("Student class migration warning:", classError);
-            }
-        }
+                    if (classError) {
+                        console.warn("Student class migration warning:", {
+                            message: classError.message,
+                            code: classError.code,
+                            details: classError.details
+                        });
+                    }
+                }
 
         // Migrate Staff Assignments (if teacher) using RPC for secure migration
         if (role === 'staff') {
