@@ -331,19 +331,12 @@ export const Settings = () => {
                             </div>
                             <p className="text-gray-500 text-xs w-48">Generate lesson notes without internet using on-device processing.</p>
                         </div>
-                        <button
-                            onClick={handleToggleGeminiNano}
+                        <Toggle
+                            checked={geminiNano}
+                            onChange={handleToggleGeminiNano}
                             disabled={geminiLoading}
-                            className="transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {geminiLoading ? (
-                                <div className="w-12 h-12 flex items-center justify-center">
-                                    <div className="w-4 h-4 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin"></div>
-                                </div>
-                            ) : (
-                                <Toggle checked={geminiNano} onChange={() => { }} />
-                            )}
-                        </button>
+                            isLoading={geminiLoading}
+                        />
                     </div>
 
                     <div className="bg-dark-card border border-white/5 p-4 rounded-2xl flex justify-between items-center">
