@@ -742,20 +742,20 @@ export const AdminDashboard = () => {
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
                                     {activeTab === 'staff' && filterStaff(staff).map(u => (
-                                        <tr key={u.id} className="group hover:bg-white/5 transition-colors">
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400 font-bold">{u.fullName?.charAt(0) || 'U'}</div>
-                                                    <div>
-                                                        <div className="text-white font-medium">{u.fullName}</div>
-                                                        <div className="text-xs text-gray-500 capitalize">{u.role}</div>
+                                        <tr key={u.id} className="group hover:bg-white/5 transition-colors border-b border-white/5">
+                                            <td className="py-3 md:py-4 px-2 md:px-4">
+                                                <div className="flex items-center gap-2 md:gap-3">
+                                                    <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400 font-bold text-sm">{u.fullName?.charAt(0) || 'U'}</div>
+                                                    <div className="min-w-0">
+                                                        <div className="text-white font-medium text-sm md:text-base truncate">{u.fullName}</div>
+                                                        <div className="text-xs text-gray-500 capitalize hidden sm:block">{u.role}</div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-4 text-gray-400 font-mono text-sm">{u.staffId || 'N/A'}</td>
-                                            <td className="py-4 px-4 text-gray-400 text-sm">{u.email}</td>
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-2">
+                                            <td className="py-3 md:py-4 px-2 md:px-4 text-gray-400 font-mono text-xs md:text-sm hidden sm:table-cell">{u.staffId || 'N/A'}</td>
+                                            <td className="py-3 md:py-4 px-2 md:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell truncate">{u.email}</td>
+                                            <td className="py-3 md:py-4 px-2 md:px-4">
+                                                <div className="flex items-center gap-1 md:gap-2 flex-wrap justify-end md:justify-start">
                                                     <button
                                                         onClick={() => {
                                                             setEditingStaff({
@@ -771,16 +771,16 @@ export const AdminDashboard = () => {
                                                         className="p-2 hover:bg-teal-500/10 rounded-lg text-gray-500 hover:text-teal-400 transition-colors"
                                                         title="Edit Staff"
                                                     >
-                                                        <Edit2 className="w-4 h-4" />
+                                                        <Edit2 className="w-3 md:w-4 h-3 md:h-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteStaff(u.id, u.fullName || u.email)}
                                                         className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
                                                         title="Delete Staff"
                                                     >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <Trash2 className="w-3 md:w-4 h-3 md:h-4" />
                                                     </button>
-                                                    <button onClick={() => setSelectedStaffForAssignment({ id: u.id, name: u.fullName })} className="px-4 py-2 bg-teal-600/20 hover:bg-teal-600/40 text-teal-400 rounded-lg transition-colors text-sm font-bold">Assign</button>
+                                                    <button onClick={() => setSelectedStaffForAssignment({ id: u.id, name: u.fullName })} className="px-2 md:px-4 py-1 md:py-2 bg-teal-600/20 hover:bg-teal-600/40 text-teal-400 rounded-lg transition-colors text-xs md:text-sm font-bold whitespace-nowrap">Assign</button>
                                                 </div>
                                             </td>
                                         </tr>
