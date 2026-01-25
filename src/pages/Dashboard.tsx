@@ -264,8 +264,10 @@ export const Dashboard = () => {
                         <div className="text-center py-8 text-gray-500">Loading attendance...</div>
                     ) : attendanceRecords.length > 0 ? (
                         attendanceRecords.slice(0, 5).map((record: any, idx: number) => {
-                            const studentName = (record.users?.full_name || record.student_id || 'Unknown Student').toString();
-                            const className = (record.classes?.name || 'Class').toString();
+                            // Try to get class name from loaded classStats, fallback to class_id
+                            const classInfo = classStats.find(c => c.classId === record.class_id);
+                            const className = classInfo?.className || `Class ${record.class_id?.substring(0, 8)}` || 'Class';
+                            const studentId = record.student_id?.substring(0, 8) || record.student_id;
                             const recordDate = new Date(record.date).toLocaleDateString();
 
                             return (
@@ -279,7 +281,7 @@ export const Dashboard = () => {
                                             )}
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-white font-semibold text-sm">{studentName}</p>
+                                            <p className="text-white font-semibold text-sm">Student {studentId}</p>
                                             <p className="text-gray-500 text-xs">{className} • {recordDate}</p>
                                         </div>
                                     </div>
