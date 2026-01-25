@@ -946,7 +946,7 @@ export const AdminDashboard = () => {
                                 (activeTab === 'students' && students.length === 0) ||
                                 (activeTab === 'classes' && classes.length === 0) ||
                                 (activeTab === 'subjects' && subjects.length === 0)) && (
-                                    <div className="text-center py-20 text-gray-500">No records found in this category.</div>
+                                    <div className="text-center py-12 sm:py-20 text-gray-500 text-sm sm:text-base px-4">No records found in this category.</div>
                                 )}
                         </div>
                     )}
