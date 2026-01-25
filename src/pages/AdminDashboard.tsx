@@ -796,7 +796,33 @@ export const AdminDashboard = () => {
                                             <td className="py-4 px-4 text-gray-400 font-mono text-sm">{u.admissionNumber}</td>
                                             <td className="py-4 px-4 text-gray-400 text-sm">{u.classId || 'Not Assigned'}</td>
                                             <td className="py-4 px-4">
-                                                <button onClick={() => setSelectedStudentForLinking({ id: u.id, name: u.fullName })} className="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-colors text-sm font-bold">Link Parents</button>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingStudent({
+                                                                id: u.id,
+                                                                fullName: u.fullName,
+                                                                email: u.email,
+                                                                admissionNumber: u.admissionNumber,
+                                                                phoneNumber: u.phoneNumber,
+                                                                classId: u.classId
+                                                            });
+                                                            setShowStudentCreation(true);
+                                                        }}
+                                                        className="p-2 hover:bg-emerald-500/10 rounded-lg text-gray-500 hover:text-emerald-400 transition-colors"
+                                                        title="Edit Student"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteStudent(u.id, u.fullName || u.email)}
+                                                        className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+                                                        title="Delete Student"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => setSelectedStudentForLinking({ id: u.id, name: u.fullName })} className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-colors text-xs sm:text-sm font-bold whitespace-nowrap">Link Parents</button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
