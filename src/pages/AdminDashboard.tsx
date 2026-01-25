@@ -178,7 +178,9 @@ export const AdminDashboard = () => {
                 .eq('school_id', schoolId);
 
             if (classError) throw classError;
-            setClasses(classData || []);
+            // Deduplicate classes by ID
+            const uniqueClasses = Array.from(new Map((classData || []).map(c => [c.id, c])).values());
+            setClasses(uniqueClasses);
 
             // Fetch Subjects
             const { data: subjectData, error: subjectError } = await supabase
@@ -187,7 +189,9 @@ export const AdminDashboard = () => {
                 .eq('school_id', schoolId);
 
             if (subjectError) throw subjectError;
-            setSubjects(subjectData || []);
+            // Deduplicate subjects by ID
+            const uniqueSubjects = Array.from(new Map((subjectData || []).map(s => [s.id, s])).values());
+            setSubjects(uniqueSubjects);
 
             // Fetch Financials
             const { data: transData, error: transError } = await supabase
