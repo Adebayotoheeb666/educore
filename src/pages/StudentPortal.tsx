@@ -397,8 +397,8 @@ export const StudentPortal = () => {
                                     </p>
                                 </div>
                             )}
-                            {chatMessages.map((msg, i) => (
-                                <div key={i} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
+                            {chatMessages.map((msg) => (
+                                <div key={msg.id} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
                                     <div className={cn(
                                         "max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed",
                                         msg.role === 'user' ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white/5 text-gray-200 rounded-tl-none border border-white/5"
