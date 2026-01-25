@@ -344,19 +344,12 @@ export const Settings = () => {
                             <div className="text-white font-bold mb-1">Auto-sync on Wi-Fi</div>
                             <p className="text-gray-500 text-xs w-48">Background data upload only when connected to unlimited networks.</p>
                         </div>
-                        <button
-                            onClick={handleToggleAutoSync}
+                        <Toggle
+                            checked={autoSync}
+                            onChange={handleToggleAutoSync}
                             disabled={autoSyncLoading}
-                            className="transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {autoSyncLoading ? (
-                                <div className="w-12 h-12 flex items-center justify-center">
-                                    <div className="w-4 h-4 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin"></div>
-                                </div>
-                            ) : (
-                                <Toggle checked={autoSync} onChange={() => { }} />
-                            )}
-                        </button>
+                            isLoading={autoSyncLoading}
+                        />
                     </div>
                 </div>
             </section>
