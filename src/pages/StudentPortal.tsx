@@ -55,7 +55,7 @@ export const StudentPortal = () => {
 
     // AI Study Assistant States
     const [isChatOpen, setIsChatOpen] = useState(false);
-    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
+    const [chatMessages, setChatMessages] = useState<{ id: string; role: 'user' | 'model', content: string }[]>([]);
     const [inputMessage, setInputMessage] = useState('');
     const [isChatting, setIsChatting] = useState(false);
 
