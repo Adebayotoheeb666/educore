@@ -726,14 +726,14 @@ export const AdminDashboard = () => {
                     </div>
                 </div>
 
-                <div className="p-4 sm:p-6 md:p-8">
+                <div className="p-0">
                     {loading ? (
                         <div className="flex items-center justify-center py-12 sm:py-20">
                             <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                         </div>
                     ) : (
-                        <div className="overflow-x-auto -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
-                            <table className="w-full text-left text-sm md:text-base">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm md:text-base min-w-max md:min-w-full">
                                 <thead>
                                     <tr className="text-gray-500 text-xs md:text-sm uppercase tracking-wider font-bold">
                                         <th className="pb-4 px-2 md:px-4">Name/Title</th>
