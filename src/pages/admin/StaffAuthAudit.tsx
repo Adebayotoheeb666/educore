@@ -323,7 +323,7 @@ export const StaffAuthAudit = () => {
             <div className="mt-3 space-y-2 text-sm">
               <p className="font-medium text-gray-300">Errors:</p>
               {results.errors.map((err, i) => (
-                <div key={i} className="text-red-400 text-xs">
+                <div key={`${err.staffName}-${err.error}-${i}`} className="text-red-400 text-xs">
                   • {err.staffName}: {err.error}
                 </div>
               ))}
