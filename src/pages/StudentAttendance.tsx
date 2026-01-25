@@ -3,7 +3,7 @@ import { Calendar as CalendarIcon, CheckCircle2, XCircle, ArrowLeft, ChevronLeft
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
-import { cn } from '../components/Layout';
+import { cn } from '../lib/cn';
 
 interface AttendanceRecord {
     id: string;
