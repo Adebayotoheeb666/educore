@@ -191,26 +191,26 @@ export const TermManagement = () => {
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {terms.map(term => (
                         <div
                             key={term.id}
-                            className={`bg-dark-card border rounded-2xl p-6 transition-all ${term.isActive
+                            className={`bg-dark-card border rounded-2xl p-4 md:p-6 transition-all ${term.isActive
                                 ? 'border-teal-500/50 bg-teal-500/5'
                                 : 'border-white/5 hover:border-white/10'
                                 }`}
                         >
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-bold text-white mb-1">{term.name}</h3>
+                            <div className="flex items-start justify-between mb-4 gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-base md:text-lg font-bold text-white mb-1 truncate">{term.name}</h3>
                                     {term.isActive && (
                                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-teal-500/20 text-teal-400 text-xs font-bold rounded">
-                                            <CheckCircle2 className="w-3 h-3" />
-                                            Active
+                                            <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
+                                            <span className="hidden sm:inline">Active</span>
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-1 flex-shrink-0">
                                     <button
                                         onClick={() => handleEdit(term)}
                                         className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
@@ -226,17 +226,17 @@ export const TermManagement = () => {
                                 </div>
                             </div>
 
-                            <div className="space-y-2 text-sm mb-4">
+                            <div className="space-y-2 text-xs md:text-sm mb-4">
                                 <div className="flex items-center gap-2 text-gray-400">
-                                    <Calendar className="w-4 h-4" />
-                                    <span>{new Date(term.startDate).toLocaleDateString()} - {new Date(term.endDate).toLocaleDateString()}</span>
+                                    <Calendar className="w-3 md:w-4 h-3 md:h-4 flex-shrink-0" />
+                                    <span className="truncate">{new Date(term.startDate).toLocaleDateString()} - {new Date(term.endDate).toLocaleDateString()}</span>
                                 </div>
                             </div>
 
                             {!term.isActive && (
                                 <button
                                     onClick={() => handleSetActive(term.id)}
-                                    className="w-full px-4 py-2 bg-teal-600/20 hover:bg-teal-600/30 text-teal-400 rounded-lg transition-colors text-sm font-bold"
+                                    className="w-full px-4 py-2 bg-teal-600/20 hover:bg-teal-600/30 text-teal-400 rounded-lg transition-colors text-xs md:text-sm font-bold"
                                 >
                                     Set as Active Term
                                 </button>
