@@ -67,6 +67,24 @@ export const StudentCreationModal = ({ onClose, onSuccess, initialData, classes 
                     .eq('id', initialData.id);
 
                 if (updateError) throw updateError;
+
+                // Log the update action
+                if (schoolId && user?.id) {
+                    await logAction(
+                        schoolId,
+                        user.id,
+                        user.email || 'Unknown',
+                        'update',
+                        'student',
+                        initialData.id,
+                        {
+                            full_name: { old: initialData.fullName, new: formData.fullName },
+                            email: { old: initialData.email, new: formData.email },
+                            phone_number: { old: initialData.phoneNumber, new: formData.phoneNumber }
+                        }
+                    );
+                }
+
                 onSuccess();
             } else {
                 // CREATE flow
