@@ -69,9 +69,14 @@ export const checkConnection = async (): Promise<boolean> => {
 
 const startHeartbeat = () => {
     setInterval(async () => {
-        const status = await checkConnection();
-        if (status !== isOnline) {
-            status ? handleOnline() : handleOffline();
+        try {
+            const status = await checkConnection();
+            if (status !== isOnline) {
+                status ? handleOnline() : handleOffline();
+            }
+        } catch (error) {
+            // Silently handle errors in heartbeat to prevent console spam
+            console.debug('Heartbeat check error:', error);
         }
     }, 10000); // Check every 10 seconds
 };
