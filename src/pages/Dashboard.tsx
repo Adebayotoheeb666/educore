@@ -97,8 +97,9 @@ export const Dashboard = () => {
                     if (classIdList.length > 0) {
                         const { data: attendance, error: attendError } = await supabase
                             .from('attendance')
-                            .select('*, users(full_name), classes(name)')
+                            .select('id, date, status, student_id, class_id, school_id, users(full_name), classes(name)')
                             .in('class_id', classIdList)
+                            .eq('school_id', schoolId)
                             .order('date', { ascending: false })
                             .limit(10);
 
@@ -106,7 +107,12 @@ export const Dashboard = () => {
                             setAttendanceRecords(attendance);
                             console.log('[Dashboard] Attendance records loaded:', attendance.length);
                         } else if (attendError) {
-                            console.error('[Dashboard] Error fetching attendance:', attendError);
+                            console.error('[Dashboard] Error fetching attendance:', {
+                                message: attendError.message,
+                                details: attendError.details,
+                                hint: attendError.hint,
+                                code: attendError.code
+                            });
                         }
                     }
                 } else {
