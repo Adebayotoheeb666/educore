@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, AlertCircle, CheckCircle2, Plus, Trash2, X, UserPlus } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle2, Plus, Trash2, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { ParentCreationModal } from './ParentCreationModal';
