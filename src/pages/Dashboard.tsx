@@ -133,7 +133,11 @@ export const Dashboard = () => {
                         setClassStats(uniqueStats);
                         console.log('[Dashboard] Staff assignments loaded:', uniqueStats.length);
                     } else if (!assignError) {
-                        console.log('[Dashboard] No assignments found for this staff');
+                        console.log('[Dashboard] No assignments found for this staff', {
+                            userId: user.id,
+                            schoolId: schoolId,
+                            note: 'If you recently created this staff account, check the browser console for any RPC migration warnings'
+                        });
                     }
 
                     // Fetch recent attendance records with student names
