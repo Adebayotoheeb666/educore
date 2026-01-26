@@ -137,7 +137,13 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         .maybeSingle();
 
     if (error || !placeholder) {
-        console.warn("No placeholder profile found to link. Creating fresh profile.");
+        console.warn("No placeholder profile found to link. Creating fresh profile.", {
+            searchError: error?.message,
+            schoolId,
+            idField,
+            identifier,
+            role
+        });
         // Create fresh profile if missing with all required fields
         const freshProfile: any = {
             id: authUid,
