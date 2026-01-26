@@ -68,6 +68,13 @@ export const Dashboard = () => {
                 console.log('[Dashboard] No user, skipping fetch');
                 return;
             }
+
+            // Check if profile is loaded
+            if (authLoading) {
+                console.log('[Dashboard] Auth still loading, skipping fetch');
+                return;
+            }
+
             try {
                 // Fetch pending grades
                 const { count, error } = await supabase
