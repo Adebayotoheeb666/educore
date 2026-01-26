@@ -136,8 +136,25 @@ export const Dashboard = () => {
                         console.log('[Dashboard] No assignments found for this staff', {
                             userId: user.id,
                             schoolId: schoolId,
-                            note: 'If you recently created this staff account, check the browser console for any RPC migration warnings'
+                            note: 'If you recently created this staff account, the assignments may not have been migrated. Check browser console logs during login.'
                         });
+
+                        // Debug: Try to fetch any assignments that might be linked to other user IDs
+                        if (profile?.schoolId) {
+                            try {
+                                const { data: allStaffAssignments } = await supabase
+                                    .from('staff_assignments')
+                                    .select('staff_id, class_id')
+                                    .eq('school_id', profile.schoolId)
+                                    .limit(5);
+
+                                if (allStaffAssignments && allStaffAssignments.length > 0) {
+                                    console.log('[Dashboard] Sample of staff assignments in system:', allStaffAssignments);
+                                }
+                            } catch (debugErr) {
+                                console.log('[Dashboard] Debug query error:', debugErr);
+                            }
+                        }
                     }
 
                     // Fetch recent attendance records with student names
