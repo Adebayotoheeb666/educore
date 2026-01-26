@@ -196,7 +196,7 @@ export const Dashboard = () => {
         };
 
         fetchData();
-    }, [user, schoolId]);
+    }, [user, schoolId, authLoading]);
 
     return (
         <div className="space-y-8 pb-20">
