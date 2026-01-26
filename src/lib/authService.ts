@@ -191,34 +191,46 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                     schoolId
                 });
 
-                const { error: assignmentError } = await supabase
-                    .from('staff_assignments')
-                    .update({ staff_id: authUid })
+                // Step 1: Find all other user profiles with the same staff_id (text identifier)
+                // These are the old placeholder profiles
+                const { data: placeholderProfiles, error: findError } = await supabase
+                    .from('users')
+                    .select('id')
                     .eq('school_id', schoolId)
-                    .eq('staff_id_identifier', identifier);
+                    .eq('staff_id', identifier)
+                    .neq('id', authUid);
 
-                if (assignmentError) {
-                    // Try alternative approach - fetch by staff table and migrate
-                    console.warn("Direct migration by identifier failed, trying alternative approach:", assignmentError);
-                    const { data: otherProfiles } = await supabase
-                        .from('users')
-                        .select('id')
-                        .eq('school_id', schoolId)
-                        .eq('staff_id', identifier)
-                        .neq('id', authUid);
+                if (findError) {
+                    console.warn("Error finding placeholder profiles:", findError);
+                } else if (placeholderProfiles && placeholderProfiles.length > 0) {
+                    console.log('[linkProfileAfterActivation] Found placeholder profiles:', {
+                        count: placeholderProfiles.length,
+                        ids: placeholderProfiles.map(p => p.id)
+                    });
 
-                    if (otherProfiles && otherProfiles.length > 0) {
-                        for (const profile of otherProfiles) {
-                            await supabase
-                                .from('staff_assignments')
-                                .update({ staff_id: authUid })
-                                .eq('staff_id', profile.id)
-                                .eq('school_id', schoolId);
+                    // Step 2: Migrate assignments from each placeholder profile to the new auth profile
+                    for (const placeholder of placeholderProfiles) {
+                        const { error: updateError, count } = await supabase
+                            .from('staff_assignments')
+                            .update({ staff_id: authUid })
+                            .eq('staff_id', placeholder.id)
+                            .eq('school_id', schoolId)
+                            .select('id', { count: 'exact' });
+
+                        if (updateError) {
+                            console.error('Failed to migrate assignments from placeholder:', {
+                                placeholderId: placeholder.id,
+                                error: updateError
+                            });
+                        } else {
+                            console.log('✅ Migrated assignments from placeholder:', {
+                                placeholderId: placeholder.id,
+                                assignmentsMigrated: count || 0
+                            });
                         }
-                        console.log('✅ Staff assignments migrated successfully from old profiles');
                     }
                 } else {
-                    console.log('✅ Staff assignments migrated successfully');
+                    console.log('[linkProfileAfterActivation] No placeholder profiles found for staff_id:', identifier);
                 }
             } catch (migrationErr) {
                 console.error('Assignment migration error for fresh profile:', migrationErr);
