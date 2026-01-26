@@ -42,9 +42,15 @@ export const Layout = ({ children }: LayoutProps) => {
     useEffect(() => {
         const fetchNotifications = async () => {
             if (schoolId && user) {
-                const data = await getNotifications(schoolId, user.id);
-                setNotifications(data);
-                setUnreadCount(data.filter(n => !n.read).length);
+                try {
+                    const data = await getNotifications(schoolId, user.id);
+                    setNotifications(data);
+                    setUnreadCount(data.filter(n => !n.read).length);
+                } catch (error) {
+                    console.error('Error fetching notifications:', error);
+                    // Silently fail - notifications are not critical to app functionality
+                    // Keep previous notifications if fetch fails
+                }
             }
         };
 
