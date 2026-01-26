@@ -175,7 +175,11 @@ export const Dashboard = () => {
                         }
                     }
                 } else {
-                    console.warn('[Dashboard] schoolId not available');
+                    console.warn('[Dashboard] schoolId not available', {
+                        userRole: role,
+                        profileSchoolId: profile?.schoolId,
+                        userId: user?.id
+                    });
                 }
             } catch (err) {
                 console.error('[Dashboard] Error fetching dashboard data:', err);
