@@ -191,47 +191,89 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                     schoolId
                 });
 
-                // Step 1: Find all other user profiles with the same staff_id (text identifier)
-                // These are the old placeholder profiles
-                const { data: placeholderProfiles, error: findError } = await supabase
-                    .from('users')
-                    .select('id')
-                    .eq('school_id', schoolId)
-                    .eq('staff_id', identifier)
-                    .neq('id', authUid);
+                // IMPORTANT FIX: Query assignments directly by staff_id identifier (text), not by user profile UUID
+            // The assignments might exist for this staff even if no user profile with matching staff_id exists
+            console.log('[linkProfileAfterActivation] Looking for assignments with staff_id identifier:', identifier);
 
-                if (findError) {
-                    console.warn("Error finding placeholder profiles:", findError);
-                } else if (placeholderProfiles && placeholderProfiles.length > 0) {
-                    console.log('[linkProfileAfterActivation] Found placeholder profiles:', {
-                        count: placeholderProfiles.length,
-                        ids: placeholderProfiles.map(p => p.id)
+            // First, check if any assignments exist for ANY user with the same text staff_id identifier
+            // This is important because admin may have created assignments before staff's first login
+            const { data: usersWithStaffId, error: findUsersError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('school_id', schoolId)
+                .eq('staff_id', identifier)
+                .neq('id', authUid);
+
+            if (findUsersError) {
+                console.warn('[linkProfileAfterActivation] Error finding users by staff_id:', findUsersError);
+            }
+
+            const oldUserIds = usersWithStaffId?.map(u => u.id) || [];
+            console.log('[linkProfileAfterActivation] Found old user IDs with this staff_id:', oldUserIds);
+
+            // Find ALL assignments for this school that are linked to any of the old UUIDs
+            if (oldUserIds.length > 0) {
+                console.log('[linkProfileAfterActivation] Checking for assignments linked to old UUIDs...');
+
+                const { data: oldAssignments, count: assignmentCount, error: checkError } = await supabase
+                    .from('staff_assignments')
+                    .select('id, staff_id', { count: 'exact' })
+                    .eq('school_id', schoolId)
+                    .in('staff_id', oldUserIds);
+
+                if (!checkError && oldAssignments) {
+                    console.log('[linkProfileAfterActivation] Found assignments to migrate:', {
+                        count: assignmentCount,
+                        assignmentIds: oldAssignments.map(a => a.id),
+                        oldStaffIds: oldAssignments.map(a => a.staff_id)
                     });
 
-                    // Step 2: Migrate assignments from each placeholder profile to the new auth profile
-                    for (const placeholder of placeholderProfiles) {
-                        const { error: updateError, count } = await supabase
+                    if (assignmentCount && assignmentCount > 0) {
+                        // Migrate all assignments from old UUIDs to the new auth UUID
+                        const { error: migrateError, count: migratedCount } = await supabase
                             .from('staff_assignments')
                             .update({ staff_id: authUid })
-                            .eq('staff_id', placeholder.id)
+                            .in('staff_id', oldUserIds)
                             .eq('school_id', schoolId)
                             .select('id', { count: 'exact' });
 
-                        if (updateError) {
-                            console.error('Failed to migrate assignments from placeholder:', {
-                                placeholderId: placeholder.id,
-                                error: updateError
-                            });
+                        if (migrateError) {
+                            console.error('[linkProfileAfterActivation] Failed to migrate assignments:', migrateError);
                         } else {
-                            console.log('✅ Migrated assignments from placeholder:', {
-                                placeholderId: placeholder.id,
-                                assignmentsMigrated: count || 0
+                            assignmentsMigrated = migratedCount || 0;
+                            console.log('✅ Successfully migrated assignments to new profile:', {
+                                migratedCount: assignmentsMigrated,
+                                newStaffId: authUid
                             });
+                            migrationSucceeded = true;
                         }
+
+                        // Now delete the old user profiles since assignments are migrated
+                        console.log('[linkProfileAfterActivation] Deleting old user profiles with staff_id:', identifier);
+                        for (const oldUserId of oldUserIds) {
+                            const { error: deleteError } = await supabase
+                                .from('users')
+                                .delete()
+                                .eq('id', oldUserId);
+
+                            if (deleteError) {
+                                console.warn('[linkProfileAfterActivation] Failed to delete old profile:', {
+                                    oldUserId,
+                                    error: deleteError
+                                });
+                            } else {
+                                console.log('✅ Deleted old profile:', oldUserId);
+                            }
+                        }
+                    } else {
+                        console.log('[linkProfileAfterActivation] No assignments found for old user UUIDs');
                     }
                 } else {
-                    console.log('[linkProfileAfterActivation] No placeholder profiles found for staff_id:', identifier);
+                    console.warn('[linkProfileAfterActivation] Error checking for assignments:', checkError);
                 }
+            } else {
+                console.log('[linkProfileAfterActivation] No other user profiles found with staff_id:', identifier);
+            }
             } catch (migrationErr) {
                 console.error('Assignment migration error for fresh profile:', migrationErr);
                 // Don't throw - allow user to continue even if assignment migration fails
@@ -382,6 +424,23 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                     if (assignmentsMigrated === 0) {
                         console.log("No assignments migrated yet, checking for orphaned assignments...");
                         try {
+                            // First, let's see what assignments exist for this staff_id identifier
+                            const { data: assignmentsByStaffId, error: checkError } = await supabase
+                                .from('staff_assignments')
+                                .select('staff_id, count(*)', { count: 'exact' })
+                                .eq('school_id', schoolId)
+                                .in('staff_id', [
+                                    authUid,
+                                    ...(placeholder?.id ? [placeholder.id] : [])
+                                ]);
+
+                            if (!checkError && assignmentsByStaffId) {
+                                console.log('[Staff Assignment Migration] Checking existing assignments:', {
+                                    totalFound: assignmentsByStaffId.length,
+                                    assignments: assignmentsByStaffId
+                                });
+                            }
+
                             // Find all users with the same staff_id identifier
                             const { data: usersByStaffId, error: findError } = await supabase
                                 .from('users')
@@ -406,8 +465,12 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                                         assignmentsMigrated += (orphanedCount || 0);
                                         console.log(`Migrated ${orphanedCount || 0} assignments from user ${user.id}`);
                                         migrationSucceeded = true;
+                                    } else {
+                                        console.error(`Failed to migrate assignments from user ${user.id}:`, migrateError);
                                     }
                                 }
+                            } else {
+                                console.log('No other user profiles found with this staff_id');
                             }
                         } catch (orphanErr) {
                             console.error("Orphaned assignment migration error:", orphanErr);
@@ -420,22 +483,49 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                         placeholder_id: placeholder?.id
                     });
 
-                    // Only delete the old placeholder if migration succeeded or no placeholder exists
-                    if (migrationSucceeded || !placeholder.id) {
+                    // Delete the old placeholder profile ONLY after we know migration succeeded
+                    // The new profile (with auth UID) is already created at this point
+                    if (migrationSucceeded || assignmentsMigrated > 0 || !placeholder?.id) {
                         if (placeholder?.id) {
-                            const { error: deleteError } = await supabase
-                                .from('users')
-                                .delete()
-                                .eq('id', placeholder.id);
+                            try {
+                                console.log('[cleanup] Deleting placeholder profile:', placeholder.id);
+                                const { error: deleteError } = await supabase
+                                    .from('users')
+                                    .delete()
+                                    .eq('id', placeholder.id);
 
-                            if (deleteError) {
-                                console.warn("Failed to delete placeholder profile:", deleteError);
-                            } else {
-                                console.log("✅ Deleted old placeholder profile:", placeholder.id);
+                                if (deleteError) {
+                                    console.warn("Failed to delete placeholder profile:", deleteError);
+                                } else {
+                                    console.log("✅ Deleted old placeholder profile:", placeholder.id);
+                                }
+                            } catch (deleteErr) {
+                                console.error("Exception while deleting placeholder:", deleteErr);
                             }
                         }
+
+                        // Also clean up any other placeholder profiles with the same staff_id
+                        // But only after we've successfully migrated assignments
+                        try {
+                            console.log('[cleanup] Removing any other duplicate profiles with staff_id:', identifier);
+                            const { error: cleanupError, count } = await supabase
+                                .from('users')
+                                .delete()
+                                .eq('school_id', schoolId)
+                                .eq('staff_id', identifier)
+                                .neq('id', authUid)
+                                .select('id', { count: 'exact' });
+
+                            if (cleanupError) {
+                                console.warn("Warning: Could not clean up duplicate staff profiles:", cleanupError);
+                            } else if (count && count > 0) {
+                                console.log(`✅ Cleaned up ${count} duplicate staff profile(s) with same staff_id`);
+                            }
+                        } catch (cleanupErr) {
+                            console.error("Exception during duplicate profile cleanup:", cleanupErr);
+                        }
                     } else {
-                        console.warn("⚠️  Keeping old profile because assignment migration may have failed.");
+                        console.warn('⚠️  Keeping placeholder profiles because assignment migration may have failed. User can try logging in again.');
                     }
                 } catch (err) {
                     console.error("Staff profile linking exception:", err);

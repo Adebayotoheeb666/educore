@@ -209,3 +209,120 @@ export const syncStaffIdFromMetadata = async (userId: string, staffIdFromMetadat
 
     return data;
 };
+
+/**
+ * Delete a staff member account (removes both Auth account and profile)
+ * This ensures deleted staff cannot log in anymore
+ */
+export const deleteStaffAccount = async (
+    schoolId: string,
+    adminId: string,
+    staffId: string
+): Promise<{ success: boolean; message: string }> => {
+    const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-staff`;
+    const isProduction = import.meta.env.PROD;
+
+    console.log('[deleteStaffAccount] Attempting to delete staff:', {
+        staffId,
+        schoolId,
+        adminId,
+        edgeFunctionUrl,
+        isProduction
+    });
+
+    try {
+        // Try to use edge function (production or if deployed in development)
+        const response = await fetch(edgeFunctionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseAnonKey}`
+            },
+            body: JSON.stringify({
+                staffId,
+                schoolId,
+                adminId
+            })
+        });
+
+        console.log('[deleteStaffAccount] Edge function response status:', response.status);
+
+        const result = await response.json();
+        console.log('[deleteStaffAccount] Edge function result:', result);
+
+        if (!response.ok) {
+            // If in development and function not deployed, fall back to direct delete
+            if (!isProduction && (response.status === 404 || response.status === 0)) {
+                console.log('[deleteStaffAccount] Function not deployed (404), using fallback...');
+                // Fallback: just delete from database (Auth account won't be deleted, but profile will be)
+                const { error, count } = await supabase
+                    .from('users')
+                    .delete({ count: 'exact' })
+                    .eq('id', staffId)
+                    .eq('school_id', schoolId);
+
+                if (error) {
+                    throw new Error(`Failed to delete staff account: ${error.message}`);
+                }
+
+                if (count === 0) {
+                    throw new Error('Staff member not found or access denied');
+                }
+
+                return {
+                    success: true,
+                    message: 'Staff member deleted from database (Auth account deletion unavailable in development)'
+                };
+            }
+
+            let errorMessage = result.error || `Failed to delete staff (HTTP ${response.status})`;
+            if (result.details) {
+                console.error('[deleteStaffAccount] Error details:', result.details);
+            }
+            throw new Error(errorMessage);
+        }
+
+        return {
+            success: true,
+            message: result.message || 'Staff member deleted successfully'
+        };
+    } catch (error) {
+        console.error('[deleteStaffAccount] Error:', error);
+
+        // Network/CORS error - likely function not deployed
+        if (!isProduction) {
+            const isNetworkError = error instanceof TypeError &&
+                (error.message.includes('Failed to fetch') ||
+                 error.message.includes('CORS') ||
+                 error.message.includes('NetworkError'));
+
+            if (isNetworkError) {
+                console.warn('[deleteStaffAccount] Edge function not reachable in development, using fallback...');
+                try {
+                    // Fallback: just delete from database
+                    const { error: delError, count } = await supabase
+                        .from('users')
+                        .delete({ count: 'exact' })
+                        .eq('id', staffId)
+                        .eq('school_id', schoolId);
+
+                    if (delError) {
+                        throw new Error(`Failed to delete staff account: ${delError.message}`);
+                    }
+
+                    if (count === 0) {
+                        throw new Error('Staff member not found or access denied');
+                    }
+
+                    return {
+                        success: true,
+                        message: 'Staff member deleted from database (Auth account deletion unavailable in development)'
+                    };
+                } catch (fallbackError) {
+                    throw fallbackError;
+                }
+            }
+        }
+        throw error;
+    }
+};
