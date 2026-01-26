@@ -279,7 +279,7 @@ export const PaperScanner = () => {
                         <span className="text-red-500">BASED ON MARKING SCHEME</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        {grading.missingKeywords.slice(0, 5).map((keyword, idx) => (
+                        {grading.missingKeywords.slice(0, 5).map((keyword) => (
                             <span key={`keyword-${keyword}`} className="px-3 py-1 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 text-xs font-bold">
                                 {keyword}
                             </span>
