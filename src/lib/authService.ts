@@ -176,7 +176,15 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         });
 
     if (insertError) {
-        console.error("Failed to link profile:", insertError);
+        console.error("Failed to link profile:", {
+            message: insertError.message,
+            code: insertError.code,
+            hint: insertError.hint,
+            details: insertError.details,
+            status: insertError.status
+        });
+        // Don't throw - this might be a schema issue but activation can still proceed
+        // The profile will be created fresh in subsequent calls
         return;
     }
 
