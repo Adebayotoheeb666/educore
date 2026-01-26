@@ -400,6 +400,23 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                     if (assignmentsMigrated === 0) {
                         console.log("No assignments migrated yet, checking for orphaned assignments...");
                         try {
+                            // First, let's see what assignments exist for this staff_id identifier
+                            const { data: assignmentsByStaffId, error: checkError } = await supabase
+                                .from('staff_assignments')
+                                .select('staff_id, count(*)', { count: 'exact' })
+                                .eq('school_id', schoolId)
+                                .in('staff_id', [
+                                    authUid,
+                                    ...(placeholder?.id ? [placeholder.id] : [])
+                                ]);
+
+                            if (!checkError && assignmentsByStaffId) {
+                                console.log('[Staff Assignment Migration] Checking existing assignments:', {
+                                    totalFound: assignmentsByStaffId.length,
+                                    assignments: assignmentsByStaffId
+                                });
+                            }
+
                             // Find all users with the same staff_id identifier
                             const { data: usersByStaffId, error: findError } = await supabase
                                 .from('users')
@@ -424,8 +441,12 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                                         assignmentsMigrated += (orphanedCount || 0);
                                         console.log(`Migrated ${orphanedCount || 0} assignments from user ${user.id}`);
                                         migrationSucceeded = true;
+                                    } else {
+                                        console.error(`Failed to migrate assignments from user ${user.id}:`, migrateError);
                                     }
                                 }
+                            } else {
+                                console.log('No other user profiles found with this staff_id');
                             }
                         } catch (orphanErr) {
                             console.error("Orphaned assignment migration error:", orphanErr);
