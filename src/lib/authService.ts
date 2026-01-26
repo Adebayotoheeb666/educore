@@ -163,28 +163,69 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
     // 2. Insert NEW row with correct UID (Clone)
     const { id, created_at, updated_at, ...profileData } = placeholder;
 
-    const { error: insertError } = await supabase
-        .from('users')
-        .upsert({
-            ...profileData,
-            id: authUid, // The new Auth UID
-            school_id: schoolId, // Explicitly set school_id
-            ...(role === 'staff' && { staff_id: identifier }), // Explicitly set staff_id for staff
-            ...(role === 'student' && { admission_number: identifier }), // Explicitly set admission_number for students
-            email: getVirtualEmail(schoolId, identifier), // Update email to virtual one
-            role: role // Ensure role is set
-        });
+    try {
+        // First, check if a profile with authUid already exists
+        const { data: existingProfile } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', authUid)
+            .maybeSingle();
 
-    if (insertError) {
-        console.error("Failed to link profile:", {
-            message: insertError.message,
-            code: insertError.code,
-            hint: insertError.hint,
-            details: insertError.details,
-            status: insertError.status
-        });
-        // Don't throw - this might be a schema issue but activation can still proceed
-        // The profile will be created fresh in subsequent calls
+        if (existingProfile) {
+            // Profile already exists with this UID - just update it
+            console.log("Profile already exists with auth UID, updating...");
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({
+                    ...profileData,
+                    school_id: schoolId,
+                    ...(role === 'staff' && { staff_id: identifier }),
+                    ...(role === 'student' && { admission_number: identifier }),
+                    email: getVirtualEmail(schoolId, identifier),
+                    role: role
+                })
+                .eq('id', authUid);
+
+            if (updateError) {
+                console.error("Failed to update existing profile:", {
+                    message: updateError.message,
+                    code: updateError.code,
+                    authUid,
+                    schoolId,
+                    role
+                });
+                return;
+            }
+        } else {
+            // Create new profile with auth UID
+            console.log("Creating new profile with auth UID...");
+            const { error: insertError } = await supabase
+                .from('users')
+                .insert({
+                    ...profileData,
+                    id: authUid,
+                    school_id: schoolId,
+                    ...(role === 'staff' && { staff_id: identifier }),
+                    ...(role === 'student' && { admission_number: identifier }),
+                    email: getVirtualEmail(schoolId, identifier),
+                    role: role
+                });
+
+            if (insertError) {
+                console.error("Failed to create new profile:", {
+                    message: insertError.message,
+                    code: insertError.code,
+                    hint: insertError.hint,
+                    details: insertError.details,
+                    authUid,
+                    schoolId,
+                    role
+                });
+                return;
+            }
+        }
+    } catch (error) {
+        console.error("Exception during profile linking:", error);
         return;
     }
 
