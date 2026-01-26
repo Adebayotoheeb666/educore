@@ -118,19 +118,32 @@ export const Login = () => {
 
         // Otherwise, try to find the school by name
         console.log('School ID is not a UUID, attempting to look up by name:', inputSchoolId);
-        const schools = await findSchoolByName(inputSchoolId);
+        try {
+            const schools = await findSchoolByName(inputSchoolId);
 
-        if (schools.length === 1) {
-            console.log('Found school:', schools[0].name);
-            return schools[0].id;
-        } else if (schools.length > 1) {
+            if (schools.length === 1) {
+                console.log('Found school:', schools[0].name);
+                return schools[0].id;
+            } else if (schools.length > 1) {
+                throw new Error(
+                    `Multiple schools found matching "${inputSchoolId}". Please use the school's UUID instead. ` +
+                    `Contact your administrator for the school UUID.`
+                );
+            } else {
+                throw new Error(
+                    `School "${inputSchoolId}" not found. Please use the school's UUID. ` +
+                    `The School ID should be a unique identifier (like: abc12345-1234-5678-90ab-cdef12345678). ` +
+                    `If you don't know your school's UUID, contact your administrator.`
+                );
+            }
+        } catch (err: any) {
+            // If it's already our custom error, re-throw it
+            if (err?.message?.includes('School') || err?.message?.includes('UUID')) {
+                throw err;
+            }
+            // Otherwise, wrap the error with helpful context
             throw new Error(
-                `Multiple schools found matching "${inputSchoolId}". Please use the school's UUID instead. ` +
-                `Contact your administrator for the school UUID.`
-            );
-        } else {
-            throw new Error(
-                `School "${inputSchoolId}" not found. Please use the school's UUID. ` +
+                `Unable to look up school "${inputSchoolId}". Please use the school's UUID directly. ` +
                 `The School ID should be a unique identifier (like: abc12345-1234-5678-90ab-cdef12345678). ` +
                 `If you don't know your school's UUID, contact your administrator.`
             );
