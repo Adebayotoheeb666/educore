@@ -178,6 +178,13 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
     }
 
     // 2. Insert NEW row with correct UID (Clone)
+    console.log("Found placeholder profile, migrating to auth UID...", {
+        placeholderId: placeholder.id,
+        newAuthUid: authUid,
+        schoolId,
+        role
+    });
+
     const { id, created_at, updated_at, ...profileData } = placeholder;
 
     try {
