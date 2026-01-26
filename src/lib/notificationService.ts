@@ -1,6 +1,5 @@
 import { supabase } from './supabase';
 import type { Notification, DocWithId } from './types';
-import { playNotificationSound, triggerVibration } from './pushNotificationService';
 
 /**
  * Send an in-app notification
