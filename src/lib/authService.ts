@@ -230,21 +230,39 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                         }
                     }
 
-                    // Step 3: Delete all placeholder profiles now that assignments are migrated
-                    console.log('[linkProfileAfterActivation] Deleting placeholder profiles...');
-                    for (const placeholder of placeholderProfiles) {
-                        const { error: deleteError } = await supabase
-                            .from('users')
-                            .delete()
-                            .eq('id', placeholder.id);
+                    // Step 3: Only delete placeholder profiles if we successfully migrated something
+                    // OR if there are no assignments at all (meaning there's nothing to lose by deleting)
+                    let shouldDeletePlaceholders = true;
+                    if (assignmentsMigrated === 0 && placeholderProfiles.length > 0) {
+                        // Check if there are actually assignments in the table for these profiles
+                        const { count: existingAssignments } = await supabase
+                            .from('staff_assignments')
+                            .select('id', { count: 'exact' })
+                            .in('staff_id', placeholderProfiles.map(p => p.id))
+                            .eq('school_id', schoolId);
 
-                        if (deleteError) {
-                            console.warn('Failed to delete placeholder profile:', {
-                                placeholderId: placeholder.id,
-                                error: deleteError
-                            });
-                        } else {
-                            console.log('✅ Deleted placeholder profile:', placeholder.id);
+                        if (existingAssignments && existingAssignments > 0) {
+                            console.warn('[linkProfileAfterActivation] Found assignments for placeholder profiles but migration returned 0 - NOT deleting placeholders as safety measure');
+                            shouldDeletePlaceholders = false;
+                        }
+                    }
+
+                    if (shouldDeletePlaceholders) {
+                        console.log('[linkProfileAfterActivation] Deleting placeholder profiles...');
+                        for (const placeholder of placeholderProfiles) {
+                            const { error: deleteError } = await supabase
+                                .from('users')
+                                .delete()
+                                .eq('id', placeholder.id);
+
+                            if (deleteError) {
+                                console.warn('Failed to delete placeholder profile:', {
+                                    placeholderId: placeholder.id,
+                                    error: deleteError
+                                });
+                            } else {
+                                console.log('✅ Deleted placeholder profile:', placeholder.id);
+                            }
                         }
                     }
                 } else {
