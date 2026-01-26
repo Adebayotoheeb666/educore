@@ -438,45 +438,49 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                         placeholder_id: placeholder?.id
                     });
 
-                    // Always delete the old placeholder profile after creating the new auth profile
-                    // The new profile (with auth UID) is already created at this point, so we can safely delete the old one
-                    // Assignment migration success doesn't affect whether we should delete the placeholder
-                    if (placeholder?.id) {
+                    // Delete the old placeholder profile ONLY after we know migration succeeded
+                    // The new profile (with auth UID) is already created at this point
+                    if (migrationSucceeded || assignmentsMigrated > 0 || !placeholder?.id) {
+                        if (placeholder?.id) {
+                            try {
+                                console.log('[cleanup] Deleting placeholder profile:', placeholder.id);
+                                const { error: deleteError } = await supabase
+                                    .from('users')
+                                    .delete()
+                                    .eq('id', placeholder.id);
+
+                                if (deleteError) {
+                                    console.warn("Failed to delete placeholder profile:", deleteError);
+                                } else {
+                                    console.log("✅ Deleted old placeholder profile:", placeholder.id);
+                                }
+                            } catch (deleteErr) {
+                                console.error("Exception while deleting placeholder:", deleteErr);
+                            }
+                        }
+
+                        // Also clean up any other placeholder profiles with the same staff_id
+                        // But only after we've successfully migrated assignments
                         try {
-                            const { error: deleteError } = await supabase
+                            console.log('[cleanup] Removing any other duplicate profiles with staff_id:', identifier);
+                            const { error: cleanupError, count } = await supabase
                                 .from('users')
                                 .delete()
-                                .eq('id', placeholder.id);
+                                .eq('school_id', schoolId)
+                                .eq('staff_id', identifier)
+                                .neq('id', authUid)
+                                .select('id', { count: 'exact' });
 
-                            if (deleteError) {
-                                console.warn("Failed to delete placeholder profile:", deleteError);
-                            } else {
-                                console.log("✅ Deleted old placeholder profile:", placeholder.id);
+                            if (cleanupError) {
+                                console.warn("Warning: Could not clean up duplicate staff profiles:", cleanupError);
+                            } else if (count && count > 0) {
+                                console.log(`✅ Cleaned up ${count} duplicate staff profile(s) with same staff_id`);
                             }
-                        } catch (deleteErr) {
-                            console.error("Exception while deleting placeholder:", deleteErr);
+                        } catch (cleanupErr) {
+                            console.error("Exception during duplicate profile cleanup:", cleanupErr);
                         }
-                    }
-
-                    // IMPORTANT: Also clean up any other placeholder profiles with the same staff_id
-                    // This handles the case where admin created multiple staff with same ID or duplicates exist
-                    try {
-                        console.log('[cleanup] Removing any other duplicate profiles with staff_id:', identifier);
-                        const { error: cleanupError, count } = await supabase
-                            .from('users')
-                            .delete()
-                            .eq('school_id', schoolId)
-                            .eq('staff_id', identifier)
-                            .neq('id', authUid)
-                            .select('id', { count: 'exact' });
-
-                        if (cleanupError) {
-                            console.warn("Warning: Could not clean up duplicate staff profiles:", cleanupError);
-                        } else if (count && count > 0) {
-                            console.log(`✅ Cleaned up ${count} duplicate staff profile(s) with same staff_id`);
-                        }
-                    } catch (cleanupErr) {
-                        console.error("Exception during duplicate profile cleanup:", cleanupErr);
+                    } else {
+                        console.warn('⚠️  Keeping placeholder profiles because assignment migration may have failed. User can try logging in again.');
                     }
                 } catch (err) {
                     console.error("Staff profile linking exception:", err);
