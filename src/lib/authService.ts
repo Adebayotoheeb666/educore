@@ -277,7 +277,18 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
             }
         } else {
             // For other roles, just delete the old placeholder
-            await supabase.from('users').delete().eq('id', placeholder.id);
+            try {
+                const { error: deleteError } = await supabase
+                    .from('users')
+                    .delete()
+                    .eq('id', placeholder.id);
+
+                if (deleteError) {
+                    console.warn("Failed to delete placeholder profile for non-staff role:", deleteError);
+                }
+            } catch (err) {
+                console.error("Exception while deleting placeholder profile:", err);
+            }
         }
     }
 
