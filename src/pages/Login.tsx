@@ -87,7 +87,7 @@ export const Login = () => {
             await signInWithPhone(phoneNumber);
             setShowOtpInput(true);
         } catch (err: any) {
-            console.error(err);
+            console.error("OTP send error:", err instanceof Error ? err.message : String(err));
             setError(getUserFriendlyErrorMessage(err));
         } finally {
             setLoading(false);
@@ -103,7 +103,7 @@ export const Login = () => {
             await confirmPhoneOTP(phoneNumber, otp, schoolId);
             navigate('/portal/parent');
         } catch (err: any) {
-            console.error(err);
+            console.error("OTP verification error:", err instanceof Error ? err.message : String(err));
             setError(getUserFriendlyErrorMessage(err));
         } finally {
             setLoading(false);
