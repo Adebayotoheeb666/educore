@@ -38,9 +38,9 @@ export const StudentAssignment = () => {
 
             // Deduplicate classes by id to avoid duplicate key errors
             const classMap = new Map();
-            assignments?.forEach(a => {
-                if (a.classes && a.classes.id) {
-                    classMap.set(a.classes.id, a.classes);
+            (assignments as any[])?.forEach((a: any) => {
+                if (a.classes && (a.classes as any).id) {
+                    classMap.set((a.classes as any).id, a.classes);
                 }
             });
             const classes = Array.from(classMap.values());

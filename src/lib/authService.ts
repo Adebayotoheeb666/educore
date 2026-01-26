@@ -67,7 +67,7 @@ export const registerSchool = async (adminData: any, schoolData: any) => {
 
 /**
  * Activates a pre-created account (Student or Staff) on first login.
- * This performs a SignUp behind the scenes.
+ * This performs a SignUp behind the scenes, or handles already-registered accounts.
  */
 export const activateAccount = async (
     schoolId: string,
@@ -95,6 +95,25 @@ export const activateAccount = async (
         }
     });
 
+    // If the user is already registered, try to sign in instead
+    if (error && (error.message?.includes('already registered') || error.code === 'user_already_exists')) {
+        console.warn("Account already registered, attempting sign in...");
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: virtualEmail,
+            password
+        });
+
+        if (signInError) {
+            throw signInError;
+        }
+
+        if (!signInData.user) {
+            throw new Error("Sign in failed after account registration");
+        }
+
+        return signInData;
+    }
+
     if (error) throw error;
     if (!data.user) throw new Error("Activation failed");
 
@@ -118,7 +137,13 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         .maybeSingle();
 
     if (error || !placeholder) {
-        console.warn("No placeholder profile found to link. Creating fresh profile.");
+        console.warn("No placeholder profile found to link. Creating fresh profile.", {
+            searchError: error?.message,
+            schoolId,
+            idField,
+            identifier,
+            role
+        });
         // Create fresh profile if missing with all required fields
         const virtualEmail = getVirtualEmail(schoolId, identifier);
         const freshProfile: any = {
@@ -153,23 +178,68 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
             });
             throw new Error(`Failed to create profile: ${createError.message}`);
         }
+
+        console.log("Fresh profile created successfully for new user", { authUid, schoolId, role });
         return;
     }
 
     // 2. Insert NEW row with correct UID (Clone)
+    console.log("Found placeholder profile, migrating to auth UID...", {
+        placeholderId: placeholder.id,
+        newAuthUid: authUid,
+        schoolId,
+        role
+    });
+
     const { id, created_at, updated_at, ...profileData } = placeholder;
 
-    const { error: insertError } = await supabase
-        .from('users')
-        .upsert({
-            ...profileData,
-            id: authUid, // The new Auth UID
-            school_id: schoolId, // Explicitly set school_id
-            ...(role === 'staff' && { staff_id: identifier }), // Explicitly set staff_id for staff
-            ...(role === 'student' && { admission_number: identifier }), // Explicitly set admission_number for students
-            email: getVirtualEmail(schoolId, identifier), // Update email to virtual one
-            role: role // Ensure role is set
-        });
+    try {
+        // First, check if a profile with authUid already exists
+        const { data: existingProfile } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', authUid)
+            .maybeSingle();
+
+        if (existingProfile) {
+            // Profile already exists with this UID - just update it
+            console.log("Profile already exists with auth UID, updating...");
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({
+                    ...profileData,
+                    school_id: schoolId,
+                    ...(role === 'staff' && { staff_id: identifier }),
+                    ...(role === 'student' && { admission_number: identifier }),
+                    email: getVirtualEmail(schoolId, identifier),
+                    role: role
+                })
+                .eq('id', authUid);
+
+            if (updateError) {
+                console.error("Failed to update existing profile:", {
+                    message: updateError.message,
+                    code: updateError.code,
+                    authUid,
+                    schoolId,
+                    role
+                });
+                return;
+            }
+        } else {
+            // Create new profile with auth UID
+            console.log("Creating new profile with auth UID...");
+            const { error: insertError } = await supabase
+                .from('users')
+                .insert({
+                    ...profileData,
+                    id: authUid,
+                    school_id: schoolId,
+                    ...(role === 'staff' && { staff_id: identifier }),
+                    ...(role === 'student' && { admission_number: identifier }),
+                    email: getVirtualEmail(schoolId, identifier),
+                    role: role
+                });
 
     if (insertError) {
         console.error("Failed to link profile:", {
@@ -213,7 +283,11 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                     console.error("Staff profile linking RPC error:", rpcError);
                     console.warn("⚠️  Assignment migration failed - staff may not see assigned classes. The RPC function may not be deployed.");
                 } else if (data && !data.success) {
-                    console.warn("Staff profile linking failed:", data.message);
+                    console.warn("Staff profile linking RPC returned failure:", {
+                        message: data.message,
+                        authUid,
+                        schoolId
+                    });
                 } else {
                     console.log("Staff profile linked successfully:", data?.message, `(${data?.assignments_migrated || 0} assignments)`);
                     migrationSucceeded = true;
@@ -239,7 +313,18 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
             }
         } else {
             // For other roles, just delete the old placeholder
-            await supabase.from('users').delete().eq('id', placeholder.id);
+            try {
+                const { error: deleteError } = await supabase
+                    .from('users')
+                    .delete()
+                    .eq('id', placeholder.id);
+
+                if (deleteError) {
+                    console.warn("Failed to delete placeholder profile for non-staff role:", deleteError);
+                }
+            } catch (err) {
+                console.error("Exception while deleting placeholder profile:", err);
+            }
         }
     }
 
@@ -278,6 +363,12 @@ export const loginWithAdmissionNumber = async (schoolId: string, admissionNumber
     });
 
     if (error) {
+        // Check if it's an invalid credentials error (account exists but wrong password)
+        if (error.message?.includes('invalid') || error.code === 'invalid_grant') {
+            // Wrong password - don't try activation
+            throw error;
+        }
+
         // We attempt to ACTIVATE (SignUp) if login fails.
         // This is a "Just-in-Time" registration.
         try {
@@ -300,7 +391,7 @@ export const loginWithAdmissionNumber = async (schoolId: string, admissionNumber
             }
         } catch (activationError) {
             console.error("Activation failed:", activationError);
-            throw error; // Throw original login error if activation fails
+            throw activationError; // Throw activation error for better diagnostics
         }
     }
 
@@ -319,7 +410,13 @@ export const loginWithStaffId = async (schoolId: string, staffId: string, passwo
     });
 
     if (error) {
-        // Try Activation
+        // Check if it's an invalid credentials error (account exists but wrong password)
+        if (error.message?.includes('invalid') || error.code === 'invalid_grant') {
+            // Wrong password - don't try activation
+            throw error;
+        }
+
+        // Account doesn't exist yet - Try Activation
         try {
             console.log("Login failed, attempting activation...");
             const authResponse = await activateAccount(schoolId, staffId, password, 'staff');
@@ -338,7 +435,8 @@ export const loginWithStaffId = async (schoolId: string, staffId: string, passwo
             }
         } catch (activationError) {
             console.error("Activation failed:", activationError);
-            throw error;
+            // Throw activation error instead of original login error for better diagnostics
+            throw activationError;
         }
     }
 

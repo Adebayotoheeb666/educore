@@ -178,7 +178,7 @@ export const AdminDashboard = () => {
             }));
 
             // Deduplicate users by ID
-            const uniqueUsers = Array.from(new Map(mappedUsers.map(u => [u.id, u])).values());
+            const uniqueUsers = Array.from(new Map(mappedUsers.map((u: any) => [u.id, u])).values());
 
             setStaff(uniqueUsers.filter((u: any) => u.role === 'staff' || u.role === 'admin' || u.role === 'bursar'));
             setStudents(uniqueUsers.filter((u: any) => u.role === 'student'));

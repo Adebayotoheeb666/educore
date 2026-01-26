@@ -107,7 +107,7 @@ export const subscribeToPushNotifications = async (
         // Subscribe to push notifications
         const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
         });
 
         // Extract subscription data
@@ -294,7 +294,7 @@ export const showTestNotification = async (): Promise<void> => {
                     title: 'Close',
                 },
             ],
-        });
+        } as NotificationOptions & { vibrate?: VibratePattern });
     } catch (error) {
         console.error('Failed to show test notification:', error);
         throw error;
