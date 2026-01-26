@@ -299,7 +299,13 @@ export const loginWithStaffId = async (schoolId: string, staffId: string, passwo
     });
 
     if (error) {
-        // Try Activation
+        // Check if it's an invalid credentials error (account exists but wrong password)
+        if (error.message?.includes('invalid') || error.code === 'invalid_grant') {
+            // Wrong password - don't try activation
+            throw error;
+        }
+
+        // Account doesn't exist yet - Try Activation
         try {
             console.log("Login failed, attempting activation...");
             const authResponse = await activateAccount(schoolId, staffId, password, 'staff');
@@ -309,7 +315,8 @@ export const loginWithStaffId = async (schoolId: string, staffId: string, passwo
             }
         } catch (activationError) {
             console.error("Activation failed:", activationError);
-            throw error;
+            // Throw activation error instead of original login error for better diagnostics
+            throw activationError;
         }
     }
 
