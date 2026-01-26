@@ -154,9 +154,20 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         const { error: createError } = await supabase.from('users').insert(freshProfile);
 
         if (createError) {
-            console.error("Failed to create fresh profile:", createError);
+            console.error("Failed to create fresh profile:", {
+                message: createError.message,
+                code: createError.code,
+                hint: createError.hint,
+                details: createError.details,
+                authUid,
+                schoolId,
+                role,
+                [idField]: identifier
+            });
             throw new Error(`Failed to create profile: ${createError.message}`);
         }
+
+        console.log("Fresh profile created successfully for new user", { authUid, schoolId, role });
         return;
     }
 
