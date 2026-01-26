@@ -180,6 +180,64 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         }
 
         console.log("Fresh profile created successfully for new user", { authUid, schoolId, role });
+
+        // Even though we created a fresh profile, we still need to migrate any assignments
+        // that might exist for this staff member (linked by staff_id identifier)
+        if (role === 'staff') {
+            try {
+                console.log('[linkProfileAfterActivation] Migrating assignments for new staff profile:', {
+                    authUid,
+                    identifier,
+                    schoolId
+                });
+
+                // Step 1: Find all other user profiles with the same staff_id (text identifier)
+                // These are the old placeholder profiles
+                const { data: placeholderProfiles, error: findError } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('school_id', schoolId)
+                    .eq('staff_id', identifier)
+                    .neq('id', authUid);
+
+                if (findError) {
+                    console.warn("Error finding placeholder profiles:", findError);
+                } else if (placeholderProfiles && placeholderProfiles.length > 0) {
+                    console.log('[linkProfileAfterActivation] Found placeholder profiles:', {
+                        count: placeholderProfiles.length,
+                        ids: placeholderProfiles.map(p => p.id)
+                    });
+
+                    // Step 2: Migrate assignments from each placeholder profile to the new auth profile
+                    for (const placeholder of placeholderProfiles) {
+                        const { error: updateError, count } = await supabase
+                            .from('staff_assignments')
+                            .update({ staff_id: authUid })
+                            .eq('staff_id', placeholder.id)
+                            .eq('school_id', schoolId)
+                            .select('id', { count: 'exact' });
+
+                        if (updateError) {
+                            console.error('Failed to migrate assignments from placeholder:', {
+                                placeholderId: placeholder.id,
+                                error: updateError
+                            });
+                        } else {
+                            console.log('✅ Migrated assignments from placeholder:', {
+                                placeholderId: placeholder.id,
+                                assignmentsMigrated: count || 0
+                            });
+                        }
+                    }
+                } else {
+                    console.log('[linkProfileAfterActivation] No placeholder profiles found for staff_id:', identifier);
+                }
+            } catch (migrationErr) {
+                console.error('Assignment migration error for fresh profile:', migrationErr);
+                // Don't throw - allow user to continue even if assignment migration fails
+            }
+        }
+
         return;
     }
 
@@ -273,6 +331,7 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
             // Migrate Staff Assignments (if teacher) using RPC for secure migration
             if (role === 'staff') {
                 let migrationSucceeded = false;
+                let assignmentsMigrated = 0;
                 console.log('[Staff Assignment Migration] Starting migration:', {
                     placeholder_id: placeholder?.id,
                     auth_uid: authUid,
@@ -280,6 +339,7 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                     school_id: schoolId
                 });
                 try {
+                    // Try the RPC first
                     const { data, error: rpcError } = await supabase.rpc('link_staff_profile_after_activation', {
                         p_school_id: schoolId,
                         p_auth_uid: authUid,
@@ -288,60 +348,94 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
 
                     if (rpcError) {
                         console.warn("RPC migration error, attempting client-side fallback:", rpcError);
-                        // Fallback: Migrate assignments client-side
-                        try {
-                            const { error: updateError } = await supabase
-                                .from('staff_assignments')
-                                .update({ staff_id: authUid })
-                                .eq('staff_id', placeholder.id)
-                                .eq('school_id', schoolId);
-
-                            if (updateError) {
-                                console.error("Client-side migration failed:", updateError);
-                            } else {
-                                console.log("✅ Staff assignments migrated successfully (client-side fallback)");
-                                migrationSucceeded = true;
-                            }
-                        } catch (fallbackErr) {
-                            console.error("Client-side migration exception:", fallbackErr);
-                        }
-                    } else if (data && !data.success) {
-                        console.warn("RPC returned failure, attempting client-side fallback:", data.message);
-                        // Fallback: Migrate assignments client-side
-                        try {
-                            const { error: updateError } = await supabase
-                                .from('staff_assignments')
-                                .update({ staff_id: authUid })
-                                .eq('staff_id', placeholder.id)
-                                .eq('school_id', schoolId);
-
-                            if (updateError) {
-                                console.error("Client-side migration failed:", updateError);
-                            } else {
-                                console.log("✅ Staff assignments migrated successfully (client-side fallback)");
-                                migrationSucceeded = true;
-                            }
-                        } catch (fallbackErr) {
-                            console.error("Client-side migration exception:", fallbackErr);
-                        }
-                    } else {
-                        console.log("Staff profile linked successfully:", data?.message, `(${data?.assignments_migrated || 0} assignments)`);
+                    } else if (data && data.success) {
+                        console.log("Staff profile linked successfully via RPC:", data.message, `(${data.assignments_migrated || 0} assignments)`);
                         migrationSucceeded = true;
+                        assignmentsMigrated = data.assignments_migrated || 0;
                     }
 
-                    // Only delete the old placeholder if migration succeeded
-                    // This prevents losing assignments if the RPC failed
-                    if (migrationSucceeded) {
-                        const { error: deleteError } = await supabase
-                            .from('users')
-                            .delete()
-                            .eq('id', placeholder.id);
+                    // If RPC didn't work, try client-side fallback
+                    if (!migrationSucceeded && placeholder?.id) {
+                        console.log("Attempting client-side assignment migration from placeholder:", placeholder.id);
+                        try {
+                            const { count, error: updateError } = await supabase
+                                .from('staff_assignments')
+                                .update({ staff_id: authUid })
+                                .eq('staff_id', placeholder.id)
+                                .eq('school_id', schoolId)
+                                .select('id', { count: 'exact' });
 
-                        if (deleteError) {
-                            console.warn("Failed to delete placeholder profile:", deleteError);
+                            if (updateError) {
+                                console.error("Client-side migration query failed:", updateError);
+                            } else {
+                                console.log(`✅ Staff assignments migrated successfully (client-side): ${count || 0} records updated`);
+                                migrationSucceeded = true;
+                                assignmentsMigrated = count || 0;
+                            }
+                        } catch (fallbackErr) {
+                            console.error("Client-side migration exception:", fallbackErr);
+                        }
+                    }
+
+                    // Also check if there are assignments linked to any user with the same staff_id text
+                    // This handles edge cases where the placeholder profile might have been deleted
+                    if (assignmentsMigrated === 0) {
+                        console.log("No assignments migrated yet, checking for orphaned assignments...");
+                        try {
+                            // Find all users with the same staff_id identifier
+                            const { data: usersByStaffId, error: findError } = await supabase
+                                .from('users')
+                                .select('id')
+                                .eq('school_id', schoolId)
+                                .eq('staff_id', identifier)
+                                .neq('id', authUid);
+
+                            if (findError) {
+                                console.warn("Failed to find users by staff_id:", findError);
+                            } else if (usersByStaffId && usersByStaffId.length > 0) {
+                                console.log(`Found ${usersByStaffId.length} other profiles with same staff_id, checking for orphaned assignments...`);
+                                for (const user of usersByStaffId) {
+                                    const { count: orphanedCount, error: migrateError } = await supabase
+                                        .from('staff_assignments')
+                                        .update({ staff_id: authUid })
+                                        .eq('staff_id', user.id)
+                                        .eq('school_id', schoolId)
+                                        .select('id', { count: 'exact' });
+
+                                    if (!migrateError) {
+                                        assignmentsMigrated += (orphanedCount || 0);
+                                        console.log(`Migrated ${orphanedCount || 0} assignments from user ${user.id}`);
+                                        migrationSucceeded = true;
+                                    }
+                                }
+                            }
+                        } catch (orphanErr) {
+                            console.error("Orphaned assignment migration error:", orphanErr);
+                        }
+                    }
+
+                    console.log('[Staff Assignment Migration] Final result:', {
+                        migrationSucceeded,
+                        totalAssignmentsMigrated: assignmentsMigrated,
+                        placeholder_id: placeholder?.id
+                    });
+
+                    // Only delete the old placeholder if migration succeeded or no placeholder exists
+                    if (migrationSucceeded || !placeholder.id) {
+                        if (placeholder?.id) {
+                            const { error: deleteError } = await supabase
+                                .from('users')
+                                .delete()
+                                .eq('id', placeholder.id);
+
+                            if (deleteError) {
+                                console.warn("Failed to delete placeholder profile:", deleteError);
+                            } else {
+                                console.log("✅ Deleted old placeholder profile:", placeholder.id);
+                            }
                         }
                     } else {
-                        console.warn("⚠️  Keeping old profile because assignment migration failed.");
+                        console.warn("⚠️  Keeping old profile because assignment migration may have failed.");
                     }
                 } catch (err) {
                     console.error("Staff profile linking exception:", err);

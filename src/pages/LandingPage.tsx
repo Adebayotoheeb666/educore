@@ -1,5 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { PublicFooter } from '../components/common/PublicFooter';
+import { useAuth } from '../hooks/useAuth';
 import {
     Sparkles,
     ShieldCheck,
@@ -22,8 +23,20 @@ import aiHero from '../assets/ai_hero.png';
 
 export const LandingPage = () => {
     const navigate = useNavigate();
+    const { user, profile, loading: authLoading, role } = useAuth();
 
-    // Auto-logout removed to allow authenticated access
+    // Redirect authenticated users to their appropriate dashboard
+    if (!authLoading && user && profile) {
+        if (profile.role === 'admin') {
+            return <Navigate to="/admin" replace />;
+        } else if (profile.role === 'parent') {
+            return <Navigate to="/portal/parent" replace />;
+        } else if (profile.role === 'student') {
+            return <Navigate to="/portal" replace />;
+        } else if (profile.role === 'staff') {
+            return <Navigate to="/dashboard" replace />;
+        }
+    }
 
     return (
         <div className="min-h-screen bg-dark-bg text-white selection:bg-teal-500/30">
