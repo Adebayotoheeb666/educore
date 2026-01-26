@@ -161,7 +161,7 @@ export const LessonGenerator = () => {
 
             setArchives(mappedNotes);
         } catch (e) {
-            console.error(e);
+            console.error("Error fetching archives:", e instanceof Error ? e.message : String(e));
         } finally {
             setFetchingArchives(false);
         }
