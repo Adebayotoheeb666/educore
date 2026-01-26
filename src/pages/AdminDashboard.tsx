@@ -302,7 +302,7 @@ export const AdminDashboard = () => {
             fetchData();
         } catch (err) {
             showToast(`Failed to ${editingSubject ? 'update' : 'create'} subject`, 'error');
-            console.error(err);
+            console.error('Subject operation error:', err instanceof Error ? err.message : String(err));
         }
     };
 
@@ -353,7 +353,7 @@ export const AdminDashboard = () => {
             fetchData();
         } catch (err) {
             showToast(`Failed to ${editingClass ? 'update' : 'create'} class`, 'error');
-            console.error(err);
+            console.error('Class operation error:', err instanceof Error ? err.message : String(err));
         }
     };
 
@@ -387,7 +387,7 @@ export const AdminDashboard = () => {
                     }
                 } catch (err) {
                     showToast('Failed to delete subject', 'error');
-                    console.error(err);
+                    console.error('Subject deletion error:', err instanceof Error ? err.message : String(err));
                 } finally {
                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 }
@@ -425,7 +425,7 @@ export const AdminDashboard = () => {
                     }
                 } catch (err) {
                     showToast('Failed to delete class', 'error');
-                    console.error(err);
+                    console.error('Class deletion error:', err instanceof Error ? err.message : String(err));
                 } finally {
                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 }
@@ -463,7 +463,7 @@ export const AdminDashboard = () => {
                     }
                 } catch (err) {
                     showToast('Failed to delete staff member', 'error');
-                    console.error(err);
+                    console.error('Staff deletion error:', err instanceof Error ? err.message : String(err));
                 } finally {
                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 }
@@ -501,7 +501,7 @@ export const AdminDashboard = () => {
                     }
                 } catch (err) {
                     showToast('Failed to delete student', 'error');
-                    console.error(err);
+                    console.error('Student deletion error:', err instanceof Error ? err.message : String(err));
                 } finally {
                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 }
