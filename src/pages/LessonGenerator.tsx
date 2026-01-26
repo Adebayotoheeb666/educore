@@ -128,7 +128,7 @@ export const LessonGenerator = () => {
                 }
             }
         } catch (e) {
-            console.error(e);
+            console.error("Lesson generation error:", e instanceof Error ? e.message : String(e));
             setError("Failed to generate note. Please try again.");
         } finally {
             setLoading(false);
