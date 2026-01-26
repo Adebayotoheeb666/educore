@@ -67,7 +67,7 @@ export const registerSchool = async (adminData: any, schoolData: any) => {
 
 /**
  * Activates a pre-created account (Student or Staff) on first login.
- * This performs a SignUp behind the scenes.
+ * This performs a SignUp behind the scenes, or handles already-registered accounts.
  */
 export const activateAccount = async (
     schoolId: string,
@@ -94,6 +94,25 @@ export const activateAccount = async (
             }
         }
     });
+
+    // If the user is already registered, try to sign in instead
+    if (error && (error.message?.includes('already registered') || error.code === 'user_already_exists')) {
+        console.warn("Account already registered, attempting sign in...");
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: virtualEmail,
+            password
+        });
+
+        if (signInError) {
+            throw signInError;
+        }
+
+        if (!signInData.user) {
+            throw new Error("Sign in failed after account registration");
+        }
+
+        return signInData;
+    }
 
     if (error) throw error;
     if (!data.user) throw new Error("Activation failed");
