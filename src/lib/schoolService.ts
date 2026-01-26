@@ -6,10 +6,12 @@ import { supabase } from './supabase';
  * Returns the school ID (UUID) and other details
  */
 export const findSchoolByName = async (schoolName: string) => {
-    try {
-        // Try edge function first (server-side lookup with service role)
-        const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lookup-school`;
+    const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lookup-school`;
 
+    try {
+        console.log('[findSchoolByName] Attempting edge function lookup for:', schoolName);
+
+        // Try edge function first (server-side lookup with service role)
         const response = await fetch(edgeFunctionUrl, {
             method: 'POST',
             headers: {
@@ -19,18 +21,27 @@ export const findSchoolByName = async (schoolName: string) => {
             body: JSON.stringify({ schoolName })
         });
 
+        if (!response.ok) {
+            console.warn(`[findSchoolByName] Edge function returned ${response.status}, trying fallback...`);
+            throw new Error(`Edge function returned ${response.status}`);
+        }
+
         const result = await response.json();
 
-        if (result.schools && Array.isArray(result.schools)) {
+        if (result.schools && Array.isArray(result.schools) && result.schools.length > 0) {
+            console.log('[findSchoolByName] Found schools via edge function:', result.schools.length);
             return result.schools;
         }
 
-        console.warn('School lookup returned no results:', result.error);
+        console.warn('[findSchoolByName] School lookup returned no results via edge function');
         return [];
     } catch (err) {
-        console.error('Exception in findSchoolByName:', err);
-        // Fallback: try direct query (may fail due to RLS)
+        // Edge function failed - try direct query as fallback
+        console.warn('[findSchoolByName] Edge function failed, using database fallback:',
+            err instanceof Error ? err.message : String(err));
+
         try {
+            console.log('[findSchoolByName] Attempting direct database query...');
             const { data, error } = await supabase
                 .from('schools')
                 .select('id, name, address')
@@ -38,13 +49,22 @@ export const findSchoolByName = async (schoolName: string) => {
                 .limit(5);
 
             if (error) {
-                console.error('Fallback query also failed:', error);
+                console.error('[findSchoolByName] Fallback query failed:', error.message);
+                // Return empty array instead of throwing - allow graceful degradation
                 return [];
             }
 
-            return data || [];
+            if (data && data.length > 0) {
+                console.log('[findSchoolByName] Found schools via database fallback:', data.length);
+                return data;
+            }
+
+            console.log('[findSchoolByName] No schools found in database');
+            return [];
         } catch (fallbackErr) {
-            console.error('Fallback exception:', fallbackErr);
+            console.error('[findSchoolByName] Fallback exception:',
+                fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr));
+            // Return empty array instead of throwing
             return [];
         }
     }
