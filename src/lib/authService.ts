@@ -262,11 +262,26 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                 });
 
                 if (rpcError) {
-                    console.error("Staff profile linking RPC error:", rpcError);
+                    console.error("Staff profile linking RPC error:", {
+                        message: rpcError.message,
+                        code: rpcError.code,
+                        authUid,
+                        schoolId,
+                        staffIdIdentifier: identifier
+                    });
                 } else if (data && !data.success) {
-                    console.warn("Staff profile linking failed:", data.message);
+                    console.warn("Staff profile linking RPC returned failure:", {
+                        message: data.message,
+                        authUid,
+                        schoolId
+                    });
                 } else {
-                    console.log("Staff profile linked successfully:", data?.message, `(${data?.assignments_migrated || 0} assignments)`);
+                    console.log("Staff profile linked successfully:", {
+                        message: data?.message,
+                        assignmentsMigrated: data?.assignments_migrated || 0,
+                        authUid,
+                        schoolId
+                    });
                 }
 
                 // Now delete the old placeholder (whether RPC succeeded or failed)
