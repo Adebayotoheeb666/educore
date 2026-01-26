@@ -273,6 +273,12 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
             // Migrate Staff Assignments (if teacher) using RPC for secure migration
             if (role === 'staff') {
                 let migrationSucceeded = false;
+                console.log('[Staff Assignment Migration] Starting migration:', {
+                    placeholder_id: placeholder?.id,
+                    auth_uid: authUid,
+                    staff_id_identifier: identifier,
+                    school_id: schoolId
+                });
                 try {
                     const { data, error: rpcError } = await supabase.rpc('link_staff_profile_after_activation', {
                         p_school_id: schoolId,
