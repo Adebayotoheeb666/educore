@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { Send, Download, AlertCircle, Archive, Clock, Sparkles } from 'lucide-react';
 import { geminiService } from '../lib/gemini';
 import { exportService } from '../lib/exportService';
-import { cn } from '../components/Layout';
+import { cn } from '../lib/cn';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 
