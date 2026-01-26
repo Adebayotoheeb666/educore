@@ -68,6 +68,13 @@ export const Dashboard = () => {
                 console.log('[Dashboard] No user, skipping fetch');
                 return;
             }
+
+            // Check if profile is loaded
+            if (authLoading) {
+                console.log('[Dashboard] Auth still loading, skipping fetch');
+                return;
+            }
+
             try {
                 // Fetch pending grades
                 const { count, error } = await supabase
@@ -126,11 +133,15 @@ export const Dashboard = () => {
                         setClassStats(uniqueStats);
                         console.log('[Dashboard] Staff assignments loaded:', uniqueStats.length);
                     } else if (!assignError) {
-                        console.log('[Dashboard] No assignments found for this staff');
+                        console.log('[Dashboard] No assignments found for this staff', {
+                            userId: user.id,
+                            schoolId: schoolId,
+                            note: 'If you recently created this staff account, check the browser console for any RPC migration warnings'
+                        });
                     }
 
                     // Fetch recent attendance records with student names
-                    const classIdList = [...new Set(assignments.map(a => a.class_id))];
+                    const classIdList = assignments ? [...new Set(assignments.map(a => a.class_id))] : [];
                     if (classIdList.length > 0) {
                         try {
                             const { data: attendance, error: attendError } = await supabase
@@ -175,7 +186,11 @@ export const Dashboard = () => {
                         }
                     }
                 } else {
-                    console.warn('[Dashboard] schoolId not available');
+                    console.warn('[Dashboard] schoolId not available', {
+                        userRole: role,
+                        profileSchoolId: profile?.schoolId,
+                        userId: user?.id
+                    });
                 }
             } catch (err) {
                 console.error('[Dashboard] Error fetching dashboard data:', err);
@@ -185,7 +200,7 @@ export const Dashboard = () => {
         };
 
         fetchData();
-    }, [user, schoolId]);
+    }, [user, schoolId, authLoading]);
 
     return (
         <div className="space-y-8 pb-20">
