@@ -130,7 +130,7 @@ export const Dashboard = () => {
                     }
 
                     // Fetch recent attendance records with student names
-                    const classIdList = [...new Set(assignments.map(a => a.class_id))];
+                    const classIdList = assignments ? [...new Set(assignments.map(a => a.class_id))] : [];
                     if (classIdList.length > 0) {
                         try {
                             const { data: attendance, error: attendError } = await supabase
