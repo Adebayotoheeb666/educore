@@ -267,6 +267,12 @@ export const loginWithAdmissionNumber = async (schoolId: string, admissionNumber
     });
 
     if (error) {
+        // Check if it's an invalid credentials error (account exists but wrong password)
+        if (error.message?.includes('invalid') || error.code === 'invalid_grant') {
+            // Wrong password - don't try activation
+            throw error;
+        }
+
         // We attempt to ACTIVATE (SignUp) if login fails.
         // This is a "Just-in-Time" registration.
         try {
@@ -280,7 +286,7 @@ export const loginWithAdmissionNumber = async (schoolId: string, admissionNumber
             }
         } catch (activationError) {
             console.error("Activation failed:", activationError);
-            throw error; // Throw original login error if activation fails
+            throw activationError; // Throw activation error for better diagnostics
         }
     }
 
