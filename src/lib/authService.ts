@@ -241,98 +241,133 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                     role: role
                 });
 
-    if (insertError) {
-        console.error("Failed to link profile:", {
-            message: insertError.message,
-            code: insertError.code,
-            details: insertError.details,
-            hint: insertError.hint
-        });
-        throw new Error(`Failed to link profile: ${insertError.message}`);
-    }
-
-    // 3. Migrate Related Records
-    if (placeholder.id) {
-        // Migrate Classes (Students)
-                if (role === 'student') {
-                    const { error: classError } = await supabase
-                        .from('student_classes')
-                        .update({ student_id: authUid })
-                        .eq('student_id', placeholder.id);
-
-                    if (classError) {
-                        console.warn("Student class migration warning:", {
-                            message: classError.message,
-                            code: classError.code,
-                            details: classError.details
-                        });
-                    }
-                }
-
-        // Migrate Staff Assignments (if teacher) using RPC for secure migration
-        if (role === 'staff') {
-            let migrationSucceeded = false;
-            try {
-                const { data, error: rpcError } = await supabase.rpc('link_staff_profile_after_activation', {
-                    p_school_id: schoolId,
-                    p_auth_uid: authUid,
-                    p_staff_id_identifier: identifier
+            if (insertError) {
+                console.error("Failed to link profile:", {
+                    message: insertError.message,
+                    code: insertError.code,
+                    details: insertError.details,
+                    hint: insertError.hint
                 });
+                throw new Error(`Failed to link profile: ${insertError.message}`);
+            }
+        }
 
-                if (rpcError) {
-                    console.error("Staff profile linking RPC error:", rpcError);
-                    console.warn("⚠️  Assignment migration failed - staff may not see assigned classes. The RPC function may not be deployed.");
-                } else if (data && !data.success) {
-                    console.warn("Staff profile linking RPC returned failure:", {
-                        message: data.message,
-                        authUid,
-                        schoolId
+        // 3. Migrate Related Records
+        if (placeholder.id) {
+            // Migrate Classes (Students)
+            if (role === 'student') {
+                const { error: classError } = await supabase
+                    .from('student_classes')
+                    .update({ student_id: authUid })
+                    .eq('student_id', placeholder.id);
+
+                if (classError) {
+                    console.warn("Student class migration warning:", {
+                        message: classError.message,
+                        code: classError.code,
+                        details: classError.details
                     });
-                } else {
-                    console.log("Staff profile linked successfully:", data?.message, `(${data?.assignments_migrated || 0} assignments)`);
-                    migrationSucceeded = true;
                 }
+            }
 
-                // Only delete the old placeholder if migration succeeded
-                // This prevents losing assignments if the RPC failed
-                if (migrationSucceeded) {
+            // Migrate Staff Assignments (if teacher) using RPC for secure migration
+            if (role === 'staff') {
+                let migrationSucceeded = false;
+                console.log('[Staff Assignment Migration] Starting migration:', {
+                    placeholder_id: placeholder?.id,
+                    auth_uid: authUid,
+                    staff_id_identifier: identifier,
+                    school_id: schoolId
+                });
+                try {
+                    const { data, error: rpcError } = await supabase.rpc('link_staff_profile_after_activation', {
+                        p_school_id: schoolId,
+                        p_auth_uid: authUid,
+                        p_staff_id_identifier: identifier
+                    });
+
+                    if (rpcError) {
+                        console.warn("RPC migration error, attempting client-side fallback:", rpcError);
+                        // Fallback: Migrate assignments client-side
+                        try {
+                            const { error: updateError } = await supabase
+                                .from('staff_assignments')
+                                .update({ staff_id: authUid })
+                                .eq('staff_id', placeholder.id)
+                                .eq('school_id', schoolId);
+
+                            if (updateError) {
+                                console.error("Client-side migration failed:", updateError);
+                            } else {
+                                console.log("✅ Staff assignments migrated successfully (client-side fallback)");
+                                migrationSucceeded = true;
+                            }
+                        } catch (fallbackErr) {
+                            console.error("Client-side migration exception:", fallbackErr);
+                        }
+                    } else if (data && !data.success) {
+                        console.warn("RPC returned failure, attempting client-side fallback:", data.message);
+                        // Fallback: Migrate assignments client-side
+                        try {
+                            const { error: updateError } = await supabase
+                                .from('staff_assignments')
+                                .update({ staff_id: authUid })
+                                .eq('staff_id', placeholder.id)
+                                .eq('school_id', schoolId);
+
+                            if (updateError) {
+                                console.error("Client-side migration failed:", updateError);
+                            } else {
+                                console.log("✅ Staff assignments migrated successfully (client-side fallback)");
+                                migrationSucceeded = true;
+                            }
+                        } catch (fallbackErr) {
+                            console.error("Client-side migration exception:", fallbackErr);
+                        }
+                    } else {
+                        console.log("Staff profile linked successfully:", data?.message, `(${data?.assignments_migrated || 0} assignments)`);
+                        migrationSucceeded = true;
+                    }
+
+                    // Only delete the old placeholder if migration succeeded
+                    // This prevents losing assignments if the RPC failed
+                    if (migrationSucceeded) {
+                        const { error: deleteError } = await supabase
+                            .from('users')
+                            .delete()
+                            .eq('id', placeholder.id);
+
+                        if (deleteError) {
+                            console.warn("Failed to delete placeholder profile:", deleteError);
+                        }
+                    } else {
+                        console.warn("⚠️  Keeping old profile because assignment migration failed.");
+                    }
+                } catch (err) {
+                    console.error("Staff profile linking exception:", err);
+                    console.warn("⚠️  Assignment migration error - keeping old profile as fallback.");
+                }
+            } else {
+                // For other roles, just delete the old placeholder
+                try {
                     const { error: deleteError } = await supabase
                         .from('users')
                         .delete()
                         .eq('id', placeholder.id);
 
                     if (deleteError) {
-                        console.warn("Failed to delete placeholder profile:", deleteError);
+                        console.warn("Failed to delete placeholder profile for non-staff role:", deleteError);
                     }
-                } else {
-                    console.warn("⚠️  Keeping old profile because assignment migration failed.");
+                } catch (err) {
+                    console.error("Exception while deleting placeholder profile:", err);
                 }
-            } catch (err) {
-                console.error("Staff profile linking exception:", err);
-                console.warn("⚠️  Assignment migration error - keeping old profile as fallback.");
-            }
-        } else {
-            // For other roles, just delete the old placeholder
-            try {
-                const { error: deleteError } = await supabase
-                    .from('users')
-                    .delete()
-                    .eq('id', placeholder.id);
-
-                if (deleteError) {
-                    console.warn("Failed to delete placeholder profile for non-staff role:", deleteError);
-                }
-            } catch (err) {
-                console.error("Exception while deleting placeholder profile:", err);
             }
         }
+    } catch (err) {
+        console.error("Profile linking error:", err);
+        throw err;
     }
-
-    // Special case for parents: If they logged in with student creds,
-    // we might need to ensure they have the 'parent' role if they intended to be in the parent portal.
-    // However, the current logic assumes Admission Number login is primarily for students.
-    // If a parent uses it, they effectively "are" the student for that session.
-};
+}
 
 /**
  * Login for parents using their child's admission number and PIN
