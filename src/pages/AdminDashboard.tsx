@@ -438,17 +438,21 @@ export const AdminDashboard = () => {
         setConfirmModal({
             isOpen: true,
             title: 'Delete Staff Member',
-            message: `Are you sure you want to delete "${name}"? This will remove their profile and access to the school.`,
+            message: `Are you sure you want to delete "${name}"? This will remove their profile, Auth account, and access to the school. This action cannot be undone.`,
             type: 'danger',
             onConfirm: async () => {
                 try {
-                    const { error, count } = await supabase.from('users').delete({ count: 'exact' }).eq('id', id);
-                    if (error) throw error;
-                    if (count === 0) {
-                        showToast('Delete failed: access denied (RLS) or record not found.', 'error');
-                    } else {
+                    // Use the service function that properly deletes both Auth account and profile
+                    if (!schoolId || !user?.id) {
+                        showToast('Missing school or user information', 'error');
+                        return;
+                    }
+
+                    const result = await deleteStaffAccount(schoolId, user.id, id);
+
+                    if (result.success) {
                         // Log the delete action
-                        if (schoolId && user?.id && profile?.full_name) {
+                        if (profile?.full_name) {
                             await logAction(
                                 schoolId,
                                 user.id,
@@ -459,11 +463,15 @@ export const AdminDashboard = () => {
                                 { name }
                             );
                         }
-                        showToast('Staff member deleted successfully', 'success');
+                        showToast('Staff member deleted successfully. They can no longer log in.', 'success');
                         fetchData();
+                    } else {
+                        showToast('Failed to delete staff member', 'error');
                     }
                 } catch (err) {
-                    showToast('Failed to delete staff member', 'error');
+                    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+                    console.error('Delete staff error:', err);
+                    showToast(`Failed to delete staff member: ${errorMsg}`, 'error');
                     console.error('Staff deletion error:', err instanceof Error ? err.message : String(err));
                 } finally {
                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
