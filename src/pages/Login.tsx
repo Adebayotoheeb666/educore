@@ -172,7 +172,7 @@ export const Login = () => {
                 }
                 const resolvedSchoolId = await resolveSchoolId(schoolId);
                 await loginWithStaffId(resolvedSchoolId, staffId, password);
-                navigate('/');
+                navigate('/dashboard');
             } else if (mode === 'parent-login') {
                 if (showOtpInput) {
                     await handleVerifyOtp();
