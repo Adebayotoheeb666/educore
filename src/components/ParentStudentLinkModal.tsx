@@ -79,10 +79,10 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
                 if (linkError) throw linkError;
 
-                const existing = linkData.map(l => ({
+                const existing = (linkData || []).map(l => ({
                     id: l.id,
                     schoolId: l.school_id,
-                    parentIds: l.parent_ids,
+                    parentId: l.parent_id,
                     studentId: l.student_id,
                     relationship: l.relationship,
                     createdAt: l.created_at,
@@ -91,17 +91,21 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
                 setExistingLinks(existing);
 
-                // Initialize with existing links
-                const initialLinks: LinkData[] = existing.flatMap(link =>
-                    link.parentIds.map((parentId, idx) => ({
-                        id: `${link.id}-${idx}`, // Use existing link ID + index for uniqueness
-                        parentId,
-                        relationship: link.relationship
-                    }))
-                );
+                // Initialize with existing links - one row per parent-student link
+                const initialLinks: LinkData[] = existing.map(link => ({
+                    id: link.id || '',
+                    parentId: link.parentId,
+                    relationship: link.relationship
+                }));
                 setLinks(initialLinks.length > 0 ? initialLinks : []);
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to load data');
+                let errorMessage = 'Failed to load data';
+                if (err instanceof Error) {
+                    errorMessage = err.message;
+                } else if (err && typeof err === 'object' && 'message' in err) {
+                    errorMessage = String((err as any).message);
+                }
+                setError(errorMessage);
             } finally {
                 setLoading(false);
             }
@@ -167,23 +171,11 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
 
             // Create new links for each parent
             for (const link of links) {
-                // In Supabase, we don't necessarily need to construct the ID manually if auto-gen,
-                // but if we Want to maintain the structure: `${link.parentId}_${studentId}`
-                const linkId = `${link.parentId}_${studentId}`;
-
                 const { error: insertError } = await supabase
                     .from('parent_student_links')
                     .insert({
-                        id: linkId,
                         school_id: schoolId,
-                        parent_ids: [link.parentId], // Array in DB? Or just parent_id? 
-                        // The original interface implies parentIds: string[].
-                        // If the DB schema supports array, fine. If it's a join table, usually one parent per row.
-                        // Assuming the schema follows the original Firestore structure where 'parentIds' was an array.
-                        // However, standard SQL normalization would suggest one row per link.
-                        // Based on the 'links' state which has single parentId per entry, 
-                        // but 'existingLinks' mapping 'parentIds' property...
-                        // Let's assume the DB table 'parent_student_links' has a 'parent_ids' column (text[]).
+                        parent_id: link.parentId,
                         student_id: studentId,
                         relationship: link.relationship
                     });
@@ -198,7 +190,13 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
                 }, 1500);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to save links');
+            let errorMessage = 'Failed to save links';
+            if (err instanceof Error) {
+                errorMessage = err.message;
+            } else if (err && typeof err === 'object' && 'message' in err) {
+                errorMessage = String((err as any).message);
+            }
+            setError(errorMessage);
         } finally {
             setSaving(false);
         }

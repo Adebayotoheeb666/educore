@@ -145,17 +145,26 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
             role
         });
         // Create fresh profile if missing with all required fields
+        const virtualEmail = getVirtualEmail(schoolId, identifier);
         const freshProfile: any = {
             id: authUid,
             school_id: schoolId,
             role: role,
             [idField]: identifier,
             full_name: role === 'student' ? 'Student' : 'Staff Member', // Default fallback
-            email: getVirtualEmail(schoolId, identifier),
+            email: virtualEmail,
             // Ensure the identifier fields are set
             ...(role === 'staff' && { staff_id: identifier }),
             ...(role === 'student' && { admission_number: identifier })
         };
+
+        console.log('[linkProfileAfterActivation] Creating fresh profile with:', {
+            id: authUid,
+            school_id: schoolId,
+            role: role,
+            email: virtualEmail,
+            identifier: identifier
+        });
 
         const { error: createError } = await supabase.from('users').insert(freshProfile);
 
@@ -163,12 +172,9 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
             console.error("Failed to create fresh profile:", {
                 message: createError.message,
                 code: createError.code,
-                hint: createError.hint,
                 details: createError.details,
-                authUid,
-                schoolId,
-                role,
-                [idField]: identifier
+                hint: createError.hint,
+                profileData: freshProfile
             });
             throw new Error(`Failed to create profile: ${createError.message}`);
         }
@@ -235,49 +241,37 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                     role: role
                 });
 
-            if (insertError) {
-                console.error("Failed to create new profile:", {
-                    message: insertError.message,
-                    code: insertError.code,
-                    hint: insertError.hint,
-                    details: insertError.details,
-                    authUid,
-                    schoolId,
-                    role
-                });
-                return;
-            }
-        }
-    } catch (error) {
-        console.error("Exception during profile linking:", error);
-        return;
+    if (insertError) {
+        console.error("Failed to link profile:", {
+            message: insertError.message,
+            code: insertError.code,
+            details: insertError.details,
+            hint: insertError.hint
+        });
+        throw new Error(`Failed to link profile: ${insertError.message}`);
     }
 
     // 3. Migrate Related Records
     if (placeholder.id) {
         // Migrate Classes (Students)
-        if (role === 'student') {
-            try {
-                const { error: classError } = await supabase
-                    .from('student_classes')
-                    .update({ student_id: authUid })
-                    .eq('student_id', placeholder.id);
+                if (role === 'student') {
+                    const { error: classError } = await supabase
+                        .from('student_classes')
+                        .update({ student_id: authUid })
+                        .eq('student_id', placeholder.id);
 
-                if (classError) {
-                    console.warn("Student class migration warning:", {
-                        message: classError.message,
-                        code: classError.code,
-                        oldStudentId: placeholder.id,
-                        newStudentId: authUid
-                    });
+                    if (classError) {
+                        console.warn("Student class migration warning:", {
+                            message: classError.message,
+                            code: classError.code,
+                            details: classError.details
+                        });
+                    }
                 }
-            } catch (err) {
-                console.error("Exception during student class migration:", err);
-            }
-        }
 
         // Migrate Staff Assignments (if teacher) using RPC for secure migration
         if (role === 'staff') {
+            let migrationSucceeded = false;
             try {
                 const { data, error: rpcError } = await supabase.rpc('link_staff_profile_after_activation', {
                     p_school_id: schoolId,
@@ -286,13 +280,8 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                 });
 
                 if (rpcError) {
-                    console.error("Staff profile linking RPC error:", {
-                        message: rpcError.message,
-                        code: rpcError.code,
-                        authUid,
-                        schoolId,
-                        staffIdIdentifier: identifier
-                    });
+                    console.error("Staff profile linking RPC error:", rpcError);
+                    console.warn("⚠️  Assignment migration failed - staff may not see assigned classes. The RPC function may not be deployed.");
                 } else if (data && !data.success) {
                     console.warn("Staff profile linking RPC returned failure:", {
                         message: data.message,
@@ -300,28 +289,27 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                         schoolId
                     });
                 } else {
-                    console.log("Staff profile linked successfully:", {
-                        message: data?.message,
-                        assignmentsMigrated: data?.assignments_migrated || 0,
-                        authUid,
-                        schoolId
-                    });
+                    console.log("Staff profile linked successfully:", data?.message, `(${data?.assignments_migrated || 0} assignments)`);
+                    migrationSucceeded = true;
                 }
 
-                // Now delete the old placeholder (whether RPC succeeded or failed)
-                // This is safe because the new profile with authUid should already exist
-                const { error: deleteError } = await supabase
-                    .from('users')
-                    .delete()
-                    .eq('id', placeholder.id);
+                // Only delete the old placeholder if migration succeeded
+                // This prevents losing assignments if the RPC failed
+                if (migrationSucceeded) {
+                    const { error: deleteError } = await supabase
+                        .from('users')
+                        .delete()
+                        .eq('id', placeholder.id);
 
-                if (deleteError) {
-                    console.warn("Failed to delete placeholder profile:", deleteError);
+                    if (deleteError) {
+                        console.warn("Failed to delete placeholder profile:", deleteError);
+                    }
+                } else {
+                    console.warn("⚠️  Keeping old profile because assignment migration failed.");
                 }
             } catch (err) {
                 console.error("Staff profile linking exception:", err);
-                // Attempt cleanup anyway
-                await supabase.from('users').delete().eq('id', placeholder.id);
+                console.warn("⚠️  Assignment migration error - keeping old profile as fallback.");
             }
         } else {
             // For other roles, just delete the old placeholder
@@ -389,7 +377,16 @@ export const loginWithAdmissionNumber = async (schoolId: string, admissionNumber
 
             if (authResponse.user) {
                 // Post-Activation: Link/Clone Profile
-                await linkProfileAfterActivation(schoolId, authResponse.user.id, admissionNumber, 'student');
+                try {
+                    await linkProfileAfterActivation(schoolId, authResponse.user.id, admissionNumber, 'student');
+                } catch (linkError) {
+                    console.error("Profile linking error during student activation:", {
+                        message: linkError instanceof Error ? linkError.message : String(linkError),
+                        error: linkError
+                    });
+                    // Continue anyway - user is already authenticated
+                    // The profile might have been partially created
+                }
                 return authResponse;
             }
         } catch (activationError) {
@@ -424,7 +421,16 @@ export const loginWithStaffId = async (schoolId: string, staffId: string, passwo
             console.log("Login failed, attempting activation...");
             const authResponse = await activateAccount(schoolId, staffId, password, 'staff');
             if (authResponse.user) {
-                await linkProfileAfterActivation(schoolId, authResponse.user.id, staffId, 'staff');
+                try {
+                    await linkProfileAfterActivation(schoolId, authResponse.user.id, staffId, 'staff');
+                } catch (linkError) {
+                    console.error("Profile linking error during staff activation:", {
+                        message: linkError instanceof Error ? linkError.message : String(linkError),
+                        error: linkError
+                    });
+                    // Continue anyway - user is already authenticated
+                    // The profile might have been partially created
+                }
                 return authResponse;
             }
         } catch (activationError) {

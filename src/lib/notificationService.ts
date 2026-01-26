@@ -360,40 +360,52 @@ export const sendMessageNotification = async (
 };
 
 export const getNotifications = async (schoolId: string, userId: string, limit = 20): Promise<DocWithId<Notification>[]> => {
-    const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('school_id', schoolId)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
+    try {
+        const { data, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('school_id', schoolId)
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(limit);
 
-    if (error) {
-        console.error('Error fetching notifications:', error);
+        if (error) {
+            console.error('Error fetching notifications:', error);
+            return [];
+        }
+
+        return (data || []).map(doc => ({
+            id: doc.id,
+            schoolId: doc.school_id,
+            userId: doc.user_id,
+            title: doc.title,
+            message: doc.message,
+            type: doc.type,
+            link: doc.link,
+            read: doc.read,
+            createdAt: doc.created_at
+        })) as DocWithId<Notification>[];
+    } catch (error) {
+        console.error('Exception while fetching notifications:', error);
+        // Return empty array on network or other errors
         return [];
     }
-
-    return (data || []).map(doc => ({
-        id: doc.id,
-        schoolId: doc.school_id,
-        userId: doc.user_id,
-        title: doc.title,
-        message: doc.message,
-        type: doc.type,
-        link: doc.link,
-        read: doc.read,
-        createdAt: doc.created_at
-    })) as DocWithId<Notification>[];
 };
 
 export const markAsRead = async (notificationId: string) => {
     try {
-        await supabase
+        const { error } = await supabase
             .from('notifications')
             .update({ read: true })
             .eq('id', notificationId);
+
+        if (error) {
+            console.warn('Failed to mark notification as read:', error);
+            // Don't throw - marking as read is not critical
+        }
     } catch (error) {
-        console.error('Failed to mark notification as read:', error);
+        console.warn('Failed to mark notification as read:', error);
+        // Silently fail - this is not critical
     }
 };
 
@@ -401,11 +413,17 @@ export const markAllAsRead = async (notificationIds: string[]) => {
     try {
         if (notificationIds.length === 0) return;
 
-        await supabase
+        const { error } = await supabase
             .from('notifications')
             .update({ read: true })
             .in('id', notificationIds);
+
+        if (error) {
+            console.warn('Failed to mark all notifications as read:', error);
+            // Don't throw - marking as read is not critical
+        }
     } catch (error) {
-        console.error('Failed to mark all as read:', error);
+        console.warn('Failed to mark all notifications as read:', error);
+        // Silently fail - this is not critical
     }
 };

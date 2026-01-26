@@ -121,16 +121,41 @@ export const ClassManager = () => {
         if (!selectedClass) return;
         setProcessing(true);
         try {
-            const { error } = await supabase
-                .from('users')
-                .update({ class_id: selectedClass.id })
-                .eq('id', studentId);
+            // Check if enrollment already exists
+            const { data: existing, error: checkError } = await supabase
+                .from('student_classes')
+                .select('id')
+                .eq('student_id', studentId)
+                .eq('class_id', selectedClass.id)
+                .single();
 
-            if (error) throw error;
+            if (checkError && checkError.code !== 'PGRST116') {
+                throw checkError;
+            }
+
+            // If enrollment already exists, just refresh and return
+            if (existing) {
+                fetchEnrolledStudents(selectedClass.id);
+                setShowAddModal(false);
+                return;
+            }
+
+            // Insert new enrollment
+            const { error: insertError } = await supabase
+                .from('student_classes')
+                .insert({
+                    student_id: studentId,
+                    class_id: selectedClass.id,
+                    school_id: schoolId,
+                    enrollment_date: new Date().toISOString().split('T')[0],
+                    status: 'active'
+                });
+
+            if (insertError) throw insertError;
 
             // Success
             fetchEnrolledStudents(selectedClass.id);
-            // Optional: Show feedback
+            setShowAddModal(false);
         } catch (err) {
             alert("Failed to add student to class");
         } finally {
@@ -142,9 +167,10 @@ export const ClassManager = () => {
         setProcessing(true);
         try {
             const { error } = await supabase
-                .from('users')
-                .update({ class_id: null })
-                .eq('id', studentId);
+                .from('student_classes')
+                .delete()
+                .eq('student_id', studentId)
+                .eq('class_id', selectedClass?.id);
 
             if (error) throw error;
             fetchEnrolledStudents(selectedClass.id);
@@ -158,7 +184,7 @@ export const ClassManager = () => {
     const filteredStudents = schoolStudents.filter(s =>
         (s.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.admission_number?.toLowerCase().includes(searchQuery.toLowerCase())) &&
-        s.class_id !== selectedClass?.id
+        !enrolledStudents.find(es => es.id === s.id)
     );
 
     if (loading) {
@@ -306,10 +332,7 @@ export const ClassManager = () => {
                                         </div>
                                         <div>
                                             <div className="text-white font-bold">{s.full_name}</div>
-                                            <div className="flex items-center gap-3 text-sm text-gray-500">
-                                                <span className="font-mono">{s.admission_number}</span>
-                                                {s.class_id && <span className="bg-white/5 px-2 py-0.5 rounded text-xs">Moved from other class</span>}
-                                            </div>
+                                            <div className="text-xs text-gray-500 font-mono">{s.admission_number}</div>
                                         </div>
                                     </div>
                                     <button

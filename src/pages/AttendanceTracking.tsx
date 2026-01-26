@@ -118,23 +118,62 @@ export const AttendanceTracking = () => {
         setSaving(true);
         setSuccess(false);
         try {
-            // Prepare batch data
+            // Prepare batch data with all required fields for the attendance table
             const attendanceRecords = Object.entries(attendance).map(([studentId, status]) => ({
                 school_id: schoolId,
                 student_id: studentId,
                 class_id: selectedClass,
                 teacher_id: user.id,
                 date: today,
-                status,
-                created_at: new Date().toISOString() // Let Supabase handle it or explicit
+                status
             }));
 
-            if (getOnlineStatus()) {
-                const { error } = await supabase
-                    .from('attendance')
-                    .insert(attendanceRecords);
+            if (attendanceRecords.length === 0) {
+                alert("No students to mark attendance for");
+                setSaving(false);
+                return;
+            }
 
-                if (error) throw error;
+            if (getOnlineStatus()) {
+                // Try to delete existing records for this class and date
+                try {
+                    await supabase
+                        .from('attendance')
+                        .delete()
+                        .eq('date', today)
+                        .eq('class_id', selectedClass);
+                } catch (err) {
+                    console.error('Warning: Could not delete old attendance records:', err);
+                    // Continue with insert anyway
+                }
+
+                // Insert new attendance records
+                const { error: insertError } = await supabase
+                    .from('attendance')
+                    .insert(attendanceRecords, { returning: 'minimal' });
+
+                if (insertError) {
+                    const errorMsg = insertError.message || JSON.stringify(insertError);
+                    const errorCode = insertError.code;
+
+                    console.error('Attendance insert error:', {
+                        code: errorCode,
+                        message: errorMsg,
+                        details: insertError.details,
+                        hint: insertError.hint
+                    });
+
+                    // Provide helpful error messages
+                    if (errorMsg.includes('teacher_id')) {
+                        throw new Error('Database schema is missing teacher_id column. Please contact your administrator.');
+                    } else if (errorMsg.includes('class_id')) {
+                        throw new Error('Database schema is missing class_id column. Please contact your administrator.');
+                    } else if (errorCode === 'PGRST001') {
+                        throw new Error('You do not have permission to record attendance. Please ensure you are assigned to this class.');
+                    } else {
+                        throw new Error(`Failed to save attendance: ${errorMsg}`);
+                    }
+                }
             } else {
                 // Queue action for offline support
                 await queueAction('attendance', 'mark_attendance', attendanceRecords);
@@ -172,8 +211,9 @@ export const AttendanceTracking = () => {
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
         } catch (err) {
-            console.error("Error saving attendance:", err);
-            alert("Failed to save attendance");
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error("Error saving attendance:", errorMsg);
+            alert(errorMsg || 'Failed to save attendance');
         } finally {
             setSaving(false);
         }
@@ -183,11 +223,27 @@ export const AttendanceTracking = () => {
         if (!selectedClass || !schoolId) return;
         setPredicting(true);
         try {
-            // Fetch recent attendance for this class
+            // Fetch students in the selected class first
+            const { data: classStudents, error: studentError } = await supabase
+                .from('student_classes')
+                .select('student_id')
+                .eq('class_id', selectedClass)
+                .eq('status', 'active');
+
+            if (studentError) throw studentError;
+
+            const studentIds = classStudents?.map(s => s.student_id) || [];
+            if (studentIds.length === 0) {
+                alert("No students in this class");
+                setPredicting(false);
+                return;
+            }
+
+            // Fetch recent attendance for these students
             const { data, error } = await supabase
                 .from('attendance')
                 .select('*, users(full_name)')
-                .eq('class_id', selectedClass)
+                .in('student_id', studentIds)
                 .order('date', { ascending: false })
                 .limit(100);
 

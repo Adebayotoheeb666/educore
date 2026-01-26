@@ -78,6 +78,14 @@ export const createStaffAccount = async (
     const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-staff`;
     const isProduction = import.meta.env.PROD;
 
+    console.log('Creating staff account with:', {
+        email: data.email,
+        schoolId,
+        role: data.role,
+        edgeFunctionUrl,
+        isProduction
+    });
+
     try {
         // Try to use edge function (production or if deployed in development)
         const response = await fetch(edgeFunctionUrl, {
@@ -98,26 +106,60 @@ export const createStaffAccount = async (
             })
         });
 
+        console.log('Edge function response status:', response.status);
+
         const result = await response.json();
+        console.log('Edge function result:', result);
 
         if (!response.ok) {
             // If in development and function not deployed, fall back to direct insert
             if (!isProduction && (response.status === 404 || response.status === 0)) {
+                console.log('Function not deployed (404), using fallback...');
                 return await createStaffAccountFallback(schoolId, data);
             }
-            throw new Error(result.error || `Failed to invite staff (HTTP ${response.status})`);
+
+            // Build detailed error message with any available details
+            let errorMessage = result.error || `Failed to invite staff (HTTP ${response.status})`;
+            if (result.details) {
+                console.error('Edge function error details:', result.details);
+                // Include specific error info if available
+                if (typeof result.details === 'object') {
+                    if (result.details.message) {
+                        errorMessage += `: ${result.details.message}`;
+                    }
+                }
+            }
+            throw new Error(errorMessage);
         }
 
+        // Handle both successful auth creation and fallback profile-only creation
         return {
             staffId: result.staffId,
             docId: result.authId,
-            message: "Staff invited successfully. Confirmation email sent."
+            message: result.message || "Staff invited successfully. Confirmation email sent.",
+            warning: result.warning || undefined
         };
     } catch (error) {
-        // Network/CORS error - likely function not deployed
-        if (!isProduction && error instanceof TypeError && error.message.includes('Failed to fetch')) {
-            console.warn('Edge function not reachable in development, using fallback...');
-            return await createStaffAccountFallback(schoolId, data);
+        console.error('Staff creation attempt failed:', error);
+
+        // Network/CORS error - likely function not deployed or network issue
+        if (!isProduction) {
+            const isNetworkError = error instanceof TypeError &&
+                (error.message.includes('Failed to fetch') ||
+                 error.message.includes('CORS') ||
+                 error.message.includes('NetworkError'));
+
+            if (isNetworkError) {
+                console.warn('Edge function not reachable in development, using fallback...');
+                try {
+                    return await createStaffAccountFallback(schoolId, data);
+                } catch (fallbackError) {
+                    console.error('Fallback also failed:', fallbackError);
+                    throw new Error(`Failed to create staff account: ${
+                        fallbackError instanceof Error ? fallbackError.message : 'Unknown error'
+                    }`);
+                }
+            }
         }
         throw error;
     }
