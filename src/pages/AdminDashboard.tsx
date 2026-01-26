@@ -27,6 +27,7 @@ import { StudentCreationModal } from '../components/StudentCreationModal';
 import { SchoolSettingsModal } from '../components/SchoolSettingsModal';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/auditService';
+import { deleteStaffAccount } from '../lib/staffService';
 import type { ImportResult } from '../lib/bulkImportService';
 import { ToastContainer, type ToastProps } from '../components/common/Toast';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
