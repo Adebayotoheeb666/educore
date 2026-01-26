@@ -281,14 +281,43 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                     });
 
                     if (rpcError) {
-                        console.error("Staff profile linking RPC error:", rpcError);
-                        console.warn("⚠️  Assignment migration failed - staff may not see assigned classes. The RPC function may not be deployed.");
+                        console.warn("RPC migration error, attempting client-side fallback:", rpcError);
+                        // Fallback: Migrate assignments client-side
+                        try {
+                            const { error: updateError } = await supabase
+                                .from('staff_assignments')
+                                .update({ staff_id: authUid })
+                                .eq('staff_id', placeholder.id)
+                                .eq('school_id', schoolId);
+
+                            if (updateError) {
+                                console.error("Client-side migration failed:", updateError);
+                            } else {
+                                console.log("✅ Staff assignments migrated successfully (client-side fallback)");
+                                migrationSucceeded = true;
+                            }
+                        } catch (fallbackErr) {
+                            console.error("Client-side migration exception:", fallbackErr);
+                        }
                     } else if (data && !data.success) {
-                        console.warn("Staff profile linking RPC returned failure:", {
-                            message: data.message,
-                            authUid,
-                            schoolId
-                        });
+                        console.warn("RPC returned failure, attempting client-side fallback:", data.message);
+                        // Fallback: Migrate assignments client-side
+                        try {
+                            const { error: updateError } = await supabase
+                                .from('staff_assignments')
+                                .update({ staff_id: authUid })
+                                .eq('staff_id', placeholder.id)
+                                .eq('school_id', schoolId);
+
+                            if (updateError) {
+                                console.error("Client-side migration failed:", updateError);
+                            } else {
+                                console.log("✅ Staff assignments migrated successfully (client-side fallback)");
+                                migrationSucceeded = true;
+                            }
+                        } catch (fallbackErr) {
+                            console.error("Client-side migration exception:", fallbackErr);
+                        }
                     } else {
                         console.log("Staff profile linked successfully:", data?.message, `(${data?.assignments_migrated || 0} assignments)`);
                         migrationSucceeded = true;
