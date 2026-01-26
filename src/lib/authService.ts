@@ -233,13 +233,22 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
     if (placeholder.id) {
         // Migrate Classes (Students)
         if (role === 'student') {
-            const { error: classError } = await supabase
-                .from('student_classes')
-                .update({ student_id: authUid })
-                .eq('student_id', placeholder.id);
+            try {
+                const { error: classError } = await supabase
+                    .from('student_classes')
+                    .update({ student_id: authUid })
+                    .eq('student_id', placeholder.id);
 
-            if (classError) {
-                console.warn("Student class migration warning:", classError);
+                if (classError) {
+                    console.warn("Student class migration warning:", {
+                        message: classError.message,
+                        code: classError.code,
+                        oldStudentId: placeholder.id,
+                        newStudentId: authUid
+                    });
+                }
+            } catch (err) {
+                console.error("Exception during student class migration:", err);
             }
         }
 
