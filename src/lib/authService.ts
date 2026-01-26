@@ -439,6 +439,27 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                             console.error("Exception while deleting placeholder:", deleteErr);
                         }
                     }
+
+                    // IMPORTANT: Also clean up any other placeholder profiles with the same staff_id
+                    // This handles the case where admin created multiple staff with same ID or duplicates exist
+                    try {
+                        console.log('[cleanup] Removing any other duplicate profiles with staff_id:', identifier);
+                        const { error: cleanupError, count } = await supabase
+                            .from('users')
+                            .delete()
+                            .eq('school_id', schoolId)
+                            .eq('staff_id', identifier)
+                            .neq('id', authUid)
+                            .select('id', { count: 'exact' });
+
+                        if (cleanupError) {
+                            console.warn("Warning: Could not clean up duplicate staff profiles:", cleanupError);
+                        } else if (count && count > 0) {
+                            console.log(`✅ Cleaned up ${count} duplicate staff profile(s) with same staff_id`);
+                        }
+                    } catch (cleanupErr) {
+                        console.error("Exception during duplicate profile cleanup:", cleanupErr);
+                    }
                 } catch (err) {
                     console.error("Staff profile linking exception:", err);
                     console.warn("⚠️  Assignment migration error - keeping old profile as fallback.");
