@@ -294,7 +294,7 @@ export const showTestNotification = async (): Promise<void> => {
                     title: 'Close',
                 },
             ],
-        });
+        } as NotificationOptions & { vibrate?: VibratePattern });
     } catch (error) {
         console.error('Failed to show test notification:', error);
         throw error;
