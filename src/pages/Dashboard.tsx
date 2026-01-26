@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText, Users, CheckCircle2, XCircle, Download, Calendar } from 'lucide-react';
+import { Sparkles, HelpCircle, Scan, Cloud, ArrowRight, ScrollText, Users, CheckCircle2, XCircle, Download } from 'lucide-react';
 import { NavLink, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
