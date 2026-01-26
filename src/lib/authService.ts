@@ -201,6 +201,7 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
 
         // Migrate Staff Assignments (if teacher) using RPC for secure migration
         if (role === 'staff') {
+            let migrationSucceeded = false;
             try {
                 const { data, error: rpcError } = await supabase.rpc('link_staff_profile_after_activation', {
                     p_school_id: schoolId,
@@ -210,26 +211,31 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
 
                 if (rpcError) {
                     console.error("Staff profile linking RPC error:", rpcError);
+                    console.warn("⚠️  Assignment migration failed - staff may not see assigned classes. The RPC function may not be deployed.");
                 } else if (data && !data.success) {
                     console.warn("Staff profile linking failed:", data.message);
                 } else {
                     console.log("Staff profile linked successfully:", data?.message, `(${data?.assignments_migrated || 0} assignments)`);
+                    migrationSucceeded = true;
                 }
 
-                // Now delete the old placeholder (whether RPC succeeded or failed)
-                // This is safe because the new profile with authUid should already exist
-                const { error: deleteError } = await supabase
-                    .from('users')
-                    .delete()
-                    .eq('id', placeholder.id);
+                // Only delete the old placeholder if migration succeeded
+                // This prevents losing assignments if the RPC failed
+                if (migrationSucceeded) {
+                    const { error: deleteError } = await supabase
+                        .from('users')
+                        .delete()
+                        .eq('id', placeholder.id);
 
-                if (deleteError) {
-                    console.warn("Failed to delete placeholder profile:", deleteError);
+                    if (deleteError) {
+                        console.warn("Failed to delete placeholder profile:", deleteError);
+                    }
+                } else {
+                    console.warn("⚠️  Keeping old profile because assignment migration failed.");
                 }
             } catch (err) {
                 console.error("Staff profile linking exception:", err);
-                // Attempt cleanup anyway
-                await supabase.from('users').delete().eq('id', placeholder.id);
+                console.warn("⚠️  Assignment migration error - keeping old profile as fallback.");
             }
         } else {
             // For other roles, just delete the old placeholder
