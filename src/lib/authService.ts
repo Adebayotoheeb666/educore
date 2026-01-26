@@ -180,6 +180,52 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
         }
 
         console.log("Fresh profile created successfully for new user", { authUid, schoolId, role });
+
+        // Even though we created a fresh profile, we still need to migrate any assignments
+        // that might exist for this staff member (linked by staff_id identifier)
+        if (role === 'staff') {
+            try {
+                console.log('[linkProfileAfterActivation] Migrating assignments for new staff profile:', {
+                    authUid,
+                    identifier,
+                    schoolId
+                });
+
+                const { error: assignmentError } = await supabase
+                    .from('staff_assignments')
+                    .update({ staff_id: authUid })
+                    .eq('school_id', schoolId)
+                    .eq('staff_id_identifier', identifier);
+
+                if (assignmentError) {
+                    // Try alternative approach - fetch by staff table and migrate
+                    console.warn("Direct migration by identifier failed, trying alternative approach:", assignmentError);
+                    const { data: otherProfiles } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('school_id', schoolId)
+                        .eq('staff_id', identifier)
+                        .neq('id', authUid);
+
+                    if (otherProfiles && otherProfiles.length > 0) {
+                        for (const profile of otherProfiles) {
+                            await supabase
+                                .from('staff_assignments')
+                                .update({ staff_id: authUid })
+                                .eq('staff_id', profile.id)
+                                .eq('school_id', schoolId);
+                        }
+                        console.log('✅ Staff assignments migrated successfully from old profiles');
+                    }
+                } else {
+                    console.log('✅ Staff assignments migrated successfully');
+                }
+            } catch (migrationErr) {
+                console.error('Assignment migration error for fresh profile:', migrationErr);
+                // Don't throw - allow user to continue even if assignment migration fails
+            }
+        }
+
         return;
     }
 
