@@ -14,7 +14,6 @@ import {
     Library,
     Trash2,
     Edit2,
-    AlertCircle,
     Settings
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
