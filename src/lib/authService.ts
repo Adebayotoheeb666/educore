@@ -229,6 +229,24 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                             });
                         }
                     }
+
+                    // Step 3: Delete all placeholder profiles now that assignments are migrated
+                    console.log('[linkProfileAfterActivation] Deleting placeholder profiles...');
+                    for (const placeholder of placeholderProfiles) {
+                        const { error: deleteError } = await supabase
+                            .from('users')
+                            .delete()
+                            .eq('id', placeholder.id);
+
+                        if (deleteError) {
+                            console.warn('Failed to delete placeholder profile:', {
+                                placeholderId: placeholder.id,
+                                error: deleteError
+                            });
+                        } else {
+                            console.log('✅ Deleted placeholder profile:', placeholder.id);
+                        }
+                    }
                 } else {
                     console.log('[linkProfileAfterActivation] No placeholder profiles found for staff_id:', identifier);
                 }
