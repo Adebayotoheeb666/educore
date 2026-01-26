@@ -19,7 +19,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { geminiService } from '../lib/gemini';
-import { cn } from '../components/Layout';
+import { cn } from '../lib/cn';
 
 interface AttendanceRecord {
     id: string;
