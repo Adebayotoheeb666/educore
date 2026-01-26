@@ -420,9 +420,11 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                         placeholder_id: placeholder?.id
                     });
 
-                    // Only delete the old placeholder if migration succeeded or no placeholder exists
-                    if (migrationSucceeded || !placeholder.id) {
-                        if (placeholder?.id) {
+                    // Always delete the old placeholder profile after creating the new auth profile
+                    // The new profile (with auth UID) is already created at this point, so we can safely delete the old one
+                    // Assignment migration success doesn't affect whether we should delete the placeholder
+                    if (placeholder?.id) {
+                        try {
                             const { error: deleteError } = await supabase
                                 .from('users')
                                 .delete()
@@ -433,9 +435,9 @@ const linkProfileAfterActivation = async (schoolId: string, authUid: string, ide
                             } else {
                                 console.log("✅ Deleted old placeholder profile:", placeholder.id);
                             }
+                        } catch (deleteErr) {
+                            console.error("Exception while deleting placeholder:", deleteErr);
                         }
-                    } else {
-                        console.warn("⚠️  Keeping old profile because assignment migration may have failed.");
                     }
                 } catch (err) {
                     console.error("Staff profile linking exception:", err);
