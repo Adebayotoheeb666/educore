@@ -23,6 +23,7 @@ import { StaffAssignmentModal } from '../components/StaffAssignmentModal';
 import { ParentStudentLinkModal } from '../components/ParentStudentLinkModal';
 import { StaffCreationModal } from '../components/StaffCreationModal';
 import { StudentCreationModal } from '../components/StudentCreationModal';
+import { ParentCreationModal } from '../components/ParentCreationModal';
 import { SchoolSettingsModal } from '../components/SchoolSettingsModal';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/auditService';
