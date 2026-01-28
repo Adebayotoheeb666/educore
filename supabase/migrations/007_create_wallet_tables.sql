@@ -40,6 +40,7 @@ CREATE POLICY "parents_see_own_wallet" ON parent_wallets
   USING (parent_id = auth.uid());
 
 -- Parents can view wallets for their children (if they're the parent)
+DROP POLICY IF EXISTS "parents_see_wallet_for_children" ON parent_wallets;
 CREATE POLICY "parents_see_wallet_for_children" ON parent_wallets
   FOR SELECT
   USING (
@@ -93,11 +94,13 @@ ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 -- Users can see their own transactions
+DROP POLICY IF EXISTS "users_see_own_wallet_txn" ON wallet_transactions;
 CREATE POLICY "users_see_own_wallet_txn" ON wallet_transactions
   FOR SELECT
   USING (user_id = auth.uid());
 
 -- Parents can see transactions for their linked children
+DROP POLICY IF EXISTS "parents_see_linked_child_txn" ON wallet_transactions;
 CREATE POLICY "parents_see_linked_child_txn" ON wallet_transactions
   FOR SELECT
   USING (
@@ -109,6 +112,7 @@ CREATE POLICY "parents_see_linked_child_txn" ON wallet_transactions
   );
 
 -- Admins can see all transactions in their school
+DROP POLICY IF EXISTS "admins_view_school_txn" ON wallet_transactions;
 CREATE POLICY "admins_view_school_txn" ON wallet_transactions
   FOR SELECT
   USING (
