@@ -30,7 +30,7 @@ CREATE POLICY "Staff see school staff"
 ON users FOR SELECT
 USING (
   school_id = (SELECT school_id FROM users WHERE id = auth.uid())
-  AND role IN ('staff', 'admin')
+  AND users.role IN ('staff', 'admin')
 );
 
 -- ============================================
