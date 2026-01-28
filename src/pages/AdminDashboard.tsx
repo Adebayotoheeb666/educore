@@ -37,9 +37,10 @@ export const AdminDashboard = () => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { schoolId, role, user, profile, loading: authLoading } = useAuth();
-    const [activeTab, setActiveTab] = useState<'staff' | 'students' | 'classes' | 'subjects'>('staff');
+    const [activeTab, setActiveTab] = useState<'staff' | 'students' | 'parents' | 'classes' | 'subjects'>('staff');
     const [staff, setStaff] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
+    const [parents, setParents] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
     const [subjects, setSubjects] = useState<any[]>([]);
     const [financials, setFinancials] = useState({ totalRevenue: 0, outstanding: 0 });
