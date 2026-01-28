@@ -34,11 +34,13 @@ ALTER TABLE parent_wallets ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for parent_wallets
 -- Parents can see their own wallet
+DROP POLICY IF EXISTS "parents_see_own_wallet" ON parent_wallets;
 CREATE POLICY "parents_see_own_wallet" ON parent_wallets
   FOR SELECT
   USING (parent_id = auth.uid());
 
 -- Parents can view wallets for their children (if they're the parent)
+DROP POLICY IF EXISTS "parents_see_wallet_for_children" ON parent_wallets;
 CREATE POLICY "parents_see_wallet_for_children" ON parent_wallets
   FOR SELECT
   USING (
@@ -49,8 +51,8 @@ CREATE POLICY "parents_see_wallet_for_children" ON parent_wallets
 CREATE POLICY "admins_view_all_wallets" ON parent_wallets
   FOR SELECT
   USING (
-    (SELECT role FROM users WHERE id = auth.uid()) = 'admin' AND
-    school_id = (SELECT school_id FROM users WHERE id = auth.uid())
+    (SELECT role FROM public.users WHERE id = auth.uid()) = 'admin' AND
+    school_id = (SELECT school_id FROM public.users WHERE id = auth.uid())
   );
 
 -- Only system can create/update wallets (no direct user update)
@@ -92,27 +94,30 @@ ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 -- Users can see their own transactions
+DROP POLICY IF EXISTS "users_see_own_wallet_txn" ON wallet_transactions;
 CREATE POLICY "users_see_own_wallet_txn" ON wallet_transactions
   FOR SELECT
   USING (user_id = auth.uid());
 
 -- Parents can see transactions for their linked children
+DROP POLICY IF EXISTS "parents_see_linked_child_txn" ON wallet_transactions;
 CREATE POLICY "parents_see_linked_child_txn" ON wallet_transactions
   FOR SELECT
   USING (
-    (SELECT role FROM users WHERE id = auth.uid()) = 'parent' AND
+    (SELECT role FROM public.users WHERE id = auth.uid()) = 'parent' AND
     user_id IN (
       SELECT UNNEST(linked_students) FROM users WHERE id = auth.uid()
     ) AND
-    school_id = (SELECT school_id FROM users WHERE id = auth.uid())
+    school_id = (SELECT school_id FROM public.users WHERE id = auth.uid())
   );
 
 -- Admins can see all transactions in their school
+DROP POLICY IF EXISTS "admins_view_school_txn" ON wallet_transactions;
 CREATE POLICY "admins_view_school_txn" ON wallet_transactions
   FOR SELECT
   USING (
-    (SELECT role FROM users WHERE id = auth.uid()) = 'admin' AND
-    school_id = (SELECT school_id FROM users WHERE id = auth.uid())
+    (SELECT role FROM public.users WHERE id = auth.uid()) = 'admin' AND
+    school_id = (SELECT school_id FROM public.users WHERE id = auth.uid())
   );
 
 -- ============================================

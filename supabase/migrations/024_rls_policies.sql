@@ -7,17 +7,20 @@
 -- TABLE: users
 -- ============================================
 -- Policy: Users can only see themselves
+DROP POLICY IF EXISTS "Users see only themselves" ON users;
 CREATE POLICY "Users see only themselves"
 ON users FOR SELECT
 USING (id = auth.uid());
 
 -- Policy: Users can update only their own profile
+DROP POLICY IF EXISTS "Users update only their own profile" ON users;
 CREATE POLICY "Users update only their own profile"
 ON users FOR UPDATE
 USING (id = auth.uid())
 WITH CHECK (id = auth.uid());
 
 -- Policy: Admins can see all users in their school
+DROP POLICY IF EXISTS "Admins see all school users" ON users;
 CREATE POLICY "Admins see all school users"
 ON users FOR SELECT
 USING (
@@ -26,17 +29,19 @@ USING (
 );
 
 -- Policy: Staff can see other staff in same school
+DROP POLICY IF EXISTS "Staff see school staff" ON users;
 CREATE POLICY "Staff see school staff"
 ON users FOR SELECT
 USING (
   school_id = (SELECT school_id FROM users WHERE id = auth.uid())
-  AND role IN ('staff', 'admin')
+  AND users.role IN ('staff', 'admin')
 );
 
 -- ============================================
 -- TABLE: attendance
 -- ============================================
 -- Policy: Teachers can view attendance for their assigned classes
+DROP POLICY IF EXISTS "Teachers read own class attendance" ON attendance;
 CREATE POLICY "Teachers read own class attendance"
 ON attendance FOR SELECT
 USING (
@@ -50,6 +55,7 @@ USING (
 );
 
 -- Policy: Admins can view all attendance in their school
+DROP POLICY IF EXISTS "Admins read all school attendance" ON attendance;
 CREATE POLICY "Admins read all school attendance"
 ON attendance FOR SELECT
 USING (
@@ -58,6 +64,7 @@ USING (
 );
 
 -- Policy: Students can view their own attendance
+DROP POLICY IF EXISTS "Students read own attendance" ON attendance;
 CREATE POLICY "Students read own attendance"
 ON attendance FOR SELECT
 USING (
@@ -65,6 +72,7 @@ USING (
 );
 
 -- Policy: Parents can view linked child attendance
+DROP POLICY IF EXISTS "Parents read linked child attendance" ON attendance;
 CREATE POLICY "Parents read linked child attendance"
 ON attendance FOR SELECT
 USING (
@@ -76,6 +84,7 @@ USING (
 );
 
 -- Policy: Teachers can insert attendance for their classes
+DROP POLICY IF EXISTS "Teachers insert attendance for own classes" ON attendance;
 CREATE POLICY "Teachers insert attendance for own classes"
 ON attendance FOR INSERT
 WITH CHECK (
@@ -92,6 +101,7 @@ WITH CHECK (
 -- TABLE: results
 -- ============================================
 -- Policy: Teachers can view results for their subjects
+DROP POLICY IF EXISTS "Teachers read own subject results" ON results;
 CREATE POLICY "Teachers read own subject results"
 ON results FOR SELECT
 USING (
@@ -104,6 +114,7 @@ USING (
 );
 
 -- Policy: Admins can view all results
+DROP POLICY IF EXISTS "Admins read all school results" ON results;
 CREATE POLICY "Admins read all school results"
 ON results FOR SELECT
 USING (
@@ -112,6 +123,7 @@ USING (
 );
 
 -- Policy: Students can view their own results
+DROP POLICY IF EXISTS "Students read own results" ON results;
 CREATE POLICY "Students read own results"
 ON results FOR SELECT
 USING (
@@ -119,6 +131,7 @@ USING (
 );
 
 -- Policy: Parents can view linked child results
+DROP POLICY IF EXISTS "Parents read linked child results" ON results;
 CREATE POLICY "Parents read linked child results"
 ON results FOR SELECT
 USING (
@@ -130,6 +143,7 @@ USING (
 );
 
 -- Policy: Teachers can insert results
+DROP POLICY IF EXISTS "Teachers insert results for own subject" ON results;
 CREATE POLICY "Teachers insert results for own subject"
 ON results FOR INSERT
 WITH CHECK (
@@ -145,6 +159,7 @@ WITH CHECK (
 -- TABLE: classes
 -- ============================================
 -- Policy: Admins and staff see classes in their school
+DROP POLICY IF EXISTS "School staff see own school classes" ON classes;
 CREATE POLICY "School staff see own school classes"
 ON classes FOR SELECT
 USING (
@@ -152,6 +167,7 @@ USING (
 );
 
 -- Policy: Students see their own class
+DROP POLICY IF EXISTS "Students see own class" ON classes;
 CREATE POLICY "Students see own class"
 ON classes FOR SELECT
 USING (
@@ -162,6 +178,7 @@ USING (
 );
 
 -- Policy: Parents can see children's classes
+DROP POLICY IF EXISTS "Parents see children classes" ON classes;
 CREATE POLICY "Parents see children classes"
 ON classes FOR SELECT
 USING (
@@ -177,6 +194,7 @@ USING (
 -- TABLE: student_classes
 -- ============================================
 -- Policy: Admins see all enrollments in school
+DROP POLICY IF EXISTS "Admins see all enrollments" ON student_classes;
 CREATE POLICY "Admins see all enrollments"
 ON student_classes FOR SELECT
 USING (
@@ -185,6 +203,7 @@ USING (
 );
 
 -- Policy: Students see their own enrollments
+DROP POLICY IF EXISTS "Students see own enrollments" ON student_classes;
 CREATE POLICY "Students see own enrollments"
 ON student_classes FOR SELECT
 USING (
@@ -192,6 +211,7 @@ USING (
 );
 
 -- Policy: Teachers see students in their assigned classes
+DROP POLICY IF EXISTS "Teachers see class enrollments" ON student_classes;
 CREATE POLICY "Teachers see class enrollments"
 ON student_classes FOR SELECT
 USING (
@@ -206,6 +226,7 @@ USING (
 -- TABLE: subjects
 -- ============================================
 -- Policy: Staff see subjects in their school
+DROP POLICY IF EXISTS "Staff see school subjects" ON subjects;
 CREATE POLICY "Staff see school subjects"
 ON subjects FOR SELECT
 USING (
@@ -216,6 +237,7 @@ USING (
 -- TABLE: staff_assignments
 -- ============================================
 -- Policy: Admins see all assignments in school
+DROP POLICY IF EXISTS "Admins see all assignments" ON staff_assignments;
 CREATE POLICY "Admins see all assignments"
 ON staff_assignments FOR SELECT
 USING (
@@ -224,6 +246,7 @@ USING (
 );
 
 -- Policy: Staff see their own assignments
+DROP POLICY IF EXISTS "Staff see own assignments" ON staff_assignments;
 CREATE POLICY "Staff see own assignments"
 ON staff_assignments FOR SELECT
 USING (
@@ -234,6 +257,7 @@ USING (
 -- TABLE: terms
 -- ============================================
 -- Policy: Staff see terms for their school
+DROP POLICY IF EXISTS "Staff see school terms" ON terms;
 CREATE POLICY "Staff see school terms"
 ON terms FOR SELECT
 USING (
@@ -244,6 +268,7 @@ USING (
 -- TABLE: parent_student_links
 -- ============================================
 -- Policy: Parents see their own links
+DROP POLICY IF EXISTS "Parents see own links" ON parent_student_links;
 CREATE POLICY "Parents see own links"
 ON parent_student_links FOR SELECT
 USING (
@@ -251,6 +276,7 @@ USING (
 );
 
 -- Policy: Admins see all links in school
+DROP POLICY IF EXISTS "Admins see all parent links" ON parent_student_links;
 CREATE POLICY "Admins see all parent links"
 ON parent_student_links FOR SELECT
 USING (
@@ -262,6 +288,7 @@ USING (
 -- TABLE: schools
 -- ============================================
 -- Policy: Users see only their own school
+DROP POLICY IF EXISTS "Users see own school" ON schools;
 CREATE POLICY "Users see own school"
 ON schools FOR SELECT
 USING (
