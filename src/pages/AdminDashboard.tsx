@@ -1112,6 +1112,45 @@ export const AdminDashboard = () => {
                                             </td>
                                         </tr>
                                     ))}
+                                    {activeTab === 'parents' && filterParents(parents).map(u => (
+                                        <tr key={u.id} className="group hover:bg-white/5 transition-colors border-b border-white/5">
+                                            <td className="py-3 md:py-4 px-3 sm:px-4">
+                                                <div className="flex items-center gap-2 md:gap-3">
+                                                    <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-sm">{u.fullName?.charAt(0) || 'P'}</div>
+                                                    <span className="text-white font-medium text-sm md:text-base truncate">{u.fullName}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 font-mono text-xs md:text-sm hidden sm:table-cell">{u.parentId}</td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell">{u.email}</td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4">
+                                                <div className="flex flex-wrap items-center gap-1 md:gap-2 justify-end md:justify-start">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingParent({
+                                                                id: u.id,
+                                                                fullName: u.fullName,
+                                                                email: u.email,
+                                                                parentId: u.parentId,
+                                                                phoneNumber: u.phone_number
+                                                            });
+                                                            setShowParentCreation(true);
+                                                        }}
+                                                        className="p-2 hover:bg-blue-500/10 rounded-lg text-gray-500 hover:text-blue-400 transition-colors"
+                                                        title="Edit Parent"
+                                                    >
+                                                        <Edit2 className="w-3 md:w-4 h-3 md:h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteStudent(u.id, u.fullName || u.email)}
+                                                        className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+                                                        title="Delete Parent"
+                                                    >
+                                                        <Trash2 className="w-3 md:w-4 h-3 md:h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
                                     {activeTab === 'classes' && filterClasses(classes).map(c => (
                                         <tr key={c.id} className="group hover:bg-white/5 transition-colors border-b border-white/5">
                                             <td className="py-3 md:py-4 px-3 sm:px-4">
