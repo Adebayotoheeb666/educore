@@ -204,7 +204,7 @@ export const Login = () => {
                         {mode === 'staff-login' && 'Login with the ID provided by your school administrator'}
                         {mode === 'school-reg' && 'Establish your institutional tenant on EduCore'}
                         {mode === 'student-login' && 'Enter your unique admission number and PIN'}
-                        {mode === 'parent-login' && 'Access children\'s data via child ID or phone'}
+                        {mode === 'parent-login' && 'Login with your parent ID and password'}
                     </p>
                 </div>
 
