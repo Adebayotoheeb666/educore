@@ -327,56 +327,24 @@ export const Login = () => {
                             </div>
                         </div>
                     )}
-                    <div className="space-y-4">
+                    {mode === 'parent-login' && (
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">School ID</label>
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">School ID or Name</label>
                             <div className="relative group">
                                 <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
                                 <input
                                     type="text" required
                                     className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
-                                    placeholder="wisdom-school"
+                                    placeholder="School UUID or name (e.g., International Wisdom School)"
                                     value={schoolId}
                                     onChange={(e) => setSchoolId(e.target.value)}
-                                    disabled={showOtpInput}
                                 />
                             </div>
+                            <p className="text-xs text-gray-500 ml-1 mt-1">
+                                Use your school's ID (UUID) or name. Ask your administrator if unsure.
+                            </p>
                         </div>
-
-                        {!showOtpInput ? (
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Phone Number</label>
-                                <div className="relative group">
-                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
-                                    <input
-                                        type="tel" required={!admissionNumber}
-                                        className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
-                                        placeholder="+234 800 000 0000"
-                                        value={phoneNumber}
-                                        onChange={(e) => setPhoneNumber(e.target.value)}
-                                    />
-                                </div>
-                                <div id="recaptcha-container"></div>
-                            </div>
-                        ) : (
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Enter OTP Code</label>
-                                <div className="relative group">
-                                    <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
-                                    <input
-                                        type="text" required
-                                        className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50 tracking-widest text-lg font-bold"
-                                        placeholder="1 2 3 4 5 6"
-                                        value={otp}
-                                        onChange={(e) => setOtp(e.target.value)}
-                                    />
-                                </div>
-                                <p className="text-xs text-gray-500 mt-2">
-                                    Code sent to {phoneNumber}. <button type="button" onClick={() => setShowOtpInput(false)} className="text-teal-400 hover:underline">Change Number</button>
-                                </p>
-                            </div>
-                        )}
-                    </div>
+                    )}
 
                     {(mode === 'login' || mode === 'school-reg') && (
                         <div className="space-y-1">
