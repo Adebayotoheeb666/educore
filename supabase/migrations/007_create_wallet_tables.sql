@@ -49,8 +49,8 @@ CREATE POLICY "parents_see_wallet_for_children" ON parent_wallets
 CREATE POLICY "admins_view_all_wallets" ON parent_wallets
   FOR SELECT
   USING (
-    get_auth_user_role() = 'admin' AND
-    school_id = get_auth_user_school_id()
+    (SELECT role FROM public.users WHERE id = auth.uid()) = 'admin' AND
+    school_id = (SELECT school_id FROM public.users WHERE id = auth.uid())
   );
 
 -- Only system can create/update wallets (no direct user update)
@@ -100,19 +100,19 @@ CREATE POLICY "users_see_own_wallet_txn" ON wallet_transactions
 CREATE POLICY "parents_see_linked_child_txn" ON wallet_transactions
   FOR SELECT
   USING (
-    get_auth_user_role() = 'parent' AND
+    (SELECT role FROM public.users WHERE id = auth.uid()) = 'parent' AND
     user_id IN (
       SELECT UNNEST(linked_students) FROM users WHERE id = auth.uid()
     ) AND
-    school_id = get_auth_user_school_id()
+    school_id = (SELECT school_id FROM public.users WHERE id = auth.uid())
   );
 
 -- Admins can see all transactions in their school
 CREATE POLICY "admins_view_school_txn" ON wallet_transactions
   FOR SELECT
   USING (
-    get_auth_user_role() = 'admin' AND
-    school_id = get_auth_user_school_id()
+    (SELECT role FROM public.users WHERE id = auth.uid()) = 'admin' AND
+    school_id = (SELECT school_id FROM public.users WHERE id = auth.uid())
   );
 
 -- ============================================
