@@ -161,6 +161,10 @@ const router = createBrowserRouter([
     element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><StaffAuthAudit /></Suspense></Layout></ProtectedRoute>,
   },
   {
+    path: "/admin/parents-students",
+    element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><ParentStudentDirectory /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
     path: "/about",
     element: <Suspense fallback={<LoadingSpinner />}><About /></Suspense>,
   },
