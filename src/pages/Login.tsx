@@ -312,25 +312,18 @@ export const Login = () => {
                         </div>
                     )}
 
-                    {mode === 'parent-login' && !showOtpInput && (
-                        <div className="space-y-4">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Child's Admission Number</label>
-                                <div className="relative group">
-                                    <UserCircle2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
-                                    <input
-                                        type="text"
-                                        className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
-                                        placeholder="STU-001"
-                                        value={admissionNumber}
-                                        onChange={(e) => setAdmissionNumber(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="relative flex items-center py-2">
-                                <div className="flex-grow border-t border-white/5"></div>
-                                <span className="flex-shrink mx-4 text-gray-600 text-[10px] font-bold uppercase tracking-widest">OR USE PHONE OTP</span>
-                                <div className="flex-grow border-t border-white/5"></div>
+                    {mode === 'parent-login' && (
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Parent ID</label>
+                            <div className="relative group">
+                                <BadgeCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
+                                <input
+                                    type="text" required
+                                    className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
+                                    placeholder="PAR-001"
+                                    value={parentId}
+                                    onChange={(e) => setParentId(e.target.value)}
+                                />
                             </div>
                         </div>
                     )}
