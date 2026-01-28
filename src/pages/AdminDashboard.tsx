@@ -959,10 +959,11 @@ export const AdminDashboard = () => {
             </header>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                 <StatCard icon={Users} label="Total Staff" value={staff.filter(u => u.role === 'staff').length} color="teal" />
                 <StatCard icon={GraduationCap} label="Total Students" value={students.length} color="emerald" />
-                <StatCard icon={BookOpen} label="Classes" value={classes.length} color="blue" />
+                <StatCard icon={Users} label="Total Parents" value={parents.length} color="blue" />
+                <StatCard icon={BookOpen} label="Classes" value={classes.length} color="orange" />
                 <StatCard icon={Library} label="Subjects" value={subjects.length} color="purple" />
             </div>
 
