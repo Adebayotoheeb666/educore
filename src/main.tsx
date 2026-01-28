@@ -101,15 +101,15 @@ const router = createBrowserRouter([
   // Financial Module Routes
   {
     path: "/financial",
-    element: <ProtectedRoute allowedRoles={['admin', 'bursar']}><Layout><Suspense fallback={<LoadingSpinner />}><FullAccountExplore /></Suspense></Layout></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['admin', 'bursar', 'staff']}><Layout><Suspense fallback={<LoadingSpinner />}><FullAccountExplore /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/financial/fund-wallet",
-    element: <ProtectedRoute allowedRoles={['admin', 'bursar']}><Layout><Suspense fallback={<LoadingSpinner />}><FundParentWallet /></Suspense></Layout></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['admin', 'bursar', 'staff']}><Layout><Suspense fallback={<LoadingSpinner />}><FundParentWallet /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/financial/pay-fees",
-    element: <ProtectedRoute allowedRoles={['admin', 'bursar', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><PayForStudents /></Suspense></Layout></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['admin', 'bursar', 'parent', 'staff']}><Layout><Suspense fallback={<LoadingSpinner />}><PayForStudents /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/admin",

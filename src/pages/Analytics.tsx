@@ -122,6 +122,7 @@ export const Analytics = () => {
 
                     if (aiError) throw aiError;
 
+
                     if (aiData) {
                         aiData.forEach((data: any) => {
                             unifiedResults.push({
@@ -131,7 +132,8 @@ export const Analytics = () => {
                                 total: data.total,
                                 feedback: data.feedback,
                                 type: 'ai_scan',
-                                createdAt: data.created_at
+                                createdAt: data.created_at,
+                                subject: data.subject || 'General' // Default to General if missing
                             });
                         });
                     }
@@ -146,6 +148,7 @@ export const Analytics = () => {
                     return bDate.getTime() - aDate.getTime();
                 });
 
+                console.log("Unified Results:", unifiedResults);
                 setResults(unifiedResults);
             } catch (error) {
                 console.error("Error fetching analytics:", error);
@@ -162,6 +165,8 @@ export const Analytics = () => {
     const avgScore = results.length > 0
         ? (results.reduce((acc, curr) => acc + curr.score, 0) / (results.length * 20)) * 100
         : 0;
+
+    // ... export functions ...
 
     const handleExportGradeReport = async () => {
         if (results.length === 0) {
@@ -216,15 +221,17 @@ export const Analytics = () => {
 
     // Derived state for subjects filter
     const uniqueSubjects = ['All Subjects', ...new Set(results.map(r => r.subject).filter(Boolean))];
+    console.log("Unique Subjects:", uniqueSubjects);
     const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('All Subjects');
 
     const filteredResults = selectedSubjectFilter === 'All Subjects'
         ? results
         : results.filter(r => r.subject === selectedSubjectFilter);
+    console.log("Filtered Results:", filteredResults.length);
 
     return (
         <div className="flex gap-6 h-auto">
-            {/* Main Table Section */}
+            {/* ... header ... */}
             <div className="flex-1 flex flex-col space-y-6">
                 {/* Error Alert */}
                 {error && (

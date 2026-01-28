@@ -22,6 +22,7 @@ export const PaperScanner = () => {
     const [error, setError] = useState('');
     const [grading, setGrading] = useState<GradingData | null>(null);
     const [studentName, setStudentName] = useState('');
+    const [subject, setSubject] = useState('');
     const [markingScheme, setMarkingScheme] = useState('Standard marking scheme for secondary school exam');
     const navigate = useNavigate();
 
@@ -77,6 +78,7 @@ export const PaperScanner = () => {
             const aiScanData = {
                 school_id: schoolId,
                 student_name: studentName.trim(),
+                subject: subject || 'General',
                 teacher_id: user.id,
                 score: grading.score,
                 total: grading.total,
@@ -137,6 +139,7 @@ export const PaperScanner = () => {
                                     setImagePreview('');
                                     setScanned(false);
                                     setGrading(null);
+                                    setSubject('');
                                 }}
                                 className="mt-4 text-teal-400 hover:text-teal-300 text-sm font-bold"
                             >
@@ -164,15 +167,31 @@ export const PaperScanner = () => {
                     )}
 
                     {/* Student Name Input */}
-                    <div className="mb-6">
-                        <label className="text-gray-400 text-xs font-bold block mb-2">Student Name</label>
-                        <input
-                            type="text"
-                            placeholder="Enter student name"
-                            value={studentName}
-                            onChange={(e) => setStudentName(e.target.value)}
-                            className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white placeholder-gray-600 focus:border-teal-500/50 outline-none"
-                        />
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label className="text-gray-400 text-xs font-bold block mb-2">Student Name</label>
+                            <input
+                                type="text"
+                                placeholder="Enter student name"
+                                value={studentName}
+                                onChange={(e) => setStudentName(e.target.value)}
+                                className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white placeholder-gray-600 focus:border-teal-500/50 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-xs font-bold block mb-2">Subject</label>
+                            <select
+                                value={subject}
+                                onChange={(e) => setSubject(e.target.value)}
+                                className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white placeholder-gray-600 focus:border-teal-500/50 outline-none"
+                            >
+                                <option value="">Select Subject</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="English">English</option>
+                                <option value="Basic Science">Basic Science</option>
+                                <option value="Civic Education">Civic Education</option>
+                            </select>
+                        </div>
                     </div>
 
                     {/* Marking Scheme */}

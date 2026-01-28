@@ -6,12 +6,25 @@ import { useAuth } from '../hooks/useAuth';
 
 export const Dashboard = () => {
     const { user, profile, role, loading: authLoading } = useAuth();
-    const displayName = profile?.fullName || user?.user_metadata?.full_name || 'Teacher';
+    const [realName, setRealName] = useState(profile?.fullName || '');
+    const displayName = realName || user?.user_metadata?.full_name || 'Staff Member';
     const [pendingCount, setPendingCount] = useState(0);
     const [classStats, setClassStats] = useState<any[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const { schoolId } = useAuth();
+
+    useEffect(() => {
+        if (profile?.fullName) {
+            setRealName(profile.fullName);
+        } else if (user) {
+            // Force fetch name if missing
+            supabase.from('users').select('full_name').eq('id', user.id).single()
+                .then(({ data }) => {
+                    if (data?.full_name) setRealName(data.full_name);
+                });
+        }
+    }, [profile, user]);
 
     if (authLoading) {
         return (
@@ -230,6 +243,7 @@ export const Dashboard = () => {
                     <div>
                         <div className="text-teal-500 text-xs font-bold uppercase tracking-wider mb-0.5">Dashboard</div>
                         <h1 className="text-2xl font-bold text-white">Welcome, {displayName}</h1>
+                        {/* Debug: {JSON.stringify({ p: profile?.fullName, m: user?.user_metadata })} */}
                         {profile?.staffId && (
                             <p className="text-gray-400 text-sm">Staff ID: <span className="text-teal-400 font-bold">{profile.staffId}</span></p>
                         )}

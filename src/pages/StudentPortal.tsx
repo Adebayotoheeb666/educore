@@ -185,11 +185,11 @@ export const StudentPortal = () => {
                         </div>
                         <div>
                             <div className="text-teal-100 text-sm font-bold uppercase tracking-widest opacity-80">Student Portal</div>
-                            <h1 className="text-3xl font-black">Welcome, {profile?.fullName || 'Student'}</h1>
+                            <h1 className="text-3xl font-black">Welcome, {profile?.fullName || user?.user_metadata?.full_name || 'Student'}</h1>
                         </div>
                     </div>
                     <div className="flex flex-wrap gap-4 text-sm font-medium">
-                        <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm">Admission: {profile?.admissionNumber}</span>
+                        <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm">Admission: {profile?.admissionNumber || 'N/A'}</span>
                         <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm">Academic Year: 2025/2026</span>
                     </div>
                 </div>

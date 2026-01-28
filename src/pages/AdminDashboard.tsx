@@ -139,7 +139,30 @@ export const AdminDashboard = () => {
         // Try RPC first
         try {
             const { data, error } = await supabase.rpc('get_school_users', { p_school_id: schoolId });
-            if (!error && data) return data;
+            if (!error && data) {
+                // Fetch student class assignments
+                const studentIds = data.filter((u: any) => u.role === 'student').map((u: any) => u.id);
+                if (studentIds.length > 0) {
+                    const { data: studentClasses } = await supabase
+                        .from('student_classes')
+                        .select('student_id, class_id, classes(name)')
+                        .in('student_id', studentIds)
+                        .eq('school_id', schoolId);
+
+                    // Create a map of student_id to class name
+                    const classMap = new Map();
+                    studentClasses?.forEach((sc: any) => {
+                        classMap.set(sc.student_id, sc.classes?.name || 'Unknown Class');
+                    });
+
+                    // Enrich user data with class names
+                    return data.map((u: any) => ({
+                        ...u,
+                        className: u.role === 'student' ? classMap.get(u.id) : undefined
+                    }));
+                }
+                return data;
+            }
         } catch (e) {
             console.warn('RPC fetch failed, falling back to direct query', e);
         }
@@ -151,6 +174,29 @@ export const AdminDashboard = () => {
             .eq('school_id', schoolId);
 
         if (error) throw error;
+
+        // Fetch student class assignments for fallback
+        const studentIds = (data || []).filter((u: any) => u.role === 'student').map((u: any) => u.id);
+        if (studentIds.length > 0) {
+            const { data: studentClasses } = await supabase
+                .from('student_classes')
+                .select('student_id, class_id, classes(name)')
+                .in('student_id', studentIds)
+                .eq('school_id', schoolId);
+
+            // Create a map of student_id to class name
+            const classMap = new Map();
+            studentClasses?.forEach((sc: any) => {
+                classMap.set(sc.student_id, sc.classes?.name || 'Unknown Class');
+            });
+
+            // Enrich user data with class names
+            return (data || []).map((u: any) => ({
+                ...u,
+                className: u.role === 'student' ? classMap.get(u.id) : undefined
+            }));
+        }
+
         return data || [];
     };
 
@@ -997,7 +1043,7 @@ export const AdminDashboard = () => {
                                                 </div>
                                             </td>
                                             <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 font-mono text-xs md:text-sm hidden sm:table-cell">{u.admissionNumber}</td>
-                                            <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell">{u.classId || 'Not Assigned'}</td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell">{u.className || 'Not Assigned'}</td>
                                             <td className="py-3 md:py-4 px-3 sm:px-4">
                                                 <div className="flex flex-wrap items-center gap-1 md:gap-2 justify-end md:justify-start">
                                                     <button

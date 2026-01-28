@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { adminResetUserPassword } from '../../lib/passwordResetService';
 import { logAction } from '../../lib/auditService';
 
-import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle, Zap } from 'lucide-react';
+import { Users, Lock, Search, Eye, EyeOff, CheckCircle, AlertCircle, Zap, BookOpen } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 interface User {
@@ -33,6 +33,11 @@ export const UserManagement = () => {
   const [showFixStaffIdModal, setShowFixStaffIdModal] = useState(false);
   const [fixingStaffId, setFixingStaffId] = useState(false);
   const [fixStatus, setFixStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [showAssignClassModal, setShowAssignClassModal] = useState(false);
+  const [availableClasses, setAvailableClasses] = useState<any[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [assignStatus, setAssignStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Handle auth loading first
   if (authLoading) {
@@ -215,6 +220,114 @@ export const UserManagement = () => {
     }
   };
 
+  const handleAssignClass = async () => {
+    if (!selectedUser || !user || !selectedClassId || !schoolId) return;
+
+    setAssigning(true);
+    setAssignStatus(null);
+
+    try {
+      // Check if student is already in this class
+      const { data: existing } = await supabase
+        .from('student_classes')
+        .select('id')
+        .eq('student_id', selectedUser.id)
+        .eq('class_id', selectedClassId)
+        .eq('school_id', schoolId)
+        .single();
+
+      if (existing) {
+        setAssignStatus({
+          type: 'error',
+          message: 'Student is already assigned to this class'
+        });
+        return;
+      }
+
+      // Insert into student_classes
+      const { error } = await supabase
+        .from('student_classes')
+        .insert({
+          student_id: selectedUser.id,
+          class_id: selectedClassId,
+          school_id: schoolId,
+          created_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      // Log the action
+      await logAction(
+        schoolId,
+        user.id,
+        user.email || 'system',
+        'create',
+        'class',
+        selectedUser.id,
+        {},
+        {
+          student_name: selectedUser.full_name,
+          class_id: selectedClassId,
+        }
+      );
+
+      setAssignStatus({
+        type: 'success',
+        message: 'Student successfully assigned to class'
+      });
+
+      // Reset form after success
+      setTimeout(() => {
+        setShowAssignClassModal(false);
+        setSelectedUser(null);
+        setSelectedClassId('');
+        setAssignStatus(null);
+      }, 2000);
+    } catch (err) {
+      console.error('Assign class error:', err);
+      setAssignStatus({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to assign class'
+      });
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  // Fetch classes when modal opens
+  useEffect(() => {
+    if (showAssignClassModal && schoolId) {
+      const fetchClasses = async () => {
+        console.log('[UserManagement] Fetching classes for school:', schoolId);
+        const { data, error } = await supabase
+          .from('classes')
+          .select('id, name')
+          .eq('school_id', schoolId)
+          .order('name');
+
+        if (error) {
+          console.error('[UserManagement] Error fetching classes:', error);
+          console.error('[UserManagement] Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          // Show error to user
+          setAssignStatus({
+            type: 'error',
+            message: `Failed to load classes: ${error.message}. This might be a database permissions issue.`
+          });
+          setAvailableClasses([]);
+        } else {
+          console.log('[UserManagement] Classes fetched:', data?.length || 0, data);
+          setAvailableClasses(data || []);
+        }
+      };
+      fetchClasses();
+    }
+  }, [showAssignClassModal, schoolId]);
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'admin':
@@ -304,6 +417,21 @@ export const UserManagement = () => {
                     </td>
                     <td className="px-6 py-3">
                       <div className="flex gap-2">
+                        {u.role === 'student' && (
+                          <button
+                            onClick={() => {
+                              setSelectedUser(u);
+                              setShowAssignClassModal(true);
+                              setAssignStatus(null);
+                              setSelectedClassId('');
+                            }}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded transition text-sm font-medium"
+                            title="Assign student to a class"
+                          >
+                            <BookOpen className="w-4 h-4" />
+                            Assign Class
+                          </button>
+                        )}
                         {!u.staff_id && (u.role === 'staff' || u.role === 'bursar') && (
                           <button
                             onClick={() => {
@@ -340,6 +468,81 @@ export const UserManagement = () => {
           </div>
         )}
       </div>
+
+      {/* Assign Class Modal */}
+      {showAssignClassModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-dark-card border border-dark-input rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold text-white mb-2">Assign Class</h2>
+            <p className="text-gray-400 mb-6">
+              Assign <span className="font-semibold text-blue-400">{selectedUser.full_name}</span> to a class
+            </p>
+
+            {assignStatus && (
+              <div className={`mb-4 p-4 rounded-lg flex gap-3 ${assignStatus.type === 'success'
+                ? 'bg-green-500/10 border border-green-500/20'
+                : 'bg-red-500/10 border border-red-500/20'
+                }`}>
+                {assignStatus.type === 'success' ? (
+                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                )}
+                <p className={assignStatus.type === 'success' ? 'text-green-500' : 'text-red-500'}>
+                  {assignStatus.message}
+                </p>
+              </div>
+            )}
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Select Class</label>
+              <select
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value)}
+                className="w-full px-4 py-2 bg-dark-bg text-white rounded border border-dark-input focus:border-blue-500 focus:outline-none"
+              >
+                <option value="">-- Choose a class --</option>
+                {availableClasses.map(cls => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAssignClassModal(false);
+                  setSelectedUser(null);
+                  setSelectedClassId('');
+                  setAssignStatus(null);
+                }}
+                disabled={assigning}
+                className="flex-1 px-4 py-2 bg-dark-bg text-gray-300 hover:bg-dark-input rounded transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssignClass}
+                disabled={assigning || !selectedClassId}
+                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {assigning ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Assigning...
+                  </>
+                ) : (
+                  <>
+                    <BookOpen className="w-4 h-4" />
+                    Assign Class
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fix Staff ID Modal */}
       {showFixStaffIdModal && selectedUser && (
