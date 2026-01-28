@@ -2,16 +2,25 @@ import { supabase } from './supabase';
 
 export interface CreateParentParams {
     fullName: string;
-    email?: string;
+    email: string;
     phoneNumber?: string;
+    parentId?: string;
+}
+
+/**
+ * Generate a unique parent ID
+ */
+function generateParentId(schoolId: string): string {
+    const schoolPrefix = schoolId.substring(0, 3).toUpperCase();
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    return `PAR-${schoolPrefix}-${randomSuffix}`;
 }
 
 /**
  * Generate a deterministic UUID from parent data
  */
-async function generateDeterministicUUID(schoolId: string, phoneNumber: string, email?: string): Promise<string> {
-    const identifier = email || phoneNumber || `parent_${schoolId}_${Date.now()}`;
-    const input = `parent_${schoolId}_${identifier.toLowerCase()}`;
+async function generateDeterministicUUID(schoolId: string, parentId: string): Promise<string> {
+    const input = `parent_${schoolId}_${parentId.toLowerCase()}`;
     const msgUint8 = new TextEncoder().encode(input);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -34,20 +43,23 @@ async function generateDeterministicUUID(schoolId: string, phoneNumber: string, 
 export const createParentAccount = async (
     schoolId: string,
     data: CreateParentParams
-): Promise<{ parentId: string; message: string }> => {
+): Promise<{ parentId: string; parentUid: string; message: string }> => {
+    const parentId = data.parentId || generateParentId(schoolId);
+
     try {
-        // Generate deterministic parent ID
-        const parentId = await generateDeterministicUUID(schoolId, data.phoneNumber || '', data.email);
+        // Generate deterministic parent ID (using admission_number field to store parent_id)
+        const parentUid = await generateDeterministicUUID(schoolId, parentId);
 
         // Use upsert instead of insert to comply with RLS policy
         const { data: userData, error: userError } = await supabase
             .from('users')
             .upsert({
-                id: parentId,
+                id: parentUid,
                 school_id: schoolId,
                 email: data.email,
                 full_name: data.fullName,
                 role: 'parent',
+                admission_number: parentId, // Store parent ID in admission_number field for virtual email generation
                 phone_number: data.phoneNumber,
             }, { onConflict: 'id' })
             .select()
@@ -63,11 +75,17 @@ export const createParentAccount = async (
         }
 
         return {
-            parentId: userData.id,
-            message: `Parent profile created successfully`,
+            parentId,
+            parentUid: userData.id,
+            message: `Parent profile created successfully with parent ID: ${parentId}`,
         };
     } catch (err) {
         console.error('Error creating parent:', err);
         throw err;
     }
 };
+
+/**
+ * Export generateParentId for use in other components
+ */
+export { generateParentId };

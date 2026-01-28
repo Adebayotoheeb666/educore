@@ -23,6 +23,7 @@ import { StaffAssignmentModal } from '../components/StaffAssignmentModal';
 import { ParentStudentLinkModal } from '../components/ParentStudentLinkModal';
 import { StaffCreationModal } from '../components/StaffCreationModal';
 import { StudentCreationModal } from '../components/StudentCreationModal';
+import { ParentCreationModal } from '../components/ParentCreationModal';
 import { SchoolSettingsModal } from '../components/SchoolSettingsModal';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/auditService';
@@ -36,9 +37,10 @@ export const AdminDashboard = () => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { schoolId, role, user, profile, loading: authLoading } = useAuth();
-    const [activeTab, setActiveTab] = useState<'staff' | 'students' | 'classes' | 'subjects'>('staff');
+    const [activeTab, setActiveTab] = useState<'staff' | 'students' | 'parents' | 'classes' | 'subjects'>('staff');
     const [staff, setStaff] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
+    const [parents, setParents] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
     const [subjects, setSubjects] = useState<any[]>([]);
     const [financials, setFinancials] = useState({ totalRevenue: 0, outstanding: 0 });
@@ -51,6 +53,7 @@ export const AdminDashboard = () => {
     const [showBulkImport, setShowBulkImport] = useState(false);
     const [showStaffCreation, setShowStaffCreation] = useState(false);
     const [showStudentCreation, setShowStudentCreation] = useState(false);
+    const [showParentCreation, setShowParentCreation] = useState(false);
     const [showSubjectModal, setShowSubjectModal] = useState(false);
     const [showClassModal, setShowClassModal] = useState(false);
     const [showSchoolSettings, setShowSchoolSettings] = useState(false);
@@ -65,6 +68,7 @@ export const AdminDashboard = () => {
     const [editingClass, setEditingClass] = useState<any | null>(null);
     const [editingStaff, setEditingStaff] = useState<any | null>(null);
     const [editingStudent, setEditingStudent] = useState<any | null>(null);
+    const [editingParent, setEditingParent] = useState<any | null>(null);
 
     // Toast/Notification state
     const [toasts, setToasts] = useState<Omit<ToastProps, 'onClose'>[]>([]);
@@ -129,6 +133,17 @@ export const AdminDashboard = () => {
         return data.filter(s =>
             s.name?.toLowerCase().includes(term) ||
             s.code?.toLowerCase().includes(term)
+        );
+    };
+
+    const filterParents = (data: any[]) => {
+        if (!searchTerm) return data;
+        const term = searchTerm.toLowerCase();
+        return data.filter(p =>
+            p.fullName?.toLowerCase().includes(term) ||
+            p.email?.toLowerCase().includes(term) ||
+            p.parentId?.toLowerCase().includes(term) ||
+            p.phone_number?.toLowerCase().includes(term)
         );
     };
 
@@ -292,6 +307,7 @@ export const AdminDashboard = () => {
                 schoolId: u.school_id,
                 fullName: u.full_name,
                 admissionNumber: u.admission_number,
+                parentId: u.admission_number, // Store parent ID in admission_number field
                 staffId: u.staff_id
             }));
 
@@ -300,6 +316,7 @@ export const AdminDashboard = () => {
 
             setStaff(uniqueUsers.filter((u: any) => ['staff', 'admin', 'bursar'].includes(u.role)));
             setStudents(uniqueUsers.filter((u: any) => u.role === 'student'));
+            setParents(uniqueUsers.filter((u: any) => u.role === 'parent'));
         }
     }, [usersData]);
 
@@ -755,6 +772,22 @@ export const AdminDashboard = () => {
         );
     }
 
+    // Parent Creation Modal
+    if (showParentCreation) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <ParentCreationModal
+                    initialData={editingParent}
+                    user={user}
+                    profile={profile}
+                    schoolId={schoolId}
+                    onSuccess={() => { fetchData(); setShowParentCreation(false); setEditingParent(null); }}
+                    onClose={() => { setShowParentCreation(false); setEditingParent(null); }}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-8">
             {/* Subject Creation Modal */}
@@ -869,6 +902,7 @@ export const AdminDashboard = () => {
                             <div className="absolute right-0 mt-2 w-56 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
                                 <button onClick={() => { setEditingStaff(null); setShowStaffCreation(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Add Staff Member</button>
                                 <button onClick={() => { setEditingStudent(null); setShowStudentCreation(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Add Student</button>
+                                <button onClick={() => { setEditingParent(null); setShowParentCreation(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Add Parent</button>
                                 <button onClick={() => { setShowClassModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create New Class</button>
                                 <button onClick={() => { setShowSubjectModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create Subject</button>
                                 <button onClick={() => { setShowBulkImport(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 flex items-center justify-between">
@@ -911,6 +945,7 @@ export const AdminDashboard = () => {
                                 <div className="border-t border-white/5 my-2"></div>
                                 <button onClick={() => { setEditingStaff(null); setShowStaffCreation(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Add Staff Member</button>
                                 <button onClick={() => { setEditingStudent(null); setShowStudentCreation(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Add Student</button>
+                                <button onClick={() => { setEditingParent(null); setShowParentCreation(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Add Parent</button>
                                 <button onClick={() => { setShowClassModal(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Create New Class</button>
                                 <button onClick={() => { setShowSubjectModal(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Create Subject</button>
                                 <button onClick={() => { setShowBulkImport(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 flex items-center justify-between">
@@ -924,10 +959,11 @@ export const AdminDashboard = () => {
             </header>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                 <StatCard icon={Users} label="Total Staff" value={staff.filter(u => u.role === 'staff').length} color="teal" />
                 <StatCard icon={GraduationCap} label="Total Students" value={students.length} color="emerald" />
-                <StatCard icon={BookOpen} label="Classes" value={classes.length} color="blue" />
+                <StatCard icon={Users} label="Total Parents" value={parents.length} color="blue" />
+                <StatCard icon={BookOpen} label="Classes" value={classes.length} color="orange" />
                 <StatCard icon={Library} label="Subjects" value={subjects.length} color="purple" />
             </div>
 
@@ -936,6 +972,7 @@ export const AdminDashboard = () => {
                 <div className="flex flex-wrap border-b border-white/5 bg-white/5">
                     <TabButton active={activeTab === 'staff'} onClick={() => { setActiveTab('staff'); setShowMobileMenu(false); }} label="Staff Members" />
                     <TabButton active={activeTab === 'students'} onClick={() => { setActiveTab('students'); setShowMobileMenu(false); }} label="Student List" />
+                    <TabButton active={activeTab === 'parents'} onClick={() => { setActiveTab('parents'); setShowMobileMenu(false); }} label="Parent List" />
                     <TabButton active={activeTab === 'classes'} onClick={() => { setActiveTab('classes'); setShowMobileMenu(false); }} label="Class Arms" />
                     <TabButton active={activeTab === 'subjects'} onClick={() => { setActiveTab('subjects'); setShowMobileMenu(false); }} label="Subjects" />
                 </div>
@@ -1075,6 +1112,45 @@ export const AdminDashboard = () => {
                                             </td>
                                         </tr>
                                     ))}
+                                    {activeTab === 'parents' && filterParents(parents).map(u => (
+                                        <tr key={u.id} className="group hover:bg-white/5 transition-colors border-b border-white/5">
+                                            <td className="py-3 md:py-4 px-3 sm:px-4">
+                                                <div className="flex items-center gap-2 md:gap-3">
+                                                    <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-sm">{u.fullName?.charAt(0) || 'P'}</div>
+                                                    <span className="text-white font-medium text-sm md:text-base truncate">{u.fullName}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 font-mono text-xs md:text-sm hidden sm:table-cell">{u.parentId}</td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4 text-gray-400 text-xs md:text-sm hidden md:table-cell">{u.email}</td>
+                                            <td className="py-3 md:py-4 px-3 sm:px-4">
+                                                <div className="flex flex-wrap items-center gap-1 md:gap-2 justify-end md:justify-start">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingParent({
+                                                                id: u.id,
+                                                                fullName: u.fullName,
+                                                                email: u.email,
+                                                                parentId: u.parentId,
+                                                                phoneNumber: u.phone_number
+                                                            });
+                                                            setShowParentCreation(true);
+                                                        }}
+                                                        className="p-2 hover:bg-blue-500/10 rounded-lg text-gray-500 hover:text-blue-400 transition-colors"
+                                                        title="Edit Parent"
+                                                    >
+                                                        <Edit2 className="w-3 md:w-4 h-3 md:h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteStudent(u.id, u.fullName || u.email)}
+                                                        className="p-2 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition-colors"
+                                                        title="Delete Parent"
+                                                    >
+                                                        <Trash2 className="w-3 md:w-4 h-3 md:h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
                                     {activeTab === 'classes' && filterClasses(classes).map(c => (
                                         <tr key={c.id} className="group hover:bg-white/5 transition-colors border-b border-white/5">
                                             <td className="py-3 md:py-4 px-3 sm:px-4">
@@ -1147,6 +1223,7 @@ export const AdminDashboard = () => {
                             </table>
                             {((activeTab === 'staff' && staff.length === 0) ||
                                 (activeTab === 'students' && students.length === 0) ||
+                                (activeTab === 'parents' && parents.length === 0) ||
                                 (activeTab === 'classes' && classes.length === 0) ||
                                 (activeTab === 'subjects' && subjects.length === 0)) && (
                                     <div className="text-center py-12 sm:py-20 text-gray-500 text-sm sm:text-base px-4">No records found in this category.</div>

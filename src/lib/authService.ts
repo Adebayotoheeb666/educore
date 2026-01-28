@@ -233,6 +233,71 @@ export const loginWithParentCredentials = async (schoolId: string, admissionNumb
 };
 
 /**
+ * Login with Parent ID (similar to student admission number or staff ID)
+ */
+export const loginWithParentId = async (schoolId: string, parentId: string, password: string) => {
+    const virtualEmail = getVirtualEmail(schoolId, parentId);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: virtualEmail,
+        password
+    });
+
+    if (error) {
+        // Check if it's an invalid credentials error (account exists but wrong password)
+        if (error.message?.includes('invalid') || error.code === 'invalid_grant') {
+            // Wrong password - don't try activation
+            throw error;
+        }
+
+        // Account doesn't exist yet - Try Activation
+        try {
+            console.log("Login failed, attempting activation...");
+            const authResponse = await activateAccount(schoolId, parentId, password, 'student'); // Use 'student' type for virtual email generation
+
+            if (authResponse.user) {
+                try {
+                    // Ensure parent profile is created with parent_id
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', authResponse.user.id)
+                        .single();
+
+                    if (!profile) {
+                        // Create parent profile
+                        await supabase.from('users').insert({
+                            id: authResponse.user.id,
+                            school_id: schoolId,
+                            role: 'parent',
+                            admission_number: parentId, // Store parent ID in admission_number field
+                            full_name: 'Parent'
+                        });
+                    } else if (profile.role !== 'parent') {
+                        // Update existing profile to parent role
+                        await supabase
+                            .from('users')
+                            .update({ role: 'parent', admission_number: parentId })
+                            .eq('id', authResponse.user.id);
+                    }
+                } catch (linkError) {
+                    console.error("Profile linking error during parent activation:", {
+                        message: linkError instanceof Error ? linkError.message : String(linkError),
+                        error: linkError
+                    });
+                }
+                return authResponse;
+            }
+        } catch (activationError) {
+            console.error("Activation failed:", activationError);
+            throw activationError;
+        }
+    }
+
+    return data;
+};
+
+/**
  * Login with admission number (for students)
  */
 export const loginWithAdmissionNumber = async (schoolId: string, admissionNumber: string, password: string) => {
@@ -325,53 +390,6 @@ export const loginWithStaffId = async (schoolId: string, staffId: string, passwo
     return data;
 }
 
-/**
- * Initiate phone login (sends OTP)
- */
-export const signInWithPhone = async (phoneNumber: string) => {
-    const { data, error } = await supabase.auth.signInWithOtp({
-        phone: phoneNumber
-    });
-
-    if (error) throw error;
-    return data;
-};
-
-/**
- * Confirm OTP code
- */
-export const confirmPhoneOTP = async (phoneNumber: string, code: string, schoolId: string) => {
-    const { data, error } = await supabase.auth.verifyOtp({
-        phone: phoneNumber,
-        token: code,
-        type: 'sms'
-    });
-
-    if (error) throw error;
-    const user = data.user;
-
-    if (user) {
-        // Check if profile exists
-        const { data: profile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-        if (!profile) {
-            // Link new parent to school
-            await supabase.from('users').insert({
-                id: user.id,
-                school_id: schoolId,
-                role: 'parent',
-                phone_number: phoneNumber,
-                full_name: 'Parent' // Prompt to update later
-            });
-        }
-    }
-
-    return data;
-};
 
 /**
  * Repair a broken profile by syncing missing fields from Auth metadata

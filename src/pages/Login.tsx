@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { signInWithPhone, confirmPhoneOTP, registerSchool, loginWithAdmissionNumber, loginWithStaffId, loginWithParentCredentials } from '../lib/authService';
+import { registerSchool, loginWithAdmissionNumber, loginWithStaffId, loginWithParentId } from '../lib/authService';
 import { isValidUUID, findSchoolByName } from '../lib/schoolService';
-import { Sparkles, Mail, Lock, ArrowRight, User, AlertCircle, Building2, UserCircle2, Phone, ShieldCheck, BadgeCheck } from 'lucide-react';
+import { Sparkles, Mail, Lock, ArrowRight, User, AlertCircle, Building2, UserCircle2, BadgeCheck } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup' | 'school-reg' | 'student-login' | 'parent-login' | 'staff-login';
 
@@ -20,9 +20,7 @@ export const Login = () => {
     const [schoolId, setSchoolId] = useState('');
     const [admissionNumber, setAdmissionNumber] = useState('');
     const [staffId, setStaffId] = useState('');
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [otp, setOtp] = useState('');
-    const [showOtpInput, setShowOtpInput] = useState(false);
+    const [parentId, setParentId] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
@@ -75,40 +73,6 @@ export const Login = () => {
         return "An unexpected error occurred. Please try again.";
     };
 
-    const handleSendOtp = async () => {
-        if (!phoneNumber || !schoolId) {
-            setError("Please enter School ID and Phone Number");
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-        try {
-            await signInWithPhone(phoneNumber);
-            setShowOtpInput(true);
-        } catch (err: any) {
-            console.error("OTP send error:", err instanceof Error ? err.message : String(err));
-            setError(getUserFriendlyErrorMessage(err));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleVerifyOtp = async () => {
-        if (!otp) return;
-
-        setLoading(true);
-        setError(null);
-        try {
-            await confirmPhoneOTP(phoneNumber, otp, schoolId);
-            navigate('/portal/parent');
-        } catch (err: any) {
-            console.error("OTP verification error:", err instanceof Error ? err.message : String(err));
-            setError(getUserFriendlyErrorMessage(err));
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const resolveSchoolId = async (inputSchoolId: string): Promise<string> => {
         // If it's a valid UUID, use it as-is
@@ -187,17 +151,12 @@ export const Login = () => {
                 await loginWithStaffId(resolvedSchoolId, staffId, password);
                 navigate('/dashboard');
             } else if (mode === 'parent-login') {
-                if (showOtpInput) {
-                    await handleVerifyOtp();
-                } else if (schoolId && admissionNumber && password) {
-                    const resolvedSchoolId = await resolveSchoolId(schoolId);
-                    await loginWithParentCredentials(resolvedSchoolId, admissionNumber, password);
-                    navigate('/portal/parent');
-                } else if (phoneNumber) {
-                    await handleSendOtp();
-                } else {
-                    throw new Error("Please enter School ID, Child's Admission Number and PIN, OR Phone Number for OTP");
+                if (!schoolId || !parentId || !password) {
+                    throw new Error("Please fill in all fields (School ID, Parent ID, and Password)");
                 }
+                const resolvedSchoolId = await resolveSchoolId(schoolId);
+                await loginWithParentId(resolvedSchoolId, parentId, password);
+                navigate('/portal/parent');
             }
         } catch (err: any) {
             console.error('[Login] Error during authentication:', {
@@ -245,7 +204,7 @@ export const Login = () => {
                         {mode === 'staff-login' && 'Login with the ID provided by your school administrator'}
                         {mode === 'school-reg' && 'Establish your institutional tenant on EduCore'}
                         {mode === 'student-login' && 'Enter your unique admission number and PIN'}
-                        {mode === 'parent-login' && 'Access children\'s data via child ID or phone'}
+                        {mode === 'parent-login' && 'Login with your parent ID and password'}
                     </p>
                 </div>
 
@@ -353,78 +312,39 @@ export const Login = () => {
                         </div>
                     )}
 
-                    {mode === 'parent-login' && !showOtpInput && (
-                        <div className="space-y-4">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Child's Admission Number</label>
-                                <div className="relative group">
-                                    <UserCircle2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
-                                    <input
-                                        type="text"
-                                        className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
-                                        placeholder="STU-001"
-                                        value={admissionNumber}
-                                        onChange={(e) => setAdmissionNumber(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="relative flex items-center py-2">
-                                <div className="flex-grow border-t border-white/5"></div>
-                                <span className="flex-shrink mx-4 text-gray-600 text-[10px] font-bold uppercase tracking-widest">OR USE PHONE OTP</span>
-                                <div className="flex-grow border-t border-white/5"></div>
+                    {mode === 'parent-login' && (
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Parent ID</label>
+                            <div className="relative group">
+                                <BadgeCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
+                                <input
+                                    type="text" required
+                                    className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
+                                    placeholder="PAR-001"
+                                    value={parentId}
+                                    onChange={(e) => setParentId(e.target.value)}
+                                />
                             </div>
                         </div>
                     )}
-                    <div className="space-y-4">
+                    {mode === 'parent-login' && (
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">School ID</label>
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">School ID or Name</label>
                             <div className="relative group">
                                 <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
                                 <input
                                     type="text" required
                                     className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
-                                    placeholder="wisdom-school"
+                                    placeholder="School UUID or name (e.g., International Wisdom School)"
                                     value={schoolId}
                                     onChange={(e) => setSchoolId(e.target.value)}
-                                    disabled={showOtpInput}
                                 />
                             </div>
+                            <p className="text-xs text-gray-500 ml-1 mt-1">
+                                Use your school's ID (UUID) or name. Ask your administrator if unsure.
+                            </p>
                         </div>
-
-                        {!showOtpInput ? (
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Phone Number</label>
-                                <div className="relative group">
-                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
-                                    <input
-                                        type="tel" required={!admissionNumber}
-                                        className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50"
-                                        placeholder="+234 800 000 0000"
-                                        value={phoneNumber}
-                                        onChange={(e) => setPhoneNumber(e.target.value)}
-                                    />
-                                </div>
-                                <div id="recaptcha-container"></div>
-                            </div>
-                        ) : (
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Enter OTP Code</label>
-                                <div className="relative group">
-                                    <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-teal-400" />
-                                    <input
-                                        type="text" required
-                                        className="w-full bg-dark-bg border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-teal-500/50 tracking-widest text-lg font-bold"
-                                        placeholder="1 2 3 4 5 6"
-                                        value={otp}
-                                        onChange={(e) => setOtp(e.target.value)}
-                                    />
-                                </div>
-                                <p className="text-xs text-gray-500 mt-2">
-                                    Code sent to {phoneNumber}. <button type="button" onClick={() => setShowOtpInput(false)} className="text-teal-400 hover:underline">Change Number</button>
-                                </p>
-                            </div>
-                        )}
-                    </div>
+                    )}
 
                     {(mode === 'login' || mode === 'school-reg') && (
                         <div className="space-y-1">
@@ -482,7 +402,7 @@ export const Login = () => {
                                     {mode === 'staff-login' && 'Staff Sign In'}
                                     {mode === 'school-reg' && 'Create School'}
                                     {mode === 'student-login' && 'Access Portal'}
-                                    {mode === 'parent-login' && (showOtpInput ? 'Verify & Login' : 'Send Code')}
+                                    {mode === 'parent-login' && 'Parent Sign In'}
                                 </span>
                                 <ArrowRight className="w-5 h-5" />
                             </>
