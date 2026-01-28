@@ -20,9 +20,7 @@ export const Login = () => {
     const [schoolId, setSchoolId] = useState('');
     const [admissionNumber, setAdmissionNumber] = useState('');
     const [staffId, setStaffId] = useState('');
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [otp, setOtp] = useState('');
-    const [showOtpInput, setShowOtpInput] = useState(false);
+    const [parentId, setParentId] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
