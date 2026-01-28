@@ -52,6 +52,7 @@ export const AdminDashboard = () => {
     const [showBulkImport, setShowBulkImport] = useState(false);
     const [showStaffCreation, setShowStaffCreation] = useState(false);
     const [showStudentCreation, setShowStudentCreation] = useState(false);
+    const [showParentCreation, setShowParentCreation] = useState(false);
     const [showSubjectModal, setShowSubjectModal] = useState(false);
     const [showClassModal, setShowClassModal] = useState(false);
     const [showSchoolSettings, setShowSchoolSettings] = useState(false);
