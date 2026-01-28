@@ -37,14 +37,15 @@ USING (
 -- TABLE: attendance
 -- ============================================
 -- Policy: Teachers can view attendance for their assigned classes
+DROP POLICY IF EXISTS "Teachers read own class attendance" ON attendance;
 CREATE POLICY "Teachers read own class attendance"
 ON attendance FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM staff_assignments sa
-    JOIN student_classes sc ON sa.assigned_class_id = sc.class_id
+    JOIN student_classes sc ON sa.class_id = sc.class_id
     WHERE sc.student_id = attendance.student_id
-    AND sa.user_id = auth.uid()
+    AND sa.staff_id = auth.uid()
     AND sa.school_id = attendance.school_id
   )
 );
@@ -76,14 +77,15 @@ USING (
 );
 
 -- Policy: Teachers can insert attendance for their classes
+DROP POLICY IF EXISTS "Teachers insert attendance for own classes" ON attendance;
 CREATE POLICY "Teachers insert attendance for own classes"
 ON attendance FOR INSERT
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM staff_assignments sa
-    JOIN student_classes sc ON sa.assigned_class_id = sc.class_id
+    JOIN student_classes sc ON sa.class_id = sc.class_id
     WHERE sc.student_id = attendance.student_id
-    AND sa.user_id = auth.uid()
+    AND sa.staff_id = auth.uid()
     AND sa.school_id = attendance.school_id
   )
 );
@@ -92,13 +94,14 @@ WITH CHECK (
 -- TABLE: results
 -- ============================================
 -- Policy: Teachers can view results for their subjects
+DROP POLICY IF EXISTS "Teachers read own subject results" ON results;
 CREATE POLICY "Teachers read own subject results"
 ON results FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM staff_assignments sa
-    WHERE sa.user_id = auth.uid()
-    AND sa.assigned_subject_id = results.subject_id
+    WHERE sa.staff_id = auth.uid()
+    AND sa.subject_id = results.subject_id
     AND sa.school_id = results.school_id
   )
 );
@@ -130,13 +133,14 @@ USING (
 );
 
 -- Policy: Teachers can insert results
+DROP POLICY IF EXISTS "Teachers insert results for own subject" ON results;
 CREATE POLICY "Teachers insert results for own subject"
 ON results FOR INSERT
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM staff_assignments sa
-    WHERE sa.user_id = auth.uid()
-    AND sa.assigned_subject_id = results.subject_id
+    WHERE sa.staff_id = auth.uid()
+    AND sa.subject_id = results.subject_id
     AND sa.school_id = results.school_id
   )
 );
@@ -192,12 +196,13 @@ USING (
 );
 
 -- Policy: Teachers see students in their assigned classes
+DROP POLICY IF EXISTS "Teachers see class enrollments" ON student_classes;
 CREATE POLICY "Teachers see class enrollments"
 ON student_classes FOR SELECT
 USING (
   class_id IN (
-    SELECT assigned_class_id FROM staff_assignments
-    WHERE user_id = auth.uid()
+    SELECT class_id FROM staff_assignments
+    WHERE staff_id = auth.uid()
     AND school_id = student_classes.school_id
   )
 );
@@ -224,10 +229,11 @@ USING (
 );
 
 -- Policy: Staff see their own assignments
+DROP POLICY IF EXISTS "Staff see own assignments" ON staff_assignments;
 CREATE POLICY "Staff see own assignments"
 ON staff_assignments FOR SELECT
 USING (
-  user_id = auth.uid()
+  staff_id = auth.uid()
 );
 
 -- ============================================
