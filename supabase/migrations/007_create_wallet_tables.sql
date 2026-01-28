@@ -49,8 +49,8 @@ CREATE POLICY "parents_see_wallet_for_children" ON parent_wallets
 CREATE POLICY "admins_view_all_wallets" ON parent_wallets
   FOR SELECT
   USING (
-    (SELECT role FROM users WHERE id = auth.uid()) = 'admin' AND
-    school_id = (SELECT school_id FROM users WHERE id = auth.uid())
+    get_auth_user_role() = 'admin' AND
+    school_id = get_auth_user_school_id()
   );
 
 -- Only system can create/update wallets (no direct user update)
