@@ -396,7 +396,7 @@ export const loginWithStaffId = async (schoolId: string, staffId: string, passwo
  */
 export const repairProfileFromAuthMetadata = async (uid: string, user: any): Promise<void> => {
     if (!user || !user.user_metadata) {
-        console.log('No user metadata available for repair');
+        console.log('[repairProfileFromAuthMetadata] No user metadata available for repair');
         return;
     }
 
@@ -407,6 +407,14 @@ export const repairProfileFromAuthMetadata = async (uid: string, user: any): Pro
         const admissionNumber = authMetadata.admission_number;
         const fullName = authMetadata.full_name || authMetadata.fullName;
 
+        console.log('[repairProfileFromAuthMetadata] Metadata found:', {
+            schoolId,
+            staffId,
+            admissionNumber,
+            fullName,
+            uid
+        });
+
         // Only update if we have data to update
         if (schoolId || staffId || admissionNumber || fullName) {
             const updateData: any = {};
@@ -416,19 +424,23 @@ export const repairProfileFromAuthMetadata = async (uid: string, user: any): Pro
             if (admissionNumber) updateData.admission_number = admissionNumber;
             if (fullName) updateData.full_name = fullName;
 
+            console.log('[repairProfileFromAuthMetadata] Attempting update with:', updateData);
+
             const { error } = await supabase
                 .from('users')
                 .update(updateData)
                 .eq('id', uid);
 
             if (error) {
-                console.error('Failed to repair profile:', error);
+                console.error('[repairProfileFromAuthMetadata] Failed to repair profile. Error message:', error.message, 'Code:', error.code, 'Details:', error.details);
             } else {
-                console.log('Profile repaired with data from Auth metadata:', updateData);
+                console.log('[repairProfileFromAuthMetadata] Profile repaired successfully with data from Auth metadata:', updateData);
             }
+        } else {
+            console.log('[repairProfileFromAuthMetadata] No metadata fields available to repair');
         }
     } catch (err) {
-        console.error('Exception during profile repair:', err);
+        console.error('[repairProfileFromAuthMetadata] Exception during profile repair:', err instanceof Error ? err.message : err);
     }
 };
 
