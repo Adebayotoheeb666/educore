@@ -7,17 +7,20 @@
 -- TABLE: users
 -- ============================================
 -- Policy: Users can only see themselves
+DROP POLICY IF EXISTS "Users see only themselves" ON users;
 CREATE POLICY "Users see only themselves"
 ON users FOR SELECT
 USING (id = auth.uid());
 
 -- Policy: Users can update only their own profile
+DROP POLICY IF EXISTS "Users update only their own profile" ON users;
 CREATE POLICY "Users update only their own profile"
 ON users FOR UPDATE
 USING (id = auth.uid())
 WITH CHECK (id = auth.uid());
 
 -- Policy: Admins can see all users in their school
+DROP POLICY IF EXISTS "Admins see all school users" ON users;
 CREATE POLICY "Admins see all school users"
 ON users FOR SELECT
 USING (
@@ -26,6 +29,7 @@ USING (
 );
 
 -- Policy: Staff can see other staff in same school
+DROP POLICY IF EXISTS "Staff see school staff" ON users;
 CREATE POLICY "Staff see school staff"
 ON users FOR SELECT
 USING (
@@ -37,6 +41,7 @@ USING (
 -- TABLE: attendance
 -- ============================================
 -- Policy: Teachers can view attendance for their assigned classes
+DROP POLICY IF EXISTS "Teachers read own class attendance" ON attendance;
 CREATE POLICY "Teachers read own class attendance"
 ON attendance FOR SELECT
 USING (
@@ -50,6 +55,7 @@ USING (
 );
 
 -- Policy: Admins can view all attendance in their school
+DROP POLICY IF EXISTS "Admins read all school attendance" ON attendance;
 CREATE POLICY "Admins read all school attendance"
 ON attendance FOR SELECT
 USING (
@@ -58,6 +64,7 @@ USING (
 );
 
 -- Policy: Students can view their own attendance
+DROP POLICY IF EXISTS "Students read own attendance" ON attendance;
 CREATE POLICY "Students read own attendance"
 ON attendance FOR SELECT
 USING (
@@ -65,6 +72,7 @@ USING (
 );
 
 -- Policy: Parents can view linked child attendance
+DROP POLICY IF EXISTS "Parents read linked child attendance" ON attendance;
 CREATE POLICY "Parents read linked child attendance"
 ON attendance FOR SELECT
 USING (
@@ -76,6 +84,7 @@ USING (
 );
 
 -- Policy: Teachers can insert attendance for their classes
+DROP POLICY IF EXISTS "Teachers insert attendance for own classes" ON attendance;
 CREATE POLICY "Teachers insert attendance for own classes"
 ON attendance FOR INSERT
 WITH CHECK (
@@ -92,6 +101,7 @@ WITH CHECK (
 -- TABLE: results
 -- ============================================
 -- Policy: Teachers can view results for their subjects
+DROP POLICY IF EXISTS "Teachers read own subject results" ON results;
 CREATE POLICY "Teachers read own subject results"
 ON results FOR SELECT
 USING (
