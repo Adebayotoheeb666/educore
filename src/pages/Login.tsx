@@ -151,17 +151,12 @@ export const Login = () => {
                 await loginWithStaffId(resolvedSchoolId, staffId, password);
                 navigate('/dashboard');
             } else if (mode === 'parent-login') {
-                if (showOtpInput) {
-                    await handleVerifyOtp();
-                } else if (schoolId && admissionNumber && password) {
-                    const resolvedSchoolId = await resolveSchoolId(schoolId);
-                    await loginWithParentCredentials(resolvedSchoolId, admissionNumber, password);
-                    navigate('/portal/parent');
-                } else if (phoneNumber) {
-                    await handleSendOtp();
-                } else {
-                    throw new Error("Please enter School ID, Child's Admission Number and PIN, OR Phone Number for OTP");
+                if (!schoolId || !parentId || !password) {
+                    throw new Error("Please fill in all fields (School ID, Parent ID, and Password)");
                 }
+                const resolvedSchoolId = await resolveSchoolId(schoolId);
+                await loginWithParentId(resolvedSchoolId, parentId, password);
+                navigate('/portal/parent');
             }
         } catch (err: any) {
             console.error('[Login] Error during authentication:', {
