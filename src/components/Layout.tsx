@@ -143,12 +143,19 @@ export const Layout = ({ children }: LayoutProps) => {
                         </>
                     )}
 
-                    {/* Student/Parent Links */}
-                    {(profile?.role === 'student' || profile?.role === 'parent') && (
+                    {/* Student Links */}
+                    {profile?.role === 'student' && (
                         <>
                             <SidebarItem to="/portal" icon={LayoutDashboard} label="My Portal" />
                             <SidebarItem to="/portal/attendance" icon={CheckCircle2} label="My Attendance" />
                             <SidebarItem to="/portal/results" icon={Calculator} label="My Results" />
+                        </>
+                    )}
+
+                    {/* Parent Links */}
+                    {profile?.role === 'parent' && (
+                        <>
+                            <SidebarItem to="/portal/parent" icon={LayoutDashboard} label="My Portal" />
                         </>
                     )}
 
