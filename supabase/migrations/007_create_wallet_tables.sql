@@ -100,11 +100,11 @@ CREATE POLICY "users_see_own_wallet_txn" ON wallet_transactions
 CREATE POLICY "parents_see_linked_child_txn" ON wallet_transactions
   FOR SELECT
   USING (
-    (SELECT role FROM users WHERE id = auth.uid()) = 'parent' AND
+    get_auth_user_role() = 'parent' AND
     user_id IN (
       SELECT UNNEST(linked_students) FROM users WHERE id = auth.uid()
     ) AND
-    school_id = (SELECT school_id FROM users WHERE id = auth.uid())
+    school_id = get_auth_user_school_id()
   );
 
 -- Admins can see all transactions in their school
