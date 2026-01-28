@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { registerSchool, loginWithAdmissionNumber, loginWithStaffId, loginWithParentId } from '../lib/authService';
 import { isValidUUID, findSchoolByName } from '../lib/schoolService';
-import { Sparkles, Mail, Lock, ArrowRight, User, AlertCircle, Building2, BadgeCheck } from 'lucide-react';
+import { Sparkles, Mail, Lock, ArrowRight, User, AlertCircle, Building2, UserCircle2, BadgeCheck } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup' | 'school-reg' | 'student-login' | 'parent-login' | 'staff-login';
 
