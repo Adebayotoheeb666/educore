@@ -111,8 +111,8 @@ CREATE POLICY "parents_see_linked_child_txn" ON wallet_transactions
 CREATE POLICY "admins_view_school_txn" ON wallet_transactions
   FOR SELECT
   USING (
-    (SELECT role FROM users WHERE id = auth.uid()) = 'admin' AND
-    school_id = (SELECT school_id FROM users WHERE id = auth.uid())
+    get_auth_user_role() = 'admin' AND
+    school_id = get_auth_user_school_id()
   );
 
 -- ============================================
