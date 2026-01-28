@@ -136,6 +136,17 @@ export const AdminDashboard = () => {
         );
     };
 
+    const filterParents = (data: any[]) => {
+        if (!searchTerm) return data;
+        const term = searchTerm.toLowerCase();
+        return data.filter(p =>
+            p.fullName?.toLowerCase().includes(term) ||
+            p.email?.toLowerCase().includes(term) ||
+            p.parentId?.toLowerCase().includes(term) ||
+            p.phone_number?.toLowerCase().includes(term)
+        );
+    };
+
     // Fetch functions
     const fetchUsers = async () => {
         if (!schoolId) return [];
