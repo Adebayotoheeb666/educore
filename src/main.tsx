@@ -130,15 +130,15 @@ const router = createBrowserRouter([
   },
   {
     path: "/portal",
-    element: <ProtectedRoute allowedRoles={['student', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentPortal /></Suspense></Layout></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['student']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentPortal /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/portal/attendance",
-    element: <ProtectedRoute allowedRoles={['student', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentAttendance /></Suspense></Layout></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['student']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentAttendance /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/portal/results",
-    element: <ProtectedRoute allowedRoles={['student', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentResults /></Suspense></Layout></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['student']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentResults /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/portal/parent",
