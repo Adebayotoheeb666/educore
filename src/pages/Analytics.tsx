@@ -76,17 +76,33 @@ export const Analytics = () => {
 
                     if (examError) throw examError;
 
-                    if (examData) {
+                    if (examData && examData.length > 0) {
+                        // Gather IDs for bulk fetching
+                        const studentIds = [...new Set(examData.map((d: any) => d.student_id).filter(Boolean))];
+                        const subjectIds = [...new Set(examData.map((d: any) => d.subject_id).filter(Boolean))];
+
+                        // Fetch related data
+                        const [studentsRes, subjectsRes] = await Promise.all([
+                            supabase.from('users').select('id, full_name').in('id', studentIds),
+                            supabase.from('subjects').select('id, name').in('id', subjectIds)
+                        ]);
+
+                        const studentMap = new Map(studentsRes.data?.map(s => [s.id, s.full_name]) || []);
+                        const subjectMap = new Map(subjectsRes.data?.map(s => [s.id, s.name]) || []);
+
                         examData.forEach((data: any) => {
+                            const realStudentName = studentMap.get(data.student_id);
+                            const realSubjectName = subjectMap.get(data.subject_id);
+
                             unifiedResults.push({
                                 id: data.id,
-                                studentName: `Student ${data.student_id ? data.student_id.substring(0, 8) : 'N/A'}`,
+                                studentName: realStudentName || `Student ${data.student_id ? data.student_id.substring(0, 8) : 'N/A'}`,
                                 score: data.total_score,
                                 total: 100,
                                 feedback: data.remarks,
                                 type: 'exam',
                                 createdAt: data.updated_at,
-                                subject: data.subject_id
+                                subject: realSubjectName || data.subject_id
                             });
                         });
                     }
@@ -198,6 +214,14 @@ export const Analytics = () => {
         }
     };
 
+    // Derived state for subjects filter
+    const uniqueSubjects = ['All Subjects', ...new Set(results.map(r => r.subject).filter(Boolean))];
+    const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('All Subjects');
+
+    const filteredResults = selectedSubjectFilter === 'All Subjects'
+        ? results
+        : results.filter(r => r.subject === selectedSubjectFilter);
+
     return (
         <div className="flex gap-6 h-auto">
             {/* Main Table Section */}
@@ -214,7 +238,7 @@ export const Analytics = () => {
                     <div className="flex justify-between items-start">
                         <div>
                             <h1 className="text-3xl font-bold text-white mb-2">Class Performance</h1>
-                            <p className="text-gray-400">Term 2 | {results.length} Results Recorded</p>
+                            <p className="text-gray-400">Term 2 | {filteredResults.length} Results Recorded</p>
                         </div>
                         <div className="flex gap-2">
                             <span className="px-2 py-1 bg-teal-500/20 text-teal-400 text-xs font-bold rounded">SYNCED</span>
@@ -262,10 +286,14 @@ export const Analytics = () => {
                 {activeTab === 'Gradebook' && (
                     <>
                         {/* Filter Chips */}
-                        <div className="flex gap-3 mb-6">
-                            {['All Subjects', 'Mathematics', 'Basic Science'].map((f, i) => (
-                                <button key={f} className={`px-4 py-2 rounded-xl font-bold text-sm flex items-center justify-between min-w-[120px] ${i === 0 ? 'bg-teal-600 text-white' : 'bg-dark-card text-gray-400 border border-white/10'}`}>
-                                    {f} {i === 0 && <span className="ml-2">▼</span>}
+                        <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
+                            {uniqueSubjects.map((f, i) => (
+                                <button
+                                    key={f as string}
+                                    onClick={() => setSelectedSubjectFilter(f as string)}
+                                    className={`px-4 py-2 rounded-xl font-bold text-sm flex items-center justify-between min-w-[max-content] whitespace-nowrap transition-colors ${selectedSubjectFilter === f ? 'bg-teal-600 text-white' : 'bg-dark-card text-gray-400 border border-white/10 hover:bg-white/5'}`}
+                                >
+                                    {f} {selectedSubjectFilter === f && <span className="ml-2">▼</span>}
                                 </button>
                             ))}
                         </div>
@@ -281,9 +309,9 @@ export const Analytics = () => {
                             </div>
                             <div className="overflow-y-auto max-h-[500px]">
                                 {loading && <div className="p-4 text-center text-gray-500">Loading data...</div>}
-                                {!loading && results.length === 0 && <div className="p-4 text-center text-gray-500">No results recorded yet.</div>}
+                                {!loading && filteredResults.length === 0 && <div className="p-4 text-center text-gray-500">No results recorded.</div>}
 
-                                {results.map((res) => (
+                                {filteredResults.map((res) => (
                                     <StudentRow key={res.id} result={res} />
                                 ))}
                             </div>

@@ -164,7 +164,16 @@ export const StaffAssignmentModal = ({ staffId, staffName, onClose, onSuccess }:
                 }, 1500);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to save assignments');
+            console.error('Save assignments error:', err);
+            let errorMessage = err instanceof Error ? err.message : 'Failed to save assignments';
+
+            // Check for Postgres Foreign Key Violation (code 23503)
+            // This happens if the staff profile was deleted (e.g. by duplication fix) while we were viewing it
+            if ((err as any)?.code === '23503' && (err as any)?.message?.includes('staff_id')) {
+                errorMessage = 'This staff profile no longer exists. It may have been merged or deleted. Please refresh the page.';
+            }
+
+            setError(errorMessage);
         } finally {
             setSaving(false);
         }

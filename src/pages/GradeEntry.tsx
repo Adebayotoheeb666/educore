@@ -11,121 +11,105 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/auditService';
 import { getOnlineStatus, queueAction } from '../lib/offlineService';
+import { useQuery } from '@tanstack/react-query';
+
+// Fetch functions
+const fetchClasses = async (schoolId: string) => {
+    const { data, error } = await supabase.from('classes').select('*').eq('school_id', schoolId);
+    if (error) throw error;
+    return data.map(c => ({ id: c.id, ...c }));
+};
+
+const fetchSubjects = async (schoolId: string) => {
+    const { data, error } = await supabase.from('subjects').select('*').eq('school_id', schoolId);
+    if (error) throw error;
+    return data.map(s => ({ id: s.id, ...s }));
+};
+
+const fetchStudentsAndScores = async (schoolId: string, classId: string, subjectId: string) => {
+    // Fetch students in the selected class
+    // In a real app we'd filter by class_id in a junction table or on user profile if denormalized
+    // For now fetching all students then filtering (as per original code structure, though inefficient)
+
+    // Parallel fetch for students and scores
+    const [studentsResult, scoresResult] = await Promise.all([
+        supabase.from('users').select('*').eq('school_id', schoolId).eq('role', 'student'),
+        supabase.from('results').select('*')
+            .eq('school_id', schoolId)
+            .eq('class_id', classId)
+            .eq('subject_id', subjectId)
+    ]);
+
+    if (studentsResult.error) throw studentsResult.error;
+    if (scoresResult.error) throw scoresResult.error;
+
+    // Map students
+    const studentsList = studentsResult.data.map(doc => ({
+        id: doc.id,
+        fullName: doc.full_name,
+        admissionNumber: doc.admission_number,
+        ...doc
+    }));
+
+    // Map scores
+    const scoreMap: Record<string, { ca: string; exam: string }> = {};
+    studentsList.forEach((s: any) => scoreMap[s.id] = { ca: '', exam: '' }); // Initialize
+
+    scoresResult.data.forEach((data: any) => {
+        if (scoreMap[data.student_id]) {
+            scoreMap[data.student_id] = {
+                ca: data.ca_score?.toString() || '',
+                exam: data.exam_score?.toString() || ''
+            };
+        }
+    });
+
+    return { students: studentsList, scores: scoreMap };
+};
 
 export const GradeEntry = () => {
     const { schoolId, user, profile } = useAuth();
-    const [classes, setClasses] = useState<any[]>([]);
-    const [subjects, setSubjects] = useState<any[]>([]);
     const [selectedClass, setSelectedClass] = useState<string | null>(null);
     const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-    const [students, setStudents] = useState<any[]>([]);
-    const [scores, setScores] = useState<Record<string, { ca: string; exam: string }>>({});
-    const [loading, setLoading] = useState(true);
+    const [localScores, setLocalScores] = useState<Record<string, { ca: string; exam: string }>>({});
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
 
+    // Queries
+    const { data: classes = [], isLoading: classesLoading } = useQuery({
+        queryKey: ['classes', schoolId],
+        queryFn: () => fetchClasses(schoolId!),
+        enabled: !!schoolId
+    });
+
+    const { data: subjects = [], isLoading: subjectsLoading } = useQuery({
+        queryKey: ['subjects', schoolId],
+        queryFn: () => fetchSubjects(schoolId!),
+        enabled: !!schoolId
+    });
+
+    const {
+        data: gradeData,
+        isLoading: gradesLoading
+    } = useQuery({
+        queryKey: ['grades', schoolId, selectedClass, selectedSubject],
+        queryFn: () => fetchStudentsAndScores(schoolId!, selectedClass!, selectedSubject!),
+        enabled: !!schoolId && !!selectedClass && !!selectedSubject
+    });
+
+    // Effect to sync local score state when data is fetched
     useEffect(() => {
-        if (!schoolId) return;
+        if (gradeData?.scores) {
+            setLocalScores(gradeData.scores);
+        }
+    }, [gradeData]);
 
-        const fetchMetadata = async () => {
-            setLoading(true);
-            try {
-                // Fetch classes
-                const { data: classData, error: classError } = await supabase
-                    .from('classes')
-                    .select('*')
-                    .eq('school_id', schoolId);
+    const students = gradeData?.students || [];
+    const scores = localScores; // Use local state for editing
 
-                if (classError) throw classError;
-                setClasses(classData.map(c => ({ id: c.id, ...c })));
-
-                // Fetch subjects
-                const { data: subjectData, error: subjectError } = await supabase
-                    .from('subjects')
-                    .select('*')
-                    .eq('school_id', schoolId);
-
-                if (subjectError) throw subjectError;
-                setSubjects(subjectData.map(s => ({ id: s.id, ...s })));
-            } catch (err) {
-                const errorMsg = err instanceof Error ? err.message : String(err);
-                console.error("Error fetching metadata:", errorMsg, err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchMetadata();
-    }, [schoolId]);
-
-    useEffect(() => {
-        if (!selectedClass || !selectedSubject || !schoolId) return;
-
-        const fetchStudents = async () => {
-            setLoading(true);
-            try {
-                // Fetch students
-                const { data: studentData, error: studentError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('school_id', schoolId)
-                    .eq('role', 'student');
-
-                if (studentError) throw studentError;
-
-                const studentsList = studentData.map(doc => ({
-                    id: doc.id,
-                    fullName: doc.full_name,
-                    admissionNumber: doc.admission_number,
-                    ...doc
-                }));
-                // In real app, filter by classId via junction table
-                setStudents(studentsList);
-
-                // Initialize scores
-                const initial: Record<string, { ca: string; exam: string }> = {};
-                studentsList.forEach(s => initial[s.id] = { ca: '', exam: '' });
-                setScores(initial);
-
-                // Fetch existing scores
-                const { data: scoreData, error: scoreError } = await supabase
-                    .from('results')
-                    .select('*')
-                    .eq('school_id', schoolId)
-                    .eq('class_id', selectedClass)
-                    .eq('subject_id', selectedSubject);
-
-                if (scoreError) throw scoreError;
-
-                const existingScores: Record<string, { ca: string; exam: string }> = { ...initial };
-                scoreData.forEach(data => {
-                    // Assuming scoreData uses snake_case from DB
-                    existingScores[data.student_id] = {
-                        ca: data.ca_score?.toString() || '',
-                        exam: data.exam_score?.toString() || ''
-                    };
-                });
-                setScores(existingScores);
-
-            } catch (err) {
-                const errorMsg = err instanceof Error ? err.message : String(err);
-                console.error("Error fetching students/scores:", {
-                    message: errorMsg,
-                    code: (err as any)?.code,
-                    details: (err as any)?.details,
-                    fullError: err
-                });
-                alert(`Failed to load grades: ${errorMsg}`);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchStudents();
-    }, [selectedClass, selectedSubject, schoolId]);
-
+    // Handle local score updates
     const handleScoreChange = (studentId: string, field: 'ca' | 'exam', value: string) => {
-        setScores(prev => ({
+        setLocalScores(prev => ({
             ...prev,
             [studentId]: {
                 ...prev[studentId],
@@ -134,18 +118,20 @@ export const GradeEntry = () => {
         }));
     };
 
+    const loading = classesLoading || subjectsLoading || (!!selectedClass && !!selectedSubject && gradesLoading);
+
     const handleSave = async () => {
         if (!selectedClass || !selectedSubject || !user || !profile || !schoolId) return;
         setSaving(true);
         setSuccess(false);
         try {
             const batch = Object.entries(scores).map(([studentId, data]) => {
-                const resultId = `${selectedClass}_${selectedSubject}_${studentId}`;
                 const caScore = parseFloat(data.ca) || 0;
                 const examScore = parseFloat(data.exam) || 0;
 
                 return {
-                    id: resultId,
+                    // We let Supabase/Postgres handle the ID generation to avoid invalid UUID errors.
+                    // Upsert will rely on the composite unique key constraint (student_id, subject_id, class_id, term, session)
                     school_id: schoolId,
                     student_id: studentId,
                     class_id: selectedClass,
@@ -161,9 +147,11 @@ export const GradeEntry = () => {
             });
 
             if (getOnlineStatus()) {
+                // Upsert based on the unique combination of fields
+                // We specify `ignoreDuplicates: false` to ensure we UPDATE if it exists
                 const { error } = await supabase
                     .from('results')
-                    .upsert(batch);
+                    .upsert(batch, { onConflict: 'student_id,subject_id,class_id,term,session' });
 
                 if (error) throw error;
             } else {

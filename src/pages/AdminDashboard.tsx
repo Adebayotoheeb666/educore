@@ -14,7 +14,6 @@ import {
     Library,
     Trash2,
     Edit2,
-    AlertCircle,
     Settings,
     Menu
 } from 'lucide-react';
@@ -31,8 +30,10 @@ import { deleteStaffAccount } from '../lib/staffService';
 import type { ImportResult } from '../lib/bulkImportService';
 import { ToastContainer, type ToastProps } from '../components/common/Toast';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const AdminDashboard = () => {
+    const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { schoolId, role, user, profile, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState<'staff' | 'students' | 'classes' | 'subjects'>('staff');
@@ -41,7 +42,7 @@ export const AdminDashboard = () => {
     const [classes, setClasses] = useState<any[]>([]);
     const [subjects, setSubjects] = useState<any[]>([]);
     const [financials, setFinancials] = useState({ totalRevenue: 0, outstanding: 0 });
-    const [loading, setLoading] = useState(true);
+    // const [loading, setLoading] = useState(true); // Replaced by derived state
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -131,45 +132,115 @@ export const AdminDashboard = () => {
         );
     };
 
-    const fetchData = async () => {
-        if (!schoolId) return;
+    // Fetch functions
+    const fetchUsers = async () => {
+        if (!schoolId) return [];
 
-        setLoading(true);
+        // Try RPC first
         try {
-            let allUsers;
-            let usersError;
+            const { data, error } = await supabase.rpc('get_school_users', { p_school_id: schoolId });
+            if (!error && data) return data;
+        } catch (e) {
+            console.warn('RPC fetch failed, falling back to direct query', e);
+        }
 
-            // Try to fetch via RPC first (preferred method) with proper error handling
-            let rpcResult;
-            try {
-                rpcResult = await supabase
-                    .rpc('get_school_users', { p_school_id: schoolId });
-            } catch (rpcFetchError) {
-                // Network error or RPC function doesn't exist, fall back to direct query
-                console.warn('RPC fetch failed, falling back to direct query:', rpcFetchError);
-                rpcResult = { data: null, error: rpcFetchError };
-            }
+        // Fallback to direct query
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('school_id', schoolId);
 
-            if (rpcResult.error || !rpcResult.data) {
-                // RPC failed, fall back to direct table query
-                if (rpcResult.error) {
-                    console.warn('RPC call error, falling back to direct query:', rpcResult.error);
-                }
-                const directResult = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('school_id', schoolId);
+        if (error) throw error;
+        return data || [];
+    };
 
-                allUsers = directResult.data;
-                usersError = directResult.error;
-            } else {
-                allUsers = rpcResult.data;
-                usersError = rpcResult.error;
-            }
+    const fetchClasses = async () => {
+        if (!schoolId) return [];
+        const { data, error } = await supabase.from('classes').select('*').eq('school_id', schoolId);
+        if (error) throw error;
+        return data as any[];
+    };
 
-            if (usersError) throw usersError;
+    const fetchSubjects = async () => {
+        if (!schoolId) return [];
+        const { data, error } = await supabase.from('subjects').select('*').eq('school_id', schoolId);
+        if (error) throw error;
+        return data as any[];
+    };
 
-            const mappedUsers = (allUsers || []).map((u: any) => ({
+    const fetchFinancials = async () => {
+        if (!schoolId) return { totalRevenue: 0, outstanding: 0 };
+
+        // This relies on users being fetched, but for simplicity we'll do a separate count or just re-fetch light data if needed
+        // Or we can combine queries. For now, independent fetches are safer for migration.
+        const { data: transData, error: transError } = await supabase
+            .from('financial_transactions')
+            .select('amount')
+            .eq('school_id', schoolId);
+
+        if (transError) throw transError;
+
+        const total = (transData || []).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+        // Estimate expected revenue (this is a bit rough as it depends on student count)
+        // We'll calculate "outstanding" in the component render or a derived memo, 
+        // passing student count as a dependency if possible, or just fetch student count here.
+        const { count } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .eq('school_id', schoolId)
+            .eq('role', 'student');
+
+        const totalExpected = (count || 0) * 150000;
+
+        return {
+            totalRevenue: total,
+            outstanding: totalExpected - total
+        };
+    };
+
+    // Queries
+    const {
+        data: usersData,
+        isLoading: usersLoading
+    } = useQuery({
+        queryKey: ['users', schoolId],
+        queryFn: fetchUsers,
+        enabled: !!schoolId,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+    });
+
+    const {
+        data: classesData,
+        isLoading: classesLoading
+    } = useQuery({
+        queryKey: ['classes', schoolId],
+        queryFn: fetchClasses,
+        enabled: !!schoolId
+    });
+
+    const {
+        data: subjectsData,
+        isLoading: subjectsLoading
+    } = useQuery({
+        queryKey: ['subjects', schoolId],
+        queryFn: fetchSubjects,
+        enabled: !!schoolId
+    });
+
+    const {
+        data: financialsData,
+        isLoading: financialsLoading
+    } = useQuery({
+        queryKey: ['financials', schoolId],
+        queryFn: fetchFinancials,
+        enabled: !!schoolId
+    });
+
+    // Derived state
+    useEffect(() => {
+        if (usersData) {
+            const mappedUsers = usersData.map((u: any) => ({
                 id: u.id,
                 ...u,
                 schoolId: u.school_id,
@@ -178,76 +249,44 @@ export const AdminDashboard = () => {
                 staffId: u.staff_id
             }));
 
-            // Deduplicate users by ID
+            // Deduplicate
             const uniqueUsers = Array.from(new Map(mappedUsers.map((u: any) => [u.id, u])).values());
 
-            setStaff(uniqueUsers.filter((u: any) => u.role === 'staff' || u.role === 'admin' || u.role === 'bursar'));
+            setStaff(uniqueUsers.filter((u: any) => ['staff', 'admin', 'bursar'].includes(u.role)));
             setStudents(uniqueUsers.filter((u: any) => u.role === 'student'));
-
-            // Fetch Classes
-            try {
-                const { data: classData, error: classError } = await supabase
-                    .from('classes')
-                    .select('*')
-                    .eq('school_id', schoolId);
-
-                if (classError) throw classError;
-                // Deduplicate classes by ID
-                const uniqueClasses = Array.from(new Map((classData || []).map(c => [c.id, c])).values());
-                setClasses(uniqueClasses);
-            } catch (classErr) {
-                console.error("Classes fetch error:", classErr);
-                setClasses([]);
-            }
-
-            // Fetch Subjects
-            try {
-                const { data: subjectData, error: subjectError } = await supabase
-                    .from('subjects')
-                    .select('*')
-                    .eq('school_id', schoolId);
-
-                if (subjectError) throw subjectError;
-                // Deduplicate subjects by ID
-                const uniqueSubjects = Array.from(new Map((subjectData || []).map(s => [s.id, s])).values());
-                setSubjects(uniqueSubjects);
-            } catch (subjectErr) {
-                console.error("Subjects fetch error:", subjectErr);
-                setSubjects([]);
-            }
-
-            // Fetch Financials
-            try {
-                const { data: transData, error: transError } = await supabase
-                    .from('financial_transactions')
-                    .select('amount')
-                    .eq('school_id', schoolId);
-
-                if (transError) throw transError;
-
-                const total = (transData || []).reduce((acc, curr) => acc + (curr.amount || 0), 0);
-                const totalExpected = mappedUsers.filter((u: any) => u.role === 'student').length * 150000;
-
-                setFinancials({
-                    totalRevenue: total,
-                    outstanding: totalExpected - total
-                });
-            } catch (transErr) {
-                console.error("Financial fetch error:", transErr);
-                setFinancials({ totalRevenue: 0, outstanding: 0 });
-            }
-        } catch (err) {
-            console.error("Error fetching school data:", err);
-            showToast('Failed to load school data. Please try refreshing the page.', 'error');
-            // Set empty defaults to prevent UI from breaking
-            setStaff([]);
-            setStudents([]);
-            setClasses([]);
-            setSubjects([]);
-            setFinancials({ totalRevenue: 0, outstanding: 0 });
-        } finally {
-            setLoading(false);
         }
+    }, [usersData]);
+
+    useEffect(() => {
+        if (classesData) {
+            // Deduplicate classes by ID
+            const uniqueClasses = Array.from(new Map((classesData || []).map(c => [c.id, c])).values());
+            setClasses(uniqueClasses);
+        }
+    }, [classesData]);
+
+    useEffect(() => {
+        if (subjectsData) {
+            const uniqueSubjects = Array.from(new Map((subjectsData || []).map(s => [s.id, s])).values());
+            setSubjects(uniqueSubjects);
+        }
+    }, [subjectsData]);
+
+    useEffect(() => {
+        if (financialsData) {
+            setFinancials(financialsData);
+        }
+    }, [financialsData]);
+
+    // Combined loading state
+    const loading = usersLoading || classesLoading || subjectsLoading || financialsLoading;
+
+    // Compatibility shim
+    const fetchData = () => {
+        queryClient.invalidateQueries({ queryKey: ['users', schoolId] });
+        queryClient.invalidateQueries({ queryKey: ['classes', schoolId] });
+        queryClient.invalidateQueries({ queryKey: ['subjects', schoolId] });
+        queryClient.invalidateQueries({ queryKey: ['financials', schoolId] });
     };
 
     const handleBulkImportSuccess = (result: ImportResult) => {
@@ -272,12 +311,11 @@ export const AdminDashboard = () => {
                     showToast('Update failed: access denied (RLS) or record not found.', 'error');
                     return;
                 }
-                // Log the update action
-                if (schoolId && user?.id && profile?.full_name) {
+                if (schoolId && user?.id && profile?.fullName) {
                     await logAction(
                         schoolId,
                         user.id,
-                        profile.full_name,
+                        profile.fullName,
                         'update',
                         'subject',
                         editingSubject.id,
@@ -323,12 +361,11 @@ export const AdminDashboard = () => {
                     showToast('Update failed: access denied (RLS) or record not found.', 'error');
                     return;
                 }
-                // Log the update action
-                if (schoolId && user?.id && profile?.full_name) {
+                if (schoolId && user?.id && profile?.fullName) {
                     await logAction(
                         schoolId,
                         user.id,
-                        profile.full_name,
+                        profile.fullName,
                         'update',
                         'class',
                         editingClass.id,
@@ -372,11 +409,11 @@ export const AdminDashboard = () => {
                         showToast('Delete failed: access denied (RLS) or record not found.', 'error');
                     } else {
                         // Log the delete action
-                        if (schoolId && user?.id && profile?.full_name) {
+                        if (schoolId && user?.id && profile?.fullName) {
                             await logAction(
                                 schoolId,
                                 user.id,
-                                profile.full_name,
+                                profile.fullName,
                                 'delete',
                                 'subject',
                                 id,
@@ -410,11 +447,11 @@ export const AdminDashboard = () => {
                         showToast('Delete failed: access denied (RLS) or record not found.', 'error');
                     } else {
                         // Log the delete action
-                        if (schoolId && user?.id && profile?.full_name) {
+                        if (schoolId && user?.id && profile?.fullName) {
                             await logAction(
                                 schoolId,
                                 user.id,
-                                profile.full_name,
+                                profile.fullName,
                                 'delete',
                                 'class',
                                 id,
@@ -452,11 +489,11 @@ export const AdminDashboard = () => {
 
                     if (result.success) {
                         // Log the delete action
-                        if (profile?.full_name) {
+                        if (profile?.fullName) {
                             await logAction(
                                 schoolId,
                                 user.id,
-                                profile.full_name,
+                                profile.fullName,
                                 'delete',
                                 'staff',
                                 id,
@@ -494,11 +531,11 @@ export const AdminDashboard = () => {
                         showToast('Delete failed: access denied (RLS) or record not found.', 'error');
                     } else {
                         // Log the delete action
-                        if (schoolId && user?.id && profile?.full_name) {
+                        if (schoolId && user?.id && profile?.fullName) {
                             await logAction(
                                 schoolId,
                                 user.id,
-                                profile.full_name,
+                                profile.fullName,
                                 'delete',
                                 'student',
                                 id,
@@ -518,11 +555,12 @@ export const AdminDashboard = () => {
         });
     };
 
-    useEffect(() => {
-        if (schoolId) {
-            fetchData();
-        }
-    }, [schoolId]);
+    // Manual loading state removed in favor of React Query
+    // useEffect(() => {
+    //     if (schoolId) {
+    //         fetchData();
+    //     }
+    // }, [schoolId]);
 
     if (authLoading) {
         return (

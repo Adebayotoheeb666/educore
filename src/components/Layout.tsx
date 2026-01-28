@@ -9,6 +9,7 @@ import { clearUserContext } from '../lib/sentry';
 import { getNotifications, markAsRead, markAllAsRead } from '../lib/notificationService';
 import type { Notification } from '../lib/types';
 import { OfflineIndicator } from './common/OfflineIndicator';
+import { useQuery } from '@tanstack/react-query';
 
 interface LayoutProps {
     children: ReactNode;
@@ -39,29 +40,33 @@ export const Layout = ({ children }: LayoutProps) => {
     const [unreadCount, setUnreadCount] = useState(0);
     const notificationRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const fetchNotifications = async () => {
-            if (schoolId && user) {
-                try {
-                    const data = await getNotifications(schoolId, user.id);
-                    setNotifications(data);
-                    setUnreadCount(data.filter(n => !n.read).length);
-                } catch (error) {
-                    // Silently fail - notifications are not critical
-                    console.warn('Failed to fetch notifications (non-critical):', error);
-                    setNotifications([]);
-                    setUnreadCount(0);
-                }
-            }
-        };
-
-        if (schoolId && user) {
-            fetchNotifications();
-            // Poll every minute for new notifications
-            const interval = setInterval(fetchNotifications, 60000);
-            return () => clearInterval(interval);
+    // Fetch function
+    const fetchNotifications = async () => {
+        if (!schoolId || !user) return [];
+        try {
+            return await getNotifications(schoolId, user.id);
+        } catch (error) {
+            console.warn('Failed to fetch notifications:', error);
+            return [];
         }
-    }, [schoolId, user]);
+    };
+
+    // React Query polling
+    const { data: notificationData } = useQuery({
+        queryKey: ['notifications', schoolId, user?.id],
+        queryFn: fetchNotifications,
+        enabled: !!schoolId && !!user,
+        refetchInterval: 60000, // Poll every minute
+        refetchOnWindowFocus: true
+    });
+
+    // Sync state with query data
+    useEffect(() => {
+        if (notificationData) {
+            setNotifications(notificationData);
+            setUnreadCount(notificationData.filter(n => !n.read).length);
+        }
+    }, [notificationData]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
