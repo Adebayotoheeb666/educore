@@ -758,6 +758,22 @@ export const AdminDashboard = () => {
         );
     }
 
+    // Parent Creation Modal
+    if (showParentCreation) {
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <ParentCreationModal
+                    initialData={editingParent}
+                    user={user}
+                    profile={profile}
+                    schoolId={schoolId}
+                    onSuccess={() => { fetchData(); setShowParentCreation(false); setEditingParent(null); }}
+                    onClose={() => { setShowParentCreation(false); setEditingParent(null); }}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-8">
             {/* Subject Creation Modal */}
