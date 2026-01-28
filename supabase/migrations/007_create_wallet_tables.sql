@@ -34,6 +34,7 @@ ALTER TABLE parent_wallets ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for parent_wallets
 -- Parents can see their own wallet
+DROP POLICY IF EXISTS "parents_see_own_wallet" ON parent_wallets;
 CREATE POLICY "parents_see_own_wallet" ON parent_wallets
   FOR SELECT
   USING (parent_id = auth.uid());
