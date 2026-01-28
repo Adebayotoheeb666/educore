@@ -390,53 +390,6 @@ export const loginWithStaffId = async (schoolId: string, staffId: string, passwo
     return data;
 }
 
-/**
- * Initiate phone login (sends OTP)
- */
-export const signInWithPhone = async (phoneNumber: string) => {
-    const { data, error } = await supabase.auth.signInWithOtp({
-        phone: phoneNumber
-    });
-
-    if (error) throw error;
-    return data;
-};
-
-/**
- * Confirm OTP code
- */
-export const confirmPhoneOTP = async (phoneNumber: string, code: string, schoolId: string) => {
-    const { data, error } = await supabase.auth.verifyOtp({
-        phone: phoneNumber,
-        token: code,
-        type: 'sms'
-    });
-
-    if (error) throw error;
-    const user = data.user;
-
-    if (user) {
-        // Check if profile exists
-        const { data: profile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-        if (!profile) {
-            // Link new parent to school
-            await supabase.from('users').insert({
-                id: user.id,
-                school_id: schoolId,
-                role: 'parent',
-                phone_number: phoneNumber,
-                full_name: 'Parent' // Prompt to update later
-            });
-        }
-    }
-
-    return data;
-};
 
 /**
  * Repair a broken profile by syncing missing fields from Auth metadata
