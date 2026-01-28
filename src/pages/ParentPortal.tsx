@@ -74,42 +74,56 @@ export const ParentPortal = () => {
             try {
                 let fetchedChildren: Child[] = [];
 
-                if (profile?.linkedStudents && Array.isArray(profile.linkedStudents) && profile.linkedStudents.length > 0) {
-                    const { data, error } = await supabase
+                // Fetch linked students from parent_student_links table
+                const { data: links, error: linksError } = await supabase
+                    .from('parent_student_links')
+                    .select('student_id')
+                    .eq('school_id', schoolId)
+                    .eq('parent_id', user.id);
+
+                if (linksError) {
+                    console.error('[ParentPortal] Error fetching parent links:', linksError);
+                    throw linksError;
+                }
+
+                if (links && links.length > 0) {
+                    const studentIds = links.map(link => link.student_id);
+
+                    // Fetch student details for all linked students
+                    const { data: students, error: studentsError } = await supabase
                         .from('users')
                         .select('id, full_name, admission_number')
-                        .in('id', profile.linkedStudents)
+                        .in('id', studentIds)
                         .eq('school_id', schoolId);
 
-                    if (error) throw error;
+                    if (studentsError) {
+                        console.error('[ParentPortal] Error fetching student details:', studentsError);
+                        throw studentsError;
+                    }
 
-                    fetchedChildren = (data || []).map(u => ({
+                    fetchedChildren = (students || []).map(u => ({
                         id: u.id,
                         fullName: u.full_name,
                         admissionNumber: u.admission_number
                     }));
                 }
 
-                if (fetchedChildren.length === 0) {
-                    setChildren([]);
-                    setLoading(false);
-                    return;
-                }
-
                 setChildren(fetchedChildren);
                 if (fetchedChildren.length > 0) {
                     setSelectedChildId(fetchedChildren[0].id);
                     setSelectedChildName(fetchedChildren[0].fullName);
+                } else {
+                    console.log('[ParentPortal] No children linked to this parent');
                 }
             } catch (err) {
-                console.error('Error fetching children:', err);
+                console.error('[ParentPortal] Error fetching children:', err);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchChildren();
-    }, [user, schoolId, profile]);
+    }, [user, schoolId]);
 
     // Fetch child's academic data
     useEffect(() => {
