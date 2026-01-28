@@ -123,6 +123,7 @@ export const Layout = ({ children }: LayoutProps) => {
                         <>
                             <SidebarItem to="/admin" icon={ShieldCheck} label="School Admin" />
                             <SidebarItem to="/admin/users" icon={Users} label="User Management" />
+                            <SidebarItem to="/admin/parents-students" icon={Users} label="Parents & Students" />
                             <SidebarItem to="/admin/staff-auth" icon={ShieldCheck} label="Staff Auth Audit" />
                             <SidebarItem to="/admin/audit-logs" icon={FileText} label="Audit Logs" />
                         </>
@@ -142,12 +143,19 @@ export const Layout = ({ children }: LayoutProps) => {
                         </>
                     )}
 
-                    {/* Student/Parent Links */}
-                    {(profile?.role === 'student' || profile?.role === 'parent') && (
+                    {/* Student Links */}
+                    {profile?.role === 'student' && (
                         <>
                             <SidebarItem to="/portal" icon={LayoutDashboard} label="My Portal" />
                             <SidebarItem to="/portal/attendance" icon={CheckCircle2} label="My Attendance" />
                             <SidebarItem to="/portal/results" icon={Calculator} label="My Results" />
+                        </>
+                    )}
+
+                    {/* Parent Links */}
+                    {profile?.role === 'parent' && (
+                        <>
+                            <SidebarItem to="/portal/parent" icon={LayoutDashboard} label="My Portal" />
                         </>
                     )}
 

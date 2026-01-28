@@ -45,6 +45,7 @@ const AuditLogViewer = lazy(() => import('./pages/AuditLogViewer').then(module =
 const StudentAssignment = lazy(() => import('./pages/StudentAssignment').then(module => ({ default: module.StudentAssignment })));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement').then(module => ({ default: module.UserManagement })));
 const StaffAuthAudit = lazy(() => import('./pages/admin/StaffAuthAudit').then(module => ({ default: module.StaffAuthAudit })));
+const ParentStudentDirectory = lazy(() => import('./pages/admin/ParentStudentDirectory').then(module => ({ default: module.ParentStudentDirectory })));
 const About = lazy(() => import('./pages/About').then(module => ({ default: module.About })));
 const Blog = lazy(() => import('./pages/Blog').then(module => ({ default: module.Blog })));
 const Contact = lazy(() => import('./pages/Contact').then(module => ({ default: module.Contact })));
@@ -129,15 +130,15 @@ const router = createBrowserRouter([
   },
   {
     path: "/portal",
-    element: <ProtectedRoute allowedRoles={['student', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentPortal /></Suspense></Layout></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['student']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentPortal /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/portal/attendance",
-    element: <ProtectedRoute allowedRoles={['student', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentAttendance /></Suspense></Layout></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['student']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentAttendance /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/portal/results",
-    element: <ProtectedRoute allowedRoles={['student', 'parent']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentResults /></Suspense></Layout></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['student']}><Layout><Suspense fallback={<LoadingSpinner />}><StudentResults /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/portal/parent",
@@ -158,6 +159,10 @@ const router = createBrowserRouter([
   {
     path: "/admin/staff-auth",
     element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><StaffAuthAudit /></Suspense></Layout></ProtectedRoute>,
+  },
+  {
+    path: "/admin/parents-students",
+    element: <ProtectedRoute allowedRoles={['admin']}><Layout><Suspense fallback={<LoadingSpinner />}><ParentStudentDirectory /></Suspense></Layout></ProtectedRoute>,
   },
   {
     path: "/about",

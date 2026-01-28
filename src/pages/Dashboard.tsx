@@ -34,8 +34,12 @@ export const Dashboard = () => {
         );
     }
 
-    if (role === 'student' || role === 'parent') {
+    if (role === 'student') {
         return <Navigate to="/portal" replace />;
+    }
+
+    if (role === 'parent') {
+        return <Navigate to="/portal/parent" replace />;
     }
 
     // Export attendance for a specific date

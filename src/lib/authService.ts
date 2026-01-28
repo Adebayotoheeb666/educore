@@ -396,7 +396,7 @@ export const loginWithStaffId = async (schoolId: string, staffId: string, passwo
  */
 export const repairProfileFromAuthMetadata = async (uid: string, user: any): Promise<void> => {
     if (!user || !user.user_metadata) {
-        console.log('No user metadata available for repair');
+        console.log('[repairProfileFromAuthMetadata] No user metadata available for repair');
         return;
     }
 
@@ -406,29 +406,91 @@ export const repairProfileFromAuthMetadata = async (uid: string, user: any): Pro
         const staffId = authMetadata.staff_id;
         const admissionNumber = authMetadata.admission_number;
         const fullName = authMetadata.full_name || authMetadata.fullName;
+        const email = user.email;
+        const role = authMetadata.role;
 
-        // Only update if we have data to update
-        if (schoolId || staffId || admissionNumber || fullName) {
+        console.log('[repairProfileFromAuthMetadata] Metadata found:', {
+            schoolId,
+            staffId,
+            admissionNumber,
+            fullName,
+            email,
+            role,
+            uid
+        });
+
+        // First, check if the profile already exists
+        const { data: existingProfile, error: fetchError } = await supabase
+            .from('users')
+            .select('id, school_id, admission_number, staff_id, full_name, email, role')
+            .eq('id', uid)
+            .maybeSingle();
+
+        if (fetchError) {
+            console.warn('[repairProfileFromAuthMetadata] Error checking for existing profile:', fetchError.message);
+            return;
+        }
+
+        if (existingProfile) {
+            console.log('[repairProfileFromAuthMetadata] Profile exists. Current state:', existingProfile);
+
+            // Profile exists - ONLY repair cosmetic/non-constraint fields
+            // DO NOT repair: school_id, admission_number, staff_id, or role
+            // These should only be set through proper registration/creation flows
             const updateData: any = {};
 
-            if (schoolId) updateData.school_id = schoolId;
-            if (staffId) updateData.staff_id = staffId;
-            if (admissionNumber) updateData.admission_number = admissionNumber;
-            if (fullName) updateData.full_name = fullName;
-
-            const { error } = await supabase
-                .from('users')
-                .update(updateData)
-                .eq('id', uid);
-
-            if (error) {
-                console.error('Failed to repair profile:', error);
-            } else {
-                console.log('Profile repaired with data from Auth metadata:', updateData);
+            // SAFE fields that have no unique constraints and are cosmetic
+            if (fullName && !existingProfile.full_name) {
+                updateData.full_name = fullName;
+                console.log('[repairProfileFromAuthMetadata] Will repair full_name');
             }
+            if (email && !existingProfile.email) {
+                updateData.email = email;
+                console.log('[repairProfileFromAuthMetadata] Will repair email');
+            }
+
+            // DO NOT repair these constraint-sensitive fields via repair mechanism:
+            // - school_id: Changing this with an existing admission_number violates unique constraint
+            // - admission_number: Unique per (school_id, admission_number) pair
+            // - staff_id: Unique per (school_id, staff_id) pair
+            // - role: Should only be set through proper creation flows
+            // These should be set through proper registration/admin creation, not repair
+
+            if (schoolId && !existingProfile.school_id) {
+                console.warn('[repairProfileFromAuthMetadata] school_id missing but repair skipped - must use proper registration flow');
+            }
+            if (admissionNumber && !existingProfile.admission_number) {
+                console.warn('[repairProfileFromAuthMetadata] admission_number missing but repair skipped - must use proper registration flow');
+            }
+            if (staffId && !existingProfile.staff_id) {
+                console.warn('[repairProfileFromAuthMetadata] staff_id missing but repair skipped - must use proper registration flow');
+            }
+            if (role && !existingProfile.role) {
+                console.warn('[repairProfileFromAuthMetadata] role missing but repair skipped - must use proper registration flow');
+            }
+
+            if (Object.keys(updateData).length > 0) {
+                console.log('[repairProfileFromAuthMetadata] Attempting update with cosmetic fields only:', updateData);
+
+                const { error: updateError } = await supabase
+                    .from('users')
+                    .update(updateData)
+                    .eq('id', uid);
+
+                if (updateError) {
+                    console.error('[repairProfileFromAuthMetadata] Update failed:', updateError.message, 'Code:', updateError.code);
+                } else {
+                    console.log('[repairProfileFromAuthMetadata] Profile updated successfully with cosmetic repairs');
+                }
+            } else {
+                console.log('[repairProfileFromAuthMetadata] No cosmetic fields to repair. Profile structural fields (school_id, admission_number, staff_id, role) must be set through proper registration flows, not repair');
+            }
+        } else {
+            console.log('[repairProfileFromAuthMetadata] Profile does not exist - cannot create via repair (use proper registration flow)');
+            console.log('[repairProfileFromAuthMetadata] User should register through activation flow or admin creation');
         }
     } catch (err) {
-        console.error('Exception during profile repair:', err);
+        console.error('[repairProfileFromAuthMetadata] Exception during profile repair:', err instanceof Error ? err.message : err);
     }
 };
 
