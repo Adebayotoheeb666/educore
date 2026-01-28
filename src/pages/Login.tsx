@@ -73,40 +73,6 @@ export const Login = () => {
         return "An unexpected error occurred. Please try again.";
     };
 
-    const handleSendOtp = async () => {
-        if (!phoneNumber || !schoolId) {
-            setError("Please enter School ID and Phone Number");
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-        try {
-            await signInWithPhone(phoneNumber);
-            setShowOtpInput(true);
-        } catch (err: any) {
-            console.error("OTP send error:", err instanceof Error ? err.message : String(err));
-            setError(getUserFriendlyErrorMessage(err));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleVerifyOtp = async () => {
-        if (!otp) return;
-
-        setLoading(true);
-        setError(null);
-        try {
-            await confirmPhoneOTP(phoneNumber, otp, schoolId);
-            navigate('/portal/parent');
-        } catch (err: any) {
-            console.error("OTP verification error:", err instanceof Error ? err.message : String(err));
-            setError(getUserFriendlyErrorMessage(err));
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const resolveSchoolId = async (inputSchoolId: string): Promise<string> => {
         // If it's a valid UUID, use it as-is
