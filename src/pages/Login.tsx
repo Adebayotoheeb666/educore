@@ -402,7 +402,7 @@ export const Login = () => {
                                     {mode === 'staff-login' && 'Staff Sign In'}
                                     {mode === 'school-reg' && 'Create School'}
                                     {mode === 'student-login' && 'Access Portal'}
-                                    {mode === 'parent-login' && (showOtpInput ? 'Verify & Login' : 'Send Code')}
+                                    {mode === 'parent-login' && 'Parent Sign In'}
                                 </span>
                                 <ArrowRight className="w-5 h-5" />
                             </>
