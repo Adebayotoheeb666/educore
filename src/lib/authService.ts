@@ -419,52 +419,84 @@ export const repairProfileFromAuthMetadata = async (uid: string, user: any): Pro
             uid
         });
 
-        // Only update if we have data to update
-        if (schoolId || staffId || admissionNumber || fullName) {
+        // First, check if the profile already exists
+        const { data: existingProfile, error: fetchError } = await supabase
+            .from('users')
+            .select('id, school_id, admission_number, staff_id, full_name, email, role')
+            .eq('id', uid)
+            .maybeSingle();
+
+        if (fetchError) {
+            console.warn('[repairProfileFromAuthMetadata] Error checking for existing profile:', fetchError.message);
+            return;
+        }
+
+        if (existingProfile) {
+            console.log('[repairProfileFromAuthMetadata] Profile exists. Current state:', existingProfile);
+
+            // Profile exists - only update safe, non-constraint fields
             const updateData: any = {};
 
-            if (schoolId) updateData.school_id = schoolId;
-            if (staffId) updateData.staff_id = staffId;
-            if (admissionNumber) updateData.admission_number = admissionNumber;
-            if (fullName) updateData.full_name = fullName;
-            if (email) updateData.email = email;
-            if (role) updateData.role = role;
+            // Safe fields that won't violate unique constraints
+            if (fullName && !existingProfile.full_name) updateData.full_name = fullName;
+            if (email && !existingProfile.email) updateData.email = email;
+            if (schoolId && !existingProfile.school_id) updateData.school_id = schoolId;
+            if (role && !existingProfile.role) updateData.role = role;
 
-            console.log('[repairProfileFromAuthMetadata] Attempting update with:', updateData);
-
-            // First try to update
-            const { error: updateError, data: updateResult } = await supabase
-                .from('users')
-                .update(updateData)
-                .eq('id', uid)
-                .select();
-
-            if (updateError) {
-                console.warn('[repairProfileFromAuthMetadata] Update failed, attempting insert fallback. Error:', updateError.message);
-
-                // If update fails, try to insert (profile doesn't exist yet)
-                const insertData = {
-                    id: uid,
-                    ...updateData
-                };
-
-                const { error: insertError } = await supabase
+            // Only update admission_number/staff_id if they're not already set AND not conflicting
+            if (admissionNumber && !existingProfile.admission_number) {
+                // Check if this admission_number is already taken in this school
+                const { data: duplicateCheck } = await supabase
                     .from('users')
-                    .insert(insertData)
-                    .select();
+                    .select('id')
+                    .eq('school_id', schoolId || existingProfile.school_id)
+                    .eq('admission_number', admissionNumber)
+                    .neq('id', uid)
+                    .maybeSingle();
 
-                if (insertError) {
-                    console.error('[repairProfileFromAuthMetadata] Both update and insert failed. Update error:', updateError.message, 'Insert error:', insertError.message);
+                if (!duplicateCheck) {
+                    updateData.admission_number = admissionNumber;
                 } else {
-                    console.log('[repairProfileFromAuthMetadata] Profile created via insert with data from Auth metadata:', insertData);
+                    console.warn('[repairProfileFromAuthMetadata] Admission number already taken in school, skipping');
                 }
-            } else if (updateResult && updateResult.length > 0) {
-                console.log('[repairProfileFromAuthMetadata] Profile updated successfully with data from Auth metadata:', updateData);
+            }
+
+            if (staffId && !existingProfile.staff_id) {
+                // Check if this staff_id is already taken in this school
+                const { data: duplicateCheck } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('school_id', schoolId || existingProfile.school_id)
+                    .eq('staff_id', staffId)
+                    .neq('id', uid)
+                    .maybeSingle();
+
+                if (!duplicateCheck) {
+                    updateData.staff_id = staffId;
+                } else {
+                    console.warn('[repairProfileFromAuthMetadata] Staff ID already taken in school, skipping');
+                }
+            }
+
+            if (Object.keys(updateData).length > 0) {
+                console.log('[repairProfileFromAuthMetadata] Attempting update with safe fields:', updateData);
+
+                const { error: updateError } = await supabase
+                    .from('users')
+                    .update(updateData)
+                    .eq('id', uid);
+
+                if (updateError) {
+                    console.error('[repairProfileFromAuthMetadata] Update failed:', updateError.message, 'Code:', updateError.code);
+                } else {
+                    console.log('[repairProfileFromAuthMetadata] Profile updated successfully');
+                }
             } else {
-                console.warn('[repairProfileFromAuthMetadata] Update returned no rows - profile may not exist');
+                console.log('[repairProfileFromAuthMetadata] Profile exists but all fields already populated');
             }
         } else {
-            console.log('[repairProfileFromAuthMetadata] No metadata fields available to repair');
+            console.log('[repairProfileFromAuthMetadata] Profile does not exist - cannot create via repair (use proper registration flow)');
+            console.log('[repairProfileFromAuthMetadata] User should register through activation flow or admin creation');
         }
     } catch (err) {
         console.error('[repairProfileFromAuthMetadata] Exception during profile repair:', err instanceof Error ? err.message : err);
