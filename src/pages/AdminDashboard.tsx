@@ -1223,6 +1223,7 @@ export const AdminDashboard = () => {
                             </table>
                             {((activeTab === 'staff' && staff.length === 0) ||
                                 (activeTab === 'students' && students.length === 0) ||
+                                (activeTab === 'parents' && parents.length === 0) ||
                                 (activeTab === 'classes' && classes.length === 0) ||
                                 (activeTab === 'subjects' && subjects.length === 0)) && (
                                     <div className="text-center py-12 sm:py-20 text-gray-500 text-sm sm:text-base px-4">No records found in this category.</div>
