@@ -406,12 +406,16 @@ export const repairProfileFromAuthMetadata = async (uid: string, user: any): Pro
         const staffId = authMetadata.staff_id;
         const admissionNumber = authMetadata.admission_number;
         const fullName = authMetadata.full_name || authMetadata.fullName;
+        const email = user.email;
+        const role = authMetadata.role;
 
         console.log('[repairProfileFromAuthMetadata] Metadata found:', {
             schoolId,
             staffId,
             admissionNumber,
             fullName,
+            email,
+            role,
             uid
         });
 
@@ -423,18 +427,41 @@ export const repairProfileFromAuthMetadata = async (uid: string, user: any): Pro
             if (staffId) updateData.staff_id = staffId;
             if (admissionNumber) updateData.admission_number = admissionNumber;
             if (fullName) updateData.full_name = fullName;
+            if (email) updateData.email = email;
+            if (role) updateData.role = role;
 
             console.log('[repairProfileFromAuthMetadata] Attempting update with:', updateData);
 
-            const { error } = await supabase
+            // First try to update
+            const { error: updateError, data: updateResult } = await supabase
                 .from('users')
                 .update(updateData)
-                .eq('id', uid);
+                .eq('id', uid)
+                .select();
 
-            if (error) {
-                console.error('[repairProfileFromAuthMetadata] Failed to repair profile. Error message:', error.message, 'Code:', error.code, 'Details:', error.details);
+            if (updateError) {
+                console.warn('[repairProfileFromAuthMetadata] Update failed, attempting insert fallback. Error:', updateError.message);
+
+                // If update fails, try to insert (profile doesn't exist yet)
+                const insertData = {
+                    id: uid,
+                    ...updateData
+                };
+
+                const { error: insertError } = await supabase
+                    .from('users')
+                    .insert(insertData)
+                    .select();
+
+                if (insertError) {
+                    console.error('[repairProfileFromAuthMetadata] Both update and insert failed. Update error:', updateError.message, 'Insert error:', insertError.message);
+                } else {
+                    console.log('[repairProfileFromAuthMetadata] Profile created via insert with data from Auth metadata:', insertData);
+                }
+            } else if (updateResult && updateResult.length > 0) {
+                console.log('[repairProfileFromAuthMetadata] Profile updated successfully with data from Auth metadata:', updateData);
             } else {
-                console.log('[repairProfileFromAuthMetadata] Profile repaired successfully with data from Auth metadata:', updateData);
+                console.warn('[repairProfileFromAuthMetadata] Update returned no rows - profile may not exist');
             }
         } else {
             console.log('[repairProfileFromAuthMetadata] No metadata fields available to repair');
