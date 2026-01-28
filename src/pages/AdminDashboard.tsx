@@ -307,6 +307,7 @@ export const AdminDashboard = () => {
                 schoolId: u.school_id,
                 fullName: u.full_name,
                 admissionNumber: u.admission_number,
+                parentId: u.admission_number, // Store parent ID in admission_number field
                 staffId: u.staff_id
             }));
 
@@ -315,6 +316,7 @@ export const AdminDashboard = () => {
 
             setStaff(uniqueUsers.filter((u: any) => ['staff', 'admin', 'bursar'].includes(u.role)));
             setStudents(uniqueUsers.filter((u: any) => u.role === 'student'));
+            setParents(uniqueUsers.filter((u: any) => u.role === 'parent'));
         }
     }, [usersData]);
 
