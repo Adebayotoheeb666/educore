@@ -406,6 +406,11 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
 
                     // Step 3: Update auth metadata to reflect parent role
                     console.log('[loginWithParentId] Updating auth metadata with parent role...');
+                    console.log('[loginWithParentId] Auth metadata being set:', {
+                        schoolId: schoolId,
+                        admission_number: parentId,
+                        role: 'parent'
+                    });
                     try {
                         await supabase.auth.updateUser({
                             data: {
@@ -416,8 +421,10 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                         });
                         console.log('[loginWithParentId] Successfully updated auth metadata');
                     } catch (authUpdateError) {
-                        console.error('[loginWithParentId] Error updating auth metadata:', {
-                            message: authUpdateError instanceof Error ? authUpdateError.message : String(authUpdateError)
+                        console.error('[loginWithParentId] Error updating auth metadata - Full details:', {
+                            message: authUpdateError instanceof Error ? authUpdateError.message : String(authUpdateError),
+                            error: authUpdateError,
+                            toString: authUpdateError?.toString?.()
                         });
                         // Continue anyway - profile is already set up
                     }
