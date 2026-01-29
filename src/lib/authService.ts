@@ -348,6 +348,16 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
 
                         // Update our own profile with correct parent data
                         console.log('[loginWithParentId] Updating own profile with parent role...');
+                        console.log('[loginWithParentId] Update parameters:', {
+                            authUserId: authResponse.user.id,
+                            schoolId: schoolId,
+                            parentId: parentId,
+                            updateData: {
+                                role: 'parent',
+                                admission_number: parentId,
+                                school_id: schoolId
+                            }
+                        });
                         try {
                             const { error: updateError } = await supabase
                                 .from('users')
