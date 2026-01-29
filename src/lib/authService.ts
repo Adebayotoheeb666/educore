@@ -296,40 +296,62 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                         }
                     }
 
+                    // Update auth metadata to reflect parent role
+                    try {
+                        await supabase.auth.updateUser({
+                            data: {
+                                schoolId: schoolId,
+                                admission_number: parentId,
+                                role: 'parent'
+                            }
+                        });
+                        console.log('[loginWithParentId] Updated auth metadata with parent role');
+                    } catch (authUpdateError) {
+                        console.error('[loginWithParentId] Error updating auth metadata:', authUpdateError);
+                    }
+
                     // Migrate parent_student_links from the admin-created placeholder to the auth user
                     // Find the admin-created parent record (identified by admission_number = parentId)
-                    const { data: placeholderParent } = await supabase
-                        .from('users')
-                        .select('id')
-                        .eq('school_id', schoolId)
-                        .eq('admission_number', parentId)
-                        .eq('role', 'parent')
-                        .neq('id', authResponse.user.id)
-                        .single();
-
-                    if (placeholderParent) {
-                        console.log('[loginWithParentId] Found placeholder parent, migrating parent_student_links...');
-
-                        // Migrate parent_student_links to the new auth user
-                        const { error: migrationError } = await supabase
-                            .from('parent_student_links')
-                            .update({ parent_id: authResponse.user.id })
+                    try {
+                        const { data: placeholderParent, error: findError } = await supabase
+                            .from('users')
+                            .select('id')
                             .eq('school_id', schoolId)
-                            .eq('parent_id', placeholderParent.id);
+                            .eq('admission_number', parentId)
+                            .eq('role', 'parent')
+                            .neq('id', authResponse.user.id)
+                            .maybeSingle();
 
-                        if (!migrationError) {
-                            console.log('[loginWithParentId] Successfully migrated parent_student_links');
+                        if (findError) {
+                            console.warn('[loginWithParentId] Could not find placeholder parent (may be due to RLS):', findError.message);
+                        } else if (placeholderParent) {
+                            console.log('[loginWithParentId] Found placeholder parent, migrating parent_student_links...');
 
-                            // Delete the placeholder parent user since we've migrated all links
-                            await supabase
-                                .from('users')
-                                .delete()
-                                .eq('id', placeholderParent.id);
+                            // Migrate parent_student_links to the new auth user
+                            const { error: migrationError } = await supabase
+                                .from('parent_student_links')
+                                .update({ parent_id: authResponse.user.id })
+                                .eq('school_id', schoolId)
+                                .eq('parent_id', placeholderParent.id);
 
-                            console.log('[loginWithParentId] Deleted placeholder parent record');
+                            if (!migrationError) {
+                                console.log('[loginWithParentId] Successfully migrated parent_student_links');
+
+                                // Delete the placeholder parent user since we've migrated all links
+                                await supabase
+                                    .from('users')
+                                    .delete()
+                                    .eq('id', placeholderParent.id);
+
+                                console.log('[loginWithParentId] Deleted placeholder parent record');
+                            } else {
+                                console.error('[loginWithParentId] Error migrating parent_student_links:', migrationError);
+                            }
                         } else {
-                            console.error('[loginWithParentId] Error migrating parent_student_links:', migrationError);
+                            console.log('[loginWithParentId] No placeholder parent found (this may be first login or placeholder already migrated)');
                         }
+                    } catch (migrationException) {
+                        console.error('[loginWithParentId] Exception during placeholder migration:', migrationException);
                     }
                 } catch (linkError) {
                     console.error("Profile linking error during parent activation:", {
