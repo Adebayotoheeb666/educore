@@ -305,7 +305,11 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
 
             if (authResponse.user) {
                 try {
-                    console.log('[loginWithParentId] Starting parent profile linking for auth user:', authResponse.user.id);
+                    console.log('[loginWithParentId] Parent auth created successfully:', {
+                        userId: authResponse.user.id,
+                        email: authResponse.user.email,
+                        userMetadata: authResponse.user.user_metadata
+                    });
 
                     // Step 1: Try to use the RPC if it exists (for production after migrations are deployed)
                     // If it doesn't exist yet, we'll handle the migration manually in Step 2
