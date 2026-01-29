@@ -9,7 +9,7 @@ import { createParentAccount, type CreateParentParams } from '../lib/parentServi
 
 interface ParentCreationModalProps {
     onClose: () => void;
-    onSuccess: () => void;
+    onSuccess: (created?: { parentUid?: string }) => void;
     initialData?: any;
     user?: User | null;
     profile?: UserProfile | null;
@@ -254,7 +254,7 @@ export const ParentCreationModal = ({ onClose, onSuccess, initialData, user: pro
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 px-4 py-3 border border-white/10 text-white rounded-xl hover:bg-white/5 transition-colors font-semibold"
+                        className="flex-1 px-6 py-3 border border-white/10 hover:bg-white/5 text-white font-bold rounded-lg transition-colors"
                     >
                         Cancel
                     </button>

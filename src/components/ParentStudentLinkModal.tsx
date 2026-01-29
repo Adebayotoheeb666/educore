@@ -133,11 +133,15 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
         setLinks(updated);
     };
 
+    // Add debug log to show which parent and student IDs are being linked
     const handleSave = async () => {
         if (!schoolId) {
             setError('School ID not found');
             return;
         }
+
+        // Debug: Log all parent-student links to be created
+        console.log('[ParentStudentLinkModal] Linking parents to student:', links.map(l => ({ parentId: l.parentId, studentId, schoolId, relationship: l.relationship })));
 
         // Validate links
         const hasEmpty = links.some(l => !l.parentId);
@@ -169,18 +173,18 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
                 if (deleteError) throw deleteError;
             }
 
-            // Create new links for each parent
+            // Create or update links for each parent using upsert to avoid conflicts
             for (const link of links) {
-                const { error: insertError } = await supabase
+                const { error: upsertError } = await supabase
                     .from('parent_student_links')
-                    .insert({
+                    .upsert({
                         school_id: schoolId,
                         parent_id: link.parentId,
                         student_id: studentId,
                         relationship: link.relationship
-                    });
+                    }, { onConflict: 'school_id,parent_id,student_id' });
 
-                if (insertError) throw insertError;
+                if (upsertError) throw upsertError;
             }
 
             setSuccess(true);
@@ -210,9 +214,13 @@ export const ParentStudentLinkModal = ({ studentId, studentName, onClose, onSucc
                     user={user}
                     profile={profile}
                     schoolId={schoolId}
-                    onSuccess={async () => {
+                    onSuccess={async (created) => {
                         setShowParentCreation(false);
                         await fetchParents();
+                        // Auto-select the new parent if possible
+                        if (created && created.parentUid) {
+                            setLinks([...links, { id: `new-${Date.now()}`, parentId: created.parentUid, relationship: 'Father' }]);
+                        }
                     }}
                     onClose={() => setShowParentCreation(false)}
                 />

@@ -74,6 +74,9 @@ export const ParentPortal = () => {
             try {
                 let fetchedChildren: Child[] = [];
 
+                // Debug log to verify parent and school IDs
+                console.log('ParentPortal fetch:', { userId: user?.id, schoolId });
+
                 // Fetch linked students from parent_student_links table
                 const { data: links, error: linksError } = await supabase
                     .from('parent_student_links')
