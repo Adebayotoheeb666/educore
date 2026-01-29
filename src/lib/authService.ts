@@ -321,10 +321,14 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                                     .eq('parent_id', placeholderParent.id);
 
                                 if (migrateError) {
-                                    console.error('[loginWithParentId] Error migrating links:', {
-                                        message: migrateError.message,
-                                        code: migrateError.code,
-                                        details: migrateError.details
+                                    console.error('[loginWithParentId] Error migrating links - Full details:', {
+                                        message: migrateError.message || 'No message',
+                                        code: migrateError.code || 'No code',
+                                        status: migrateError.status || 'No status',
+                                        details: typeof migrateError.details === 'string' ? migrateError.details : JSON.stringify(migrateError.details),
+                                        hint: migrateError.hint || 'No hint',
+                                        toString: migrateError.toString?.(),
+                                        fullError: JSON.stringify(migrateError)
                                     });
                                 } else {
                                     console.log('[loginWithParentId] Successfully migrated parent_student_links');
