@@ -274,15 +274,19 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                             // Function doesn't exist yet - this is OK, we'll handle it manually
                             console.warn('[loginWithParentId] RPC function not yet deployed, falling back to client-side approach');
                         } else {
-                            console.error('[loginWithParentId] RPC error:', {
-                                message: rpcError.message,
-                                code: rpcError.code,
-                                details: rpcError.details,
-                                hint: rpcError.hint
+                            console.error('[loginWithParentId] RPC error - Full details:', {
+                                message: rpcError.message || 'No message',
+                                code: rpcError.code || 'No code',
+                                status: rpcError.status || 'No status',
+                                statusText: rpcError.statusText || 'No statusText',
+                                details: typeof rpcError.details === 'string' ? rpcError.details : JSON.stringify(rpcError.details),
+                                hint: rpcError.hint || 'No hint',
+                                toString: rpcError.toString?.(),
+                                fullError: JSON.stringify(rpcError)
                             });
                         }
                     } else {
-                        console.log('[loginWithParentId] RPC executed successfully. Result:', rpcResult);
+                        console.log('[loginWithParentId] RPC executed successfully. Result:', JSON.stringify(rpcResult));
                         rpcSucceeded = true;
                     }
 
