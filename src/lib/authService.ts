@@ -301,6 +301,12 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
 
                         try {
                             // Find the admin-created placeholder parent to get its ID
+                            console.log('[loginWithParentId] Searching for placeholder parent with criteria:', {
+                                school_id: schoolId,
+                                admission_number: parentId,
+                                role: 'parent',
+                                not_id: authResponse.user.id
+                            });
                             const { data: placeholderParent, error: findError } = await supabase
                                 .from('users')
                                 .select('id')
@@ -311,7 +317,12 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                                 .maybeSingle();
 
                             if (findError) {
-                                console.warn('[loginWithParentId] Could not find placeholder parent:', findError.message);
+                                console.warn('[loginWithParentId] Could not find placeholder parent:', {
+                                    message: findError.message || 'No message',
+                                    code: findError.code || 'No code',
+                                    details: findError.details,
+                                    fullError: JSON.stringify(findError)
+                                });
                             } else if (placeholderParent) {
                                 console.log('[loginWithParentId] Found placeholder parent:', placeholderParent.id);
 
