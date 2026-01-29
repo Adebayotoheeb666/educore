@@ -429,15 +429,21 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                         // Continue anyway - profile is already set up
                     }
                 } catch (linkError) {
-                    console.error("Profile linking error during parent activation:", {
-                        message: linkError instanceof Error ? linkError.message : String(linkError)
+                    console.error("Profile linking error during parent activation - Full details:", {
+                        message: linkError instanceof Error ? linkError.message : String(linkError),
+                        error: linkError,
+                        toString: linkError?.toString?.()
                     });
                     // Continue anyway - user is already authenticated
                 }
                 return authResponse;
             }
         } catch (activationError) {
-            console.error("Activation failed:", activationError);
+            console.error("Activation failed - Full details:", {
+                message: activationError instanceof Error ? activationError.message : String(activationError),
+                error: activationError,
+                toString: activationError?.toString?.()
+            });
             throw activationError;
         }
     }
