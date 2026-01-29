@@ -44,39 +44,48 @@ export const Dashboard = () => {
 
     // Export attendance for a specific date
     const exportAttendanceForDate = (date: string) => {
-        const recordsForDate = attendanceRecords.filter(r => r.date === date);
-        const present = recordsForDate.filter(r => r.status === 'present').length;
-        const absent = recordsForDate.filter(r => r.status === 'absent').length;
+        try {
+            const recordsForDate = attendanceRecords.filter(r => r.date === date);
+            const present = recordsForDate.filter(r => r.status === 'present').length;
+            const absent = recordsForDate.filter(r => r.status === 'absent').length;
 
-        // Create CSV content
-        const headers = ['Student Name', 'Student ID', 'Status', 'Date', 'Class'];
-        const rows = recordsForDate.map(record => [
-            record.student_name,
-            record.student_id,
-            record.status.toUpperCase(),
-            new Date(record.date).toLocaleDateString(),
-            record.class_id
-        ]);
+            // Create CSV content
+            const headers = ['Student Name', 'Student ID', 'Status', 'Date', 'Class'];
+            const rows = recordsForDate.map(record => [
+                record.student_name,
+                record.student_id,
+                record.status.toUpperCase(),
+                new Date(record.date).toLocaleDateString(),
+                record.class_id
+            ]);
 
-        // Add summary row
-        rows.push(['', '', '', '', '']);
-        rows.push(['Summary', '', `Present: ${present}, Absent: ${absent}`, '', '']);
+            // Add summary row
+            rows.push(['', '', '', '', '']);
+            rows.push(['Summary', '', `Present: ${present}, Absent: ${absent}`, '', '']);
 
-        const csv = [
-            headers.join(','),
-            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-        ].join('\n');
+            const csv = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
 
-        // Download file
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `attendance-${date}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+            // Download file
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `attendance-${date}.csv`;
+            document.body.appendChild(a);
+            a.click();
+
+            // Safe removal - check if element is still attached
+            if (a && a.parentNode === document.body) {
+                document.body.removeChild(a);
+            }
+
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error exporting attendance:', error);
+        }
     };
 
     useEffect(() => {
