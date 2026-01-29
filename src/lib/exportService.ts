@@ -272,7 +272,14 @@ export const exportService = {
 
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+
+      // Safe removal - check if element is still attached before removing
+      if (link && link.parentNode === document.body) {
+        document.body.removeChild(link);
+      }
+
+      // Revoke the URL to free up memory
+      URL.revokeObjectURL(url);
 
       return true;
     } catch (error) {
