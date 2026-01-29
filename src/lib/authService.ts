@@ -259,10 +259,10 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                 try {
                     console.log('[loginWithParentId] Starting parent profile linking for auth user:', authResponse.user.id);
 
-                    // Call server-side RPC to handle profile migration
-                    // This function runs with SECURITY DEFINER, bypassing RLS restrictions
-                    // that prevent a newly authenticated parent from deleting the admin-created placeholder
-                    console.log('[loginWithParentId] Calling link_parent_profile_after_login RPC...');
+                    // Step 1: Try to use the RPC if it exists (for production after migrations are deployed)
+                    // If it doesn't exist yet, we'll handle the migration manually in Step 2
+                    let rpcSucceeded = false;
+                    console.log('[loginWithParentId] Attempting to call link_parent_profile_after_login RPC...');
                     const { data: rpcResult, error: rpcError } = await supabase.rpc('link_parent_profile_after_login', {
                         p_school_id: schoolId,
                         p_new_parent_uid: authResponse.user.id,
@@ -270,18 +270,103 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                     });
 
                     if (rpcError) {
-                        console.error('[loginWithParentId] RPC error:', {
-                            message: rpcError.message,
-                            code: rpcError.code,
-                            details: rpcError.details,
-                            hint: rpcError.hint,
-                            fullError: JSON.stringify(rpcError)
-                        });
+                        if (rpcError.code === 'PGRST202') {
+                            // Function doesn't exist yet - this is OK, we'll handle it manually
+                            console.warn('[loginWithParentId] RPC function not yet deployed, falling back to client-side approach');
+                        } else {
+                            console.error('[loginWithParentId] RPC error:', {
+                                message: rpcError.message,
+                                code: rpcError.code,
+                                details: rpcError.details,
+                                hint: rpcError.hint
+                            });
+                        }
                     } else {
                         console.log('[loginWithParentId] RPC executed successfully. Result:', rpcResult);
+                        rpcSucceeded = true;
                     }
 
-                    // Update auth metadata to reflect parent role
+                    // Step 2: If RPC didn't work, handle the profile update manually
+                    // We can update our own profile without RLS issues
+                    if (!rpcSucceeded) {
+                        console.log('[loginWithParentId] Step 2: Handling profile setup manually...');
+
+                        try {
+                            // Find the admin-created placeholder parent to get its ID
+                            const { data: placeholderParent, error: findError } = await supabase
+                                .from('users')
+                                .select('id')
+                                .eq('school_id', schoolId)
+                                .eq('admission_number', parentId)
+                                .eq('role', 'parent')
+                                .neq('id', authResponse.user.id)
+                                .maybeSingle();
+
+                            if (findError) {
+                                console.warn('[loginWithParentId] Could not find placeholder parent:', findError.message);
+                            } else if (placeholderParent) {
+                                console.log('[loginWithParentId] Found placeholder parent:', placeholderParent.id);
+
+                                // Migrate parent_student_links from placeholder to new auth user
+                                // This is an UPDATE operation which should work even with RLS
+                                console.log('[loginWithParentId] Migrating parent_student_links to new auth user...');
+                                const { error: migrateError } = await supabase
+                                    .from('parent_student_links')
+                                    .update({ parent_id: authResponse.user.id })
+                                    .eq('school_id', schoolId)
+                                    .eq('parent_id', placeholderParent.id);
+
+                                if (migrateError) {
+                                    console.error('[loginWithParentId] Error migrating links:', {
+                                        message: migrateError.message,
+                                        code: migrateError.code,
+                                        details: migrateError.details
+                                    });
+                                } else {
+                                    console.log('[loginWithParentId] Successfully migrated parent_student_links');
+                                }
+
+                                // Note: We cannot delete the placeholder parent due to RLS restrictions
+                                // That's why the RPC function was created. Once deployed, it will handle deletion.
+                                // For now, the placeholder will remain but won't interfere since the actual
+                                // parent_student_links will point to the authenticated user.
+                                console.log('[loginWithParentId] Note: Placeholder parent record will remain until RPC is deployed');
+                            }
+                        } catch (migrationException) {
+                            console.error('[loginWithParentId] Exception during manual migration:', {
+                                message: migrationException instanceof Error ? migrationException.message : String(migrationException)
+                            });
+                        }
+
+                        // Update our own profile with correct parent data
+                        console.log('[loginWithParentId] Updating own profile with parent role...');
+                        try {
+                            const { error: updateError } = await supabase
+                                .from('users')
+                                .update({
+                                    role: 'parent',
+                                    admission_number: parentId,
+                                    school_id: schoolId
+                                })
+                                .eq('id', authResponse.user.id);
+
+                            if (updateError) {
+                                console.error('[loginWithParentId] Error updating profile:', {
+                                    message: updateError.message,
+                                    code: updateError.code,
+                                    details: updateError.details
+                                });
+                            } else {
+                                console.log('[loginWithParentId] Successfully updated own profile');
+                            }
+                        } catch (updateException) {
+                            console.error('[loginWithParentId] Exception updating profile:', {
+                                message: updateException instanceof Error ? updateException.message : String(updateException)
+                            });
+                        }
+                    }
+
+                    // Step 3: Update auth metadata to reflect parent role
                     console.log('[loginWithParentId] Updating auth metadata with parent role...');
                     try {
                         await supabase.auth.updateUser({
@@ -294,15 +379,13 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                         console.log('[loginWithParentId] Successfully updated auth metadata');
                     } catch (authUpdateError) {
                         console.error('[loginWithParentId] Error updating auth metadata:', {
-                            message: authUpdateError instanceof Error ? authUpdateError.message : String(authUpdateError),
-                            error: authUpdateError
+                            message: authUpdateError instanceof Error ? authUpdateError.message : String(authUpdateError)
                         });
-                        // Continue anyway - the RPC already handled the critical profile setup
+                        // Continue anyway - profile is already set up
                     }
                 } catch (linkError) {
                     console.error("Profile linking error during parent activation:", {
-                        message: linkError instanceof Error ? linkError.message : String(linkError),
-                        error: linkError
+                        message: linkError instanceof Error ? linkError.message : String(linkError)
                     });
                     // Continue anyway - user is already authenticated
                 }
