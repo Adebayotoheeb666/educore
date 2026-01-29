@@ -294,20 +294,22 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                             }
 
                             // Delete the placeholder parent user to free up the admission_number
-                            console.log('[loginWithParentId] Deleting placeholder parent record...');
-                            const { error: deleteError } = await supabase
+                            console.log('[loginWithParentId] Deleting placeholder parent record:', placeholderParent.id);
+                            const { error: deleteError, status: deleteStatus } = await supabase
                                 .from('users')
                                 .delete()
                                 .eq('id', placeholderParent.id);
 
                             if (deleteError) {
                                 console.error('[loginWithParentId] Error deleting placeholder parent:', {
-                                    message: deleteError.message,
+                                    message: deleteError.message || JSON.stringify(deleteError),
                                     code: deleteError.code,
-                                    details: deleteError.details
+                                    details: deleteError.details ? JSON.stringify(deleteError.details) : 'No details',
+                                    status: deleteStatus,
+                                    fullError: JSON.stringify(deleteError)
                                 });
                             } else {
-                                console.log('[loginWithParentId] Successfully deleted placeholder parent record');
+                                console.log('[loginWithParentId] Successfully deleted placeholder parent record. Delete status:', deleteStatus);
                             }
                         } else {
                             console.log('[loginWithParentId] No placeholder parent found - this may be first login');
