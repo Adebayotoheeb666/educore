@@ -267,6 +267,7 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
 
                     if (!profile) {
                         // Profile doesn't exist, create it with parent role
+                        console.log('[loginWithParentId] Creating new parent profile for auth user:', authResponse.user.id);
                         const { error: insertError } = await supabase.from('users').insert({
                             id: authResponse.user.id,
                             school_id: schoolId,
@@ -276,7 +277,15 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                         });
 
                         if (insertError) {
-                            console.error('[loginWithParentId] Error creating parent profile:', insertError);
+                            console.error('[loginWithParentId] Error creating parent profile:', {
+                                message: insertError.message,
+                                code: insertError.code,
+                                details: insertError.details,
+                                hint: insertError.hint,
+                                fullError: insertError
+                            });
+                        } else {
+                            console.log('[loginWithParentId] Successfully created parent profile');
                         }
                     } else {
                         // Profile exists - ensure it has the correct parent role
