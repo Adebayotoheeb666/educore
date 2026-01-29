@@ -262,7 +262,11 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                     // Step 1: Try to use the RPC if it exists (for production after migrations are deployed)
                     // If it doesn't exist yet, we'll handle the migration manually in Step 2
                     let rpcSucceeded = false;
-                    console.log('[loginWithParentId] Attempting to call link_parent_profile_after_login RPC...');
+                    console.log('[loginWithParentId] Attempting to call link_parent_profile_after_login RPC with parameters:', {
+                        p_school_id: schoolId,
+                        p_new_parent_uid: authResponse.user.id,
+                        p_parent_id: parentId
+                    });
                     const { data: rpcResult, error: rpcError } = await supabase.rpc('link_parent_profile_after_login', {
                         p_school_id: schoolId,
                         p_new_parent_uid: authResponse.user.id,
