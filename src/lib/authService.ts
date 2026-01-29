@@ -257,147 +257,32 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
 
             if (authResponse.user) {
                 try {
-                    // Step 1: Find and migrate the admin-created placeholder parent FIRST
-                    // This must happen before updating the new profile to avoid unique constraint violations
-                    console.log('[loginWithParentId] Step 1: Looking for admin-created placeholder parent...');
-                    try {
-                        const { data: placeholderParent, error: findError } = await supabase
-                            .from('users')
-                            .select('id')
-                            .eq('school_id', schoolId)
-                            .eq('admission_number', parentId)
-                            .eq('role', 'parent')
-                            .neq('id', authResponse.user.id)
-                            .maybeSingle();
+                    console.log('[loginWithParentId] Starting parent profile linking for auth user:', authResponse.user.id);
 
-                        if (findError) {
-                            console.warn('[loginWithParentId] Could not find placeholder parent:', findError.message);
-                        } else if (placeholderParent) {
-                            console.log('[loginWithParentId] Found placeholder parent:', placeholderParent.id);
+                    // Call server-side RPC to handle profile migration
+                    // This function runs with SECURITY DEFINER, bypassing RLS restrictions
+                    // that prevent a newly authenticated parent from deleting the admin-created placeholder
+                    console.log('[loginWithParentId] Calling link_parent_profile_after_login RPC...');
+                    const { data: rpcResult, error: rpcError } = await supabase.rpc('link_parent_profile_after_login', {
+                        p_school_id: schoolId,
+                        p_new_parent_uid: authResponse.user.id,
+                        p_parent_id: parentId
+                    });
 
-                            // Migrate parent_student_links to the new auth user
-                            console.log('[loginWithParentId] Migrating parent_student_links...');
-                            const { error: migrationError } = await supabase
-                                .from('parent_student_links')
-                                .update({ parent_id: authResponse.user.id })
-                                .eq('school_id', schoolId)
-                                .eq('parent_id', placeholderParent.id);
-
-                            if (migrationError) {
-                                console.error('[loginWithParentId] Error migrating parent_student_links:', {
-                                    message: migrationError.message,
-                                    code: migrationError.code,
-                                    details: migrationError.details
-                                });
-                            } else {
-                                console.log('[loginWithParentId] Successfully migrated parent_student_links');
-                            }
-
-                            // Delete the placeholder parent user to free up the admission_number
-                            console.log('[loginWithParentId] Deleting placeholder parent record:', placeholderParent.id);
-                            const { error: deleteError, status: deleteStatus } = await supabase
-                                .from('users')
-                                .delete()
-                                .eq('id', placeholderParent.id);
-
-                            if (deleteError) {
-                                console.error('[loginWithParentId] Error deleting placeholder parent:', {
-                                    message: deleteError.message || JSON.stringify(deleteError),
-                                    code: deleteError.code,
-                                    details: deleteError.details ? JSON.stringify(deleteError.details) : 'No details',
-                                    status: deleteStatus,
-                                    fullError: JSON.stringify(deleteError)
-                                });
-                            } else {
-                                console.log('[loginWithParentId] Successfully deleted placeholder parent record. Delete status:', deleteStatus);
-                            }
-                        } else {
-                            console.log('[loginWithParentId] No placeholder parent found - this may be first login');
-                        }
-                    } catch (migrationException) {
-                        console.error('[loginWithParentId] Exception during placeholder migration:', {
-                            message: migrationException instanceof Error ? migrationException.message : String(migrationException),
-                            error: migrationException
+                    if (rpcError) {
+                        console.error('[loginWithParentId] RPC error:', {
+                            message: rpcError.message,
+                            code: rpcError.code,
+                            details: rpcError.details,
+                            hint: rpcError.hint,
+                            fullError: JSON.stringify(rpcError)
                         });
-                    }
-
-                    // Step 2: Now create/update the profile for the new auth user
-                    console.log('[loginWithParentId] Step 2: Creating/updating parent profile for auth user:', authResponse.user.id);
-                    const { data: profile, error: fetchError } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('id', authResponse.user.id)
-                        .maybeSingle();
-
-                    if (fetchError) {
-                        console.error('[loginWithParentId] Error fetching profile:', {
-                            message: fetchError.message,
-                            code: fetchError.code
-                        });
-                    }
-
-                    if (!profile) {
-                        // Profile doesn't exist, create it with parent role
-                        console.log('[loginWithParentId] Creating new parent profile for auth user:', authResponse.user.id);
-                        const { error: insertError } = await supabase.from('users').insert({
-                            id: authResponse.user.id,
-                            school_id: schoolId,
-                            role: 'parent',
-                            admission_number: parentId,
-                            full_name: 'Parent'
-                        });
-
-                        if (insertError) {
-                            console.error('[loginWithParentId] Error creating parent profile:', {
-                                message: insertError.message,
-                                code: insertError.code,
-                                details: insertError.details,
-                                hint: insertError.hint
-                            });
-                        } else {
-                            console.log('[loginWithParentId] Successfully created parent profile');
-                        }
                     } else {
-                        // Profile exists - ensure it has the correct parent role and data
-                        console.log('[loginWithParentId] Existing profile found, current state:', {
-                            id: profile.id,
-                            role: profile.role,
-                            admission_number: profile.admission_number,
-                            school_id: profile.school_id
-                        });
-
-                        console.log('[loginWithParentId] Attempting to update profile with:', {
-                            role: 'parent',
-                            admission_number: parentId,
-                            school_id: schoolId
-                        });
-
-                        const { error: updateError } = await supabase
-                            .from('users')
-                            .update({
-                                role: 'parent',
-                                admission_number: parentId,
-                                school_id: schoolId
-                            })
-                            .eq('id', authResponse.user.id);
-
-                        if (updateError) {
-                            console.error('[loginWithParentId] Error updating parent profile:', {
-                                message: updateError.message || JSON.stringify(updateError),
-                                code: updateError.code,
-                                details: updateError.details ? JSON.stringify(updateError.details) : 'No details',
-                                hint: updateError.hint,
-                                status: updateError.status,
-                                statusText: updateError.statusText,
-                                fullError: JSON.stringify(updateError)
-                            });
-                        } else {
-                            console.log('[loginWithParentId] Successfully updated parent profile');
-                        }
+                        console.log('[loginWithParentId] RPC executed successfully. Result:', rpcResult);
                     }
 
-                    // Step 3: Update auth metadata to reflect parent role
-                    console.log('[loginWithParentId] Step 3: Updating auth metadata...');
+                    // Update auth metadata to reflect parent role
+                    console.log('[loginWithParentId] Updating auth metadata with parent role...');
                     try {
                         await supabase.auth.updateUser({
                             data: {
@@ -409,8 +294,10 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                         console.log('[loginWithParentId] Successfully updated auth metadata');
                     } catch (authUpdateError) {
                         console.error('[loginWithParentId] Error updating auth metadata:', {
-                            message: authUpdateError instanceof Error ? authUpdateError.message : String(authUpdateError)
+                            message: authUpdateError instanceof Error ? authUpdateError.message : String(authUpdateError),
+                            error: authUpdateError
                         });
+                        // Continue anyway - the RPC already handled the critical profile setup
                     }
                 } catch (linkError) {
                     console.error("Profile linking error during parent activation:", {
