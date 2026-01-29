@@ -144,8 +144,9 @@ export const FinancialInvoicing = ({ childId }: { childId: string }) => {
   }, [childId, schoolId]);
 
   const handleDownloadInvoice = async (invoice: Invoice) => {
+    let element: HTMLElement | null = null;
     try {
-      const element = document.createElement('div');
+      element = document.createElement('div');
       element.innerHTML = generateInvoiceHTML(invoice);
       element.style.padding = '20px';
       element.style.backgroundColor = 'white';
@@ -157,11 +158,18 @@ export const FinancialInvoicing = ({ childId }: { childId: string }) => {
       const imgData = canvas.toDataURL('image/png');
       pdf.addImage(imgData, 'PNG', 10, 10, 190, 277);
       pdf.save(`invoice-${invoice.invoiceNumber}.pdf`);
-
-      document.body.removeChild(element);
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Failed to download invoice');
+    } finally {
+      // Safe removal - check if element still exists and is attached
+      if (element && element.parentNode === document.body) {
+        try {
+          document.body.removeChild(element);
+        } catch (removeError) {
+          console.warn('Could not remove temporary invoice element:', removeError);
+        }
+      }
     }
   };
 

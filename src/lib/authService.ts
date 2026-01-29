@@ -233,6 +233,54 @@ export const loginWithParentCredentials = async (schoolId: string, admissionNumb
 };
 
 /**
+ * Activate a parent account (SignUp)
+ */
+const activateParent = async (
+    schoolId: string,
+    parentId: string,
+    password: string
+) => {
+    const virtualEmail = getVirtualEmail(schoolId, parentId);
+
+    // Sign up with parent role in metadata
+    const { data, error } = await supabase.auth.signUp({
+        email: virtualEmail,
+        password,
+        options: {
+            data: {
+                role: 'parent',
+                schoolId: schoolId,
+                admission_number: parentId
+            }
+        }
+    });
+
+    // If the user is already registered, try to sign in instead
+    if (error && (error.message?.includes('already registered') || error.code === 'user_already_exists')) {
+        console.warn("Parent account already registered, attempting sign in...");
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: virtualEmail,
+            password
+        });
+
+        if (signInError) {
+            throw signInError;
+        }
+
+        if (!signInData.user) {
+            throw new Error("Sign in failed after account registration");
+        }
+
+        return signInData;
+    }
+
+    if (error) throw error;
+    if (!data.user) throw new Error("Parent activation failed");
+
+    return data;
+};
+
+/**
  * Login with Parent ID (similar to student admission number or staff ID)
  */
 export const loginWithParentId = async (schoolId: string, parentId: string, password: string) => {
@@ -252,44 +300,202 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
 
         // Account doesn't exist yet - Try Activation
         try {
-            console.log("Login failed, attempting activation...");
-            const authResponse = await activateAccount(schoolId, parentId, password, 'student'); // Use 'student' type for virtual email generation
+            console.log("Parent login failed, attempting activation...");
+            const authResponse = await activateParent(schoolId, parentId, password);
 
             if (authResponse.user) {
                 try {
-                    // Ensure parent profile is created with parent_id
-                    const { data: profile } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('id', authResponse.user.id)
-                        .single();
+                    console.log('[loginWithParentId] Parent auth created successfully:', {
+                        userId: authResponse.user.id,
+                        email: authResponse.user.email,
+                        userMetadata: authResponse.user.user_metadata
+                    });
 
-                    if (!profile) {
-                        // Create parent profile
-                        await supabase.from('users').insert({
-                            id: authResponse.user.id,
-                            school_id: schoolId,
-                            role: 'parent',
-                            admission_number: parentId, // Store parent ID in admission_number field
-                            full_name: 'Parent'
+                    // Step 1: Try to use the RPC if it exists (for production after migrations are deployed)
+                    // If it doesn't exist yet, we'll handle the migration manually in Step 2
+                    let rpcSucceeded = false;
+                    console.log('[loginWithParentId] Attempting to call link_parent_profile_after_login RPC with parameters:', {
+                        p_school_id: schoolId,
+                        p_new_parent_uid: authResponse.user.id,
+                        p_parent_id: parentId
+                    });
+                    const { data: rpcResult, error: rpcError } = await supabase.rpc('link_parent_profile_after_login', {
+                        p_school_id: schoolId,
+                        p_new_parent_uid: authResponse.user.id,
+                        p_parent_id: parentId
+                    });
+
+                    if (rpcError) {
+                        if (rpcError.code === 'PGRST202') {
+                            // Function doesn't exist yet - this is OK, we'll handle it manually
+                            console.warn('[loginWithParentId] RPC function not yet deployed, falling back to client-side approach');
+                        } else {
+                            console.error('[loginWithParentId] RPC error - Full details:', {
+                                message: rpcError.message || 'No message',
+                                code: rpcError.code || 'No code',
+                                status: rpcError.status || 'No status',
+                                statusText: rpcError.statusText || 'No statusText',
+                                details: typeof rpcError.details === 'string' ? rpcError.details : JSON.stringify(rpcError.details),
+                                hint: rpcError.hint || 'No hint',
+                                toString: rpcError.toString?.(),
+                                fullError: JSON.stringify(rpcError)
+                            });
+                        }
+                    } else {
+                        console.log('[loginWithParentId] RPC executed successfully. Result:', JSON.stringify(rpcResult));
+                        rpcSucceeded = true;
+                    }
+
+                    // Step 2: If RPC didn't work, handle the profile setup manually
+                    if (!rpcSucceeded) {
+                        console.log('[loginWithParentId] Step 2: Handling profile setup manually...');
+
+                        // First, ensure the new parent's profile is created with correct role
+                        // This is critical - the trigger will create a profile, but we need to make sure it has role='parent'
+                        console.log('[loginWithParentId] Ensuring parent profile is created with correct role...');
+                        try {
+                            const { data: existingProfile, error: fetchError } = await supabase
+                                .from('users')
+                                .select('*')
+                                .eq('id', authResponse.user.id)
+                                .maybeSingle();
+
+                            if (fetchError) {
+                                console.error('[loginWithParentId] Error fetching existing profile:', {
+                                    message: fetchError.message,
+                                    code: fetchError.code
+                                });
+                            }
+
+                            if (!existingProfile) {
+                                // Profile doesn't exist - create it
+                                console.log('[loginWithParentId] Creating new parent profile...');
+                                const { error: insertError } = await supabase.from('users').insert({
+                                    id: authResponse.user.id,
+                                    school_id: schoolId,
+                                    role: 'parent',
+                                    admission_number: parentId,
+                                    email: authResponse.user.email,
+                                    full_name: authResponse.user.user_metadata?.full_name || 'Parent'
+                                });
+
+                                if (insertError) {
+                                    console.error('[loginWithParentId] Error creating profile:', {
+                                        message: insertError.message,
+                                        code: insertError.code,
+                                        details: insertError.details
+                                    });
+                                } else {
+                                    console.log('[loginWithParentId] Successfully created parent profile');
+                                }
+                            } else if (existingProfile.role !== 'parent') {
+                                // Profile exists but has wrong role - update it
+                                console.log('[loginWithParentId] Profile exists with wrong role. Updating to parent...');
+                                const { error: updateError } = await supabase
+                                    .from('users')
+                                    .update({
+                                        role: 'parent',
+                                        admission_number: parentId,
+                                        school_id: schoolId
+                                    })
+                                    .eq('id', authResponse.user.id);
+
+                                if (updateError) {
+                                    console.error('[loginWithParentId] Error updating profile role:', {
+                                        message: updateError.message,
+                                        code: updateError.code,
+                                        details: updateError.details
+                                    });
+                                } else {
+                                    console.log('[loginWithParentId] Successfully updated profile role to parent');
+                                }
+                            } else {
+                                console.log('[loginWithParentId] Profile already exists with correct parent role');
+                            }
+                        } catch (profileException) {
+                            console.error('[loginWithParentId] Exception during profile setup:', {
+                                message: profileException instanceof Error ? profileException.message : String(profileException)
+                            });
+                        }
+
+                        // Then, migrate parent_student_links if there's a placeholder parent
+                        try {
+                            console.log('[loginWithParentId] Searching for admin-created placeholder parent...');
+                            const { data: placeholderParent, error: findError } = await supabase
+                                .from('users')
+                                .select('id')
+                                .eq('school_id', schoolId)
+                                .eq('admission_number', parentId)
+                                .eq('role', 'parent')
+                                .neq('id', authResponse.user.id)
+                                .maybeSingle();
+
+                            if (findError) {
+                                console.warn('[loginWithParentId] Could not search for placeholder:', findError.message);
+                            } else if (placeholderParent) {
+                                console.log('[loginWithParentId] Found placeholder parent, migrating student links...');
+
+                                const { error: migrateError } = await supabase
+                                    .from('parent_student_links')
+                                    .update({ parent_id: authResponse.user.id })
+                                    .eq('school_id', schoolId)
+                                    .eq('parent_id', placeholderParent.id);
+
+                                if (migrateError) {
+                                    console.error('[loginWithParentId] Error migrating links:', migrateError.message);
+                                } else {
+                                    console.log('[loginWithParentId] Successfully migrated parent_student_links');
+                                }
+                            } else {
+                                console.log('[loginWithParentId] No placeholder parent found - this is a fresh parent account');
+                            }
+                        } catch (migrationException) {
+                            console.error('[loginWithParentId] Exception during link migration:', {
+                                message: migrationException instanceof Error ? migrationException.message : String(migrationException)
+                            });
+                        }
+                    }
+
+                    // Step 3: Update auth metadata to reflect parent role
+                    console.log('[loginWithParentId] Updating auth metadata with parent role...');
+                    console.log('[loginWithParentId] Auth metadata being set:', {
+                        schoolId: schoolId,
+                        admission_number: parentId,
+                        role: 'parent'
+                    });
+                    try {
+                        await supabase.auth.updateUser({
+                            data: {
+                                schoolId: schoolId,
+                                admission_number: parentId,
+                                role: 'parent'
+                            }
                         });
-                    } else if (profile.role !== 'parent') {
-                        // Update existing profile to parent role
-                        await supabase
-                            .from('users')
-                            .update({ role: 'parent', admission_number: parentId })
-                            .eq('id', authResponse.user.id);
+                        console.log('[loginWithParentId] Successfully updated auth metadata');
+                    } catch (authUpdateError) {
+                        console.error('[loginWithParentId] Error updating auth metadata - Full details:', {
+                            message: authUpdateError instanceof Error ? authUpdateError.message : String(authUpdateError),
+                            error: authUpdateError,
+                            toString: authUpdateError?.toString?.()
+                        });
+                        // Continue anyway - profile is already set up
                     }
                 } catch (linkError) {
-                    console.error("Profile linking error during parent activation:", {
+                    console.error("Profile linking error during parent activation - Full details:", {
                         message: linkError instanceof Error ? linkError.message : String(linkError),
-                        error: linkError
+                        error: linkError,
+                        toString: linkError?.toString?.()
                     });
+                    // Continue anyway - user is already authenticated
                 }
                 return authResponse;
             }
         } catch (activationError) {
-            console.error("Activation failed:", activationError);
+            console.error("Activation failed - Full details:", {
+                message: activationError instanceof Error ? activationError.message : String(activationError),
+                error: activationError,
+                toString: activationError?.toString?.()
+            });
             throw activationError;
         }
     }
