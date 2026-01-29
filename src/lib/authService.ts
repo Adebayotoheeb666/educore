@@ -346,19 +346,81 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                         rpcSucceeded = true;
                     }
 
-                    // Step 2: If RPC didn't work, handle the profile update manually
-                    // We can update our own profile without RLS issues
+                    // Step 2: If RPC didn't work, handle the profile setup manually
                     if (!rpcSucceeded) {
                         console.log('[loginWithParentId] Step 2: Handling profile setup manually...');
 
+                        // First, ensure the new parent's profile is created with correct role
+                        // This is critical - the trigger will create a profile, but we need to make sure it has role='parent'
+                        console.log('[loginWithParentId] Ensuring parent profile is created with correct role...');
                         try {
-                            // Find the admin-created placeholder parent to get its ID
-                            console.log('[loginWithParentId] Searching for placeholder parent with criteria:', {
-                                school_id: schoolId,
-                                admission_number: parentId,
-                                role: 'parent',
-                                not_id: authResponse.user.id
+                            const { data: existingProfile, error: fetchError } = await supabase
+                                .from('users')
+                                .select('*')
+                                .eq('id', authResponse.user.id)
+                                .maybeSingle();
+
+                            if (fetchError) {
+                                console.error('[loginWithParentId] Error fetching existing profile:', {
+                                    message: fetchError.message,
+                                    code: fetchError.code
+                                });
+                            }
+
+                            if (!existingProfile) {
+                                // Profile doesn't exist - create it
+                                console.log('[loginWithParentId] Creating new parent profile...');
+                                const { error: insertError } = await supabase.from('users').insert({
+                                    id: authResponse.user.id,
+                                    school_id: schoolId,
+                                    role: 'parent',
+                                    admission_number: parentId,
+                                    email: authResponse.user.email,
+                                    full_name: authResponse.user.user_metadata?.full_name || 'Parent'
+                                });
+
+                                if (insertError) {
+                                    console.error('[loginWithParentId] Error creating profile:', {
+                                        message: insertError.message,
+                                        code: insertError.code,
+                                        details: insertError.details
+                                    });
+                                } else {
+                                    console.log('[loginWithParentId] Successfully created parent profile');
+                                }
+                            } else if (existingProfile.role !== 'parent') {
+                                // Profile exists but has wrong role - update it
+                                console.log('[loginWithParentId] Profile exists with wrong role. Updating to parent...');
+                                const { error: updateError } = await supabase
+                                    .from('users')
+                                    .update({
+                                        role: 'parent',
+                                        admission_number: parentId,
+                                        school_id: schoolId
+                                    })
+                                    .eq('id', authResponse.user.id);
+
+                                if (updateError) {
+                                    console.error('[loginWithParentId] Error updating profile role:', {
+                                        message: updateError.message,
+                                        code: updateError.code,
+                                        details: updateError.details
+                                    });
+                                } else {
+                                    console.log('[loginWithParentId] Successfully updated profile role to parent');
+                                }
+                            } else {
+                                console.log('[loginWithParentId] Profile already exists with correct parent role');
+                            }
+                        } catch (profileException) {
+                            console.error('[loginWithParentId] Exception during profile setup:', {
+                                message: profileException instanceof Error ? profileException.message : String(profileException)
                             });
+                        }
+
+                        // Then, migrate parent_student_links if there's a placeholder parent
+                        try {
+                            console.log('[loginWithParentId] Searching for admin-created placeholder parent...');
                             const { data: placeholderParent, error: findError } = await supabase
                                 .from('users')
                                 .select('id')
@@ -369,18 +431,10 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                                 .maybeSingle();
 
                             if (findError) {
-                                console.warn('[loginWithParentId] Could not find placeholder parent:', {
-                                    message: findError.message || 'No message',
-                                    code: findError.code || 'No code',
-                                    details: findError.details,
-                                    fullError: JSON.stringify(findError)
-                                });
+                                console.warn('[loginWithParentId] Could not search for placeholder:', findError.message);
                             } else if (placeholderParent) {
-                                console.log('[loginWithParentId] Found placeholder parent:', placeholderParent.id);
+                                console.log('[loginWithParentId] Found placeholder parent, migrating student links...');
 
-                                // Migrate parent_student_links from placeholder to new auth user
-                                // This is an UPDATE operation which should work even with RLS
-                                console.log('[loginWithParentId] Migrating parent_student_links to new auth user...');
                                 const { error: migrateError } = await supabase
                                     .from('parent_student_links')
                                     .update({ parent_id: authResponse.user.id })
@@ -388,70 +442,16 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                                     .eq('parent_id', placeholderParent.id);
 
                                 if (migrateError) {
-                                    console.error('[loginWithParentId] Error migrating links - Full details:', {
-                                        message: migrateError.message || 'No message',
-                                        code: migrateError.code || 'No code',
-                                        status: migrateError.status || 'No status',
-                                        details: typeof migrateError.details === 'string' ? migrateError.details : JSON.stringify(migrateError.details),
-                                        hint: migrateError.hint || 'No hint',
-                                        toString: migrateError.toString?.(),
-                                        fullError: JSON.stringify(migrateError)
-                                    });
+                                    console.error('[loginWithParentId] Error migrating links:', migrateError.message);
                                 } else {
                                     console.log('[loginWithParentId] Successfully migrated parent_student_links');
                                 }
-
-                                // Note: We cannot delete the placeholder parent due to RLS restrictions
-                                // That's why the RPC function was created. Once deployed, it will handle deletion.
-                                // For now, the placeholder will remain but won't interfere since the actual
-                                // parent_student_links will point to the authenticated user.
-                                console.log('[loginWithParentId] Note: Placeholder parent record will remain until RPC is deployed');
+                            } else {
+                                console.log('[loginWithParentId] No placeholder parent found - this is a fresh parent account');
                             }
                         } catch (migrationException) {
-                            console.error('[loginWithParentId] Exception during manual migration:', {
+                            console.error('[loginWithParentId] Exception during link migration:', {
                                 message: migrationException instanceof Error ? migrationException.message : String(migrationException)
-                            });
-                        }
-
-                        // Update our own profile with correct parent data
-                        console.log('[loginWithParentId] Updating own profile with parent role...');
-                        console.log('[loginWithParentId] Update parameters:', {
-                            authUserId: authResponse.user.id,
-                            schoolId: schoolId,
-                            parentId: parentId,
-                            updateData: {
-                                role: 'parent',
-                                admission_number: parentId,
-                                school_id: schoolId
-                            }
-                        });
-                        try {
-                            const { error: updateError } = await supabase
-                                .from('users')
-                                .update({
-                                    role: 'parent',
-                                    admission_number: parentId,
-                                    school_id: schoolId
-                                })
-                                .eq('id', authResponse.user.id);
-
-                            if (updateError) {
-                                console.error('[loginWithParentId] Error updating profile - Full details:', {
-                                    message: updateError.message || 'No message',
-                                    code: updateError.code || 'No code',
-                                    status: updateError.status || 'No status',
-                                    statusText: updateError.statusText || 'No statusText',
-                                    details: typeof updateError.details === 'string' ? updateError.details : JSON.stringify(updateError.details),
-                                    hint: updateError.hint || 'No hint',
-                                    toString: updateError.toString?.(),
-                                    fullError: JSON.stringify(updateError)
-                                });
-                            } else {
-                                console.log('[loginWithParentId] Successfully updated own profile');
-                            }
-                        } catch (updateException) {
-                            console.error('[loginWithParentId] Exception updating profile:', {
-                                message: updateException instanceof Error ? updateException.message : String(updateException)
                             });
                         }
                     }
