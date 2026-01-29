@@ -233,6 +233,54 @@ export const loginWithParentCredentials = async (schoolId: string, admissionNumb
 };
 
 /**
+ * Activate a parent account (SignUp)
+ */
+const activateParent = async (
+    schoolId: string,
+    parentId: string,
+    password: string
+) => {
+    const virtualEmail = getVirtualEmail(schoolId, parentId);
+
+    // Sign up with parent role in metadata
+    const { data, error } = await supabase.auth.signUp({
+        email: virtualEmail,
+        password,
+        options: {
+            data: {
+                role: 'parent',
+                schoolId: schoolId,
+                admission_number: parentId
+            }
+        }
+    });
+
+    // If the user is already registered, try to sign in instead
+    if (error && (error.message?.includes('already registered') || error.code === 'user_already_exists')) {
+        console.warn("Parent account already registered, attempting sign in...");
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: virtualEmail,
+            password
+        });
+
+        if (signInError) {
+            throw signInError;
+        }
+
+        if (!signInData.user) {
+            throw new Error("Sign in failed after account registration");
+        }
+
+        return signInData;
+    }
+
+    if (error) throw error;
+    if (!data.user) throw new Error("Parent activation failed");
+
+    return data;
+};
+
+/**
  * Login with Parent ID (similar to student admission number or staff ID)
  */
 export const loginWithParentId = async (schoolId: string, parentId: string, password: string) => {
@@ -252,8 +300,8 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
 
         // Account doesn't exist yet - Try Activation
         try {
-            console.log("Login failed, attempting activation...");
-            const authResponse = await activateAccount(schoolId, parentId, password, 'student'); // Use 'student' type for virtual email generation
+            console.log("Parent login failed, attempting activation...");
+            const authResponse = await activateParent(schoolId, parentId, password);
 
             if (authResponse.user) {
                 try {
