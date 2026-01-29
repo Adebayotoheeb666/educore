@@ -280,7 +280,15 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                         }
                     } else {
                         // Profile exists - ensure it has the correct parent role
+                        console.log('[loginWithParentId] Existing profile found:', {
+                            role: profile.role,
+                            admission_number: profile.admission_number,
+                            school_id: profile.school_id,
+                            id: profile.id
+                        });
+
                         if (profile.role !== 'parent' || !profile.admission_number || profile.admission_number !== parentId || !profile.school_id) {
+                            console.log('[loginWithParentId] Profile needs update, updating fields...');
                             const { error: updateError } = await supabase
                                 .from('users')
                                 .update({
@@ -291,8 +299,18 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                                 .eq('id', authResponse.user.id);
 
                             if (updateError) {
-                                console.error('[loginWithParentId] Error updating parent profile:', updateError);
+                                console.error('[loginWithParentId] Error updating parent profile:', {
+                                    message: updateError.message,
+                                    code: updateError.code,
+                                    details: updateError.details,
+                                    hint: updateError.hint,
+                                    fullError: updateError
+                                });
+                            } else {
+                                console.log('[loginWithParentId] Successfully updated parent profile');
                             }
+                        } else {
+                            console.log('[loginWithParentId] Profile already has correct parent data, no update needed');
                         }
                     }
 
