@@ -280,11 +280,48 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                             .update({ role: 'parent', admission_number: parentId })
                             .eq('id', authResponse.user.id);
                     }
+
+                    // Migrate parent_student_links from the admin-created placeholder to the auth user
+                    // Find the admin-created parent record (identified by admission_number = parentId)
+                    const { data: placeholderParent } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('school_id', schoolId)
+                        .eq('admission_number', parentId)
+                        .eq('role', 'parent')
+                        .neq('id', authResponse.user.id)
+                        .single();
+
+                    if (placeholderParent) {
+                        console.log('[loginWithParentId] Found placeholder parent, migrating parent_student_links...');
+
+                        // Migrate parent_student_links to the new auth user
+                        const { error: migrationError } = await supabase
+                            .from('parent_student_links')
+                            .update({ parent_id: authResponse.user.id })
+                            .eq('school_id', schoolId)
+                            .eq('parent_id', placeholderParent.id);
+
+                        if (!migrationError) {
+                            console.log('[loginWithParentId] Successfully migrated parent_student_links');
+
+                            // Delete the placeholder parent user since we've migrated all links
+                            await supabase
+                                .from('users')
+                                .delete()
+                                .eq('id', placeholderParent.id);
+
+                            console.log('[loginWithParentId] Deleted placeholder parent record');
+                        } else {
+                            console.error('[loginWithParentId] Error migrating parent_student_links:', migrationError);
+                        }
+                    }
                 } catch (linkError) {
                     console.error("Profile linking error during parent activation:", {
                         message: linkError instanceof Error ? linkError.message : String(linkError),
                         error: linkError
                     });
+                    // Continue anyway - user is already authenticated
                 }
                 return authResponse;
             }
