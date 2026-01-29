@@ -355,10 +355,15 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                                 .eq('id', authResponse.user.id);
 
                             if (updateError) {
-                                console.error('[loginWithParentId] Error updating profile:', {
-                                    message: updateError.message,
-                                    code: updateError.code,
-                                    details: updateError.details
+                                console.error('[loginWithParentId] Error updating profile - Full details:', {
+                                    message: updateError.message || 'No message',
+                                    code: updateError.code || 'No code',
+                                    status: updateError.status || 'No status',
+                                    statusText: updateError.statusText || 'No statusText',
+                                    details: typeof updateError.details === 'string' ? updateError.details : JSON.stringify(updateError.details),
+                                    hint: updateError.hint || 'No hint',
+                                    toString: updateError.toString?.(),
+                                    fullError: JSON.stringify(updateError)
                                 });
                             } else {
                                 console.log('[loginWithParentId] Successfully updated own profile');
