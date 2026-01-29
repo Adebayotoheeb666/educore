@@ -357,7 +357,19 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
                         }
                     } else {
                         // Profile exists - ensure it has the correct parent role and data
-                        console.log('[loginWithParentId] Existing profile found, updating...');
+                        console.log('[loginWithParentId] Existing profile found, current state:', {
+                            id: profile.id,
+                            role: profile.role,
+                            admission_number: profile.admission_number,
+                            school_id: profile.school_id
+                        });
+
+                        console.log('[loginWithParentId] Attempting to update profile with:', {
+                            role: 'parent',
+                            admission_number: parentId,
+                            school_id: schoolId
+                        });
+
                         const { error: updateError } = await supabase
                             .from('users')
                             .update({
@@ -369,10 +381,13 @@ export const loginWithParentId = async (schoolId: string, parentId: string, pass
 
                         if (updateError) {
                             console.error('[loginWithParentId] Error updating parent profile:', {
-                                message: updateError.message,
+                                message: updateError.message || JSON.stringify(updateError),
                                 code: updateError.code,
-                                details: updateError.details,
-                                hint: updateError.hint
+                                details: updateError.details ? JSON.stringify(updateError.details) : 'No details',
+                                hint: updateError.hint,
+                                status: updateError.status,
+                                statusText: updateError.statusText,
+                                fullError: JSON.stringify(updateError)
                             });
                         } else {
                             console.log('[loginWithParentId] Successfully updated parent profile');
