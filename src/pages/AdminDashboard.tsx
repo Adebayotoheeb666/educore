@@ -1040,7 +1040,7 @@ export const AdminDashboard = () => {
                                 <button onClick={() => { setShowClassModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create New Class</button>
                                 <button onClick={() => { setShowSubjectModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create Subject</button>
                                 <button onClick={() => { setShowBulkImport(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 flex items-center justify-between">
-                                    <span>Bulk Student Upload</span>
+                                    <span>Bulk Import (All Types)</span>
                                     <Download className="w-4 h-4 text-teal-500" />
                                 </button>
                             </div>
