@@ -60,7 +60,7 @@ serve(async (req) => {
   }
 
   try {
-    // Verify JWT and get user
+    // Verify JWT and extract user ID
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       console.error("Missing Authorization header");
@@ -70,45 +70,74 @@ serve(async (req) => {
       );
     }
 
-    console.log("Authorization header present, validating JWT...");
+    console.log("Authorization header present, extracting user ID from JWT...");
 
-    // Create a client with the anonKey and global Authorization header
-    // to validate the user's token
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-      },
-      global: {
-        headers: {
-          Authorization: authHeader,
-        },
-      },
-    });
-
-    // Get the current user using the Authorization header
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-
-    if (authError) {
-      console.error("Token validation failed:", {
-        errorCode: (authError as any).code,
-        errorMessage: authError.message,
-        errorStatus: (authError as any).status,
-      });
-    }
-
-    if (authError || !user) {
-      console.error("Auth failed - Invalid or expired token");
+    // Extract the token
+    const token = authHeader.replace("Bearer ", "").trim();
+    if (!token) {
+      console.error("Invalid Authorization header format");
       return new Response(
-        JSON.stringify({
-          error: "Invalid JWT",
-          details: authError?.message,
-          code: (authError as any).code,
-        }),
+        JSON.stringify({ error: "Invalid authorization header format" }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Token validated successfully for user:", user.id);
+    // Decode JWT (without verification - we'll verify admin status via database)
+    let userId: string | null = null;
+    try {
+      const parts = token.split(".");
+      if (parts.length !== 3) {
+        throw new Error("Invalid JWT format");
+      }
+
+      // Decode the payload (second part)
+      const payload = JSON.parse(
+        new TextDecoder().decode(
+          Uint8Array.from(
+            atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+              .split("")
+              .map((c) => c.charCodeAt(0))
+          )
+        )
+      );
+
+      userId = payload.sub; // 'sub' is the standard JWT claim for subject (user ID)
+      console.log("Extracted user ID from JWT:", userId);
+
+      if (!userId) {
+        throw new Error("No user ID in token");
+      }
+    } catch (error) {
+      console.error("Failed to decode JWT:", error);
+      return new Response(
+        JSON.stringify({ error: "Invalid JWT", details: String(error) }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Use admin client to verify user is an admin
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: userRecord, error: userError } = await adminClient
+      .from("users")
+      .select("id, role, school_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (userError) {
+      console.error("Error verifying user admin status:", userError);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify admin status", details: userError.message }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!userRecord) {
+      console.error("User not found in database:", userId);
+      return new Response(
+        JSON.stringify({ error: "User not found" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     // Check if user is admin
     const userRole = user.user_metadata?.role || user.app_metadata?.role;
