@@ -151,82 +151,114 @@ export const AdminDashboard = () => {
     const fetchUsers = async () => {
         if (!schoolId) return [];
 
-        // Try RPC first
         try {
-            const { data, error } = await supabase.rpc('get_school_users', { p_school_id: schoolId });
-            if (!error && data) {
-                // Fetch student class assignments
-                const studentIds = data.filter((u: any) => u.role === 'student').map((u: any) => u.id);
-                if (studentIds.length > 0) {
-                    const { data: studentClasses } = await supabase
-                        .from('student_classes')
-                        .select('student_id, class_id, classes(name)')
-                        .in('student_id', studentIds)
-                        .eq('school_id', schoolId);
+            // Try RPC first
+            try {
+                const { data, error } = await supabase.rpc('get_school_users', { p_school_id: schoolId });
+                if (!error && data) {
+                    // Fetch student class assignments
+                    const studentIds = data.filter((u: any) => u.role === 'student').map((u: any) => u.id);
+                    if (studentIds.length > 0) {
+                        const { data: studentClasses, error: classError } = await supabase
+                            .from('student_classes')
+                            .select('student_id, class_id, classes(name)')
+                            .in('student_id', studentIds)
+                            .eq('school_id', schoolId);
 
-                    // Create a map of student_id to class name
-                    const classMap = new Map();
-                    studentClasses?.forEach((sc: any) => {
-                        classMap.set(sc.student_id, sc.classes?.name || 'Unknown Class');
-                    });
+                        if (classError) {
+                            console.warn('Error fetching student classes:', classError);
+                        }
 
-                    // Enrich user data with class names
-                    return data.map((u: any) => ({
-                        ...u,
-                        className: u.role === 'student' ? classMap.get(u.id) : undefined
-                    }));
+                        // Create a map of student_id to class name
+                        const classMap = new Map();
+                        studentClasses?.forEach((sc: any) => {
+                            classMap.set(sc.student_id, sc.classes?.name || 'Unknown Class');
+                        });
+
+                        // Enrich user data with class names
+                        return data.map((u: any) => ({
+                            ...u,
+                            className: u.role === 'student' ? classMap.get(u.id) : undefined
+                        }));
+                    }
+                    return data;
                 }
-                return data;
+            } catch (e) {
+                console.warn('RPC fetch failed, falling back to direct query', e);
             }
-        } catch (e) {
-            console.warn('RPC fetch failed, falling back to direct query', e);
-        }
 
-        // Fallback to direct query
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('school_id', schoolId);
-
-        if (error) throw error;
-
-        // Fetch student class assignments for fallback
-        const studentIds = (data || []).filter((u: any) => u.role === 'student').map((u: any) => u.id);
-        if (studentIds.length > 0) {
-            const { data: studentClasses } = await supabase
-                .from('student_classes')
-                .select('student_id, class_id, classes(name)')
-                .in('student_id', studentIds)
+            // Fallback to direct query
+            const { data, error } = await supabase
+                .from('users')
+                .select('*')
                 .eq('school_id', schoolId);
 
-            // Create a map of student_id to class name
-            const classMap = new Map();
-            studentClasses?.forEach((sc: any) => {
-                classMap.set(sc.student_id, sc.classes?.name || 'Unknown Class');
-            });
+            if (error) {
+                console.error('Error fetching users:', error);
+                return [];
+            }
 
-            // Enrich user data with class names
-            return (data || []).map((u: any) => ({
-                ...u,
-                className: u.role === 'student' ? classMap.get(u.id) : undefined
-            }));
+            // Fetch student class assignments for fallback
+            const studentIds = (data || []).filter((u: any) => u.role === 'student').map((u: any) => u.id);
+            if (studentIds.length > 0) {
+                const { data: studentClasses, error: classError } = await supabase
+                    .from('student_classes')
+                    .select('student_id, class_id, classes(name)')
+                    .in('student_id', studentIds)
+                    .eq('school_id', schoolId);
+
+                if (classError) {
+                    console.warn('Error fetching student classes in fallback:', classError);
+                }
+
+                // Create a map of student_id to class name
+                const classMap = new Map();
+                studentClasses?.forEach((sc: any) => {
+                    classMap.set(sc.student_id, sc.classes?.name || 'Unknown Class');
+                });
+
+                // Enrich user data with class names
+                return (data || []).map((u: any) => ({
+                    ...u,
+                    className: u.role === 'student' ? classMap.get(u.id) : undefined
+                }));
+            }
+
+            return data || [];
+        } catch (error) {
+            console.error('Unexpected error fetching users:', error);
+            return [];
         }
-
-        return data || [];
     };
 
     const fetchClasses = async () => {
         if (!schoolId) return [];
-        const { data, error } = await supabase.from('classes').select('*').eq('school_id', schoolId);
-        if (error) throw error;
-        return data as any[];
+        try {
+            const { data, error } = await supabase.from('classes').select('*').eq('school_id', schoolId);
+            if (error) {
+                console.error('Error fetching classes:', error);
+                return [];
+            }
+            return data as any[];
+        } catch (error) {
+            console.error('Unexpected error fetching classes:', error);
+            return [];
+        }
     };
 
     const fetchSubjects = async () => {
         if (!schoolId) return [];
-        const { data, error } = await supabase.from('subjects').select('*').eq('school_id', schoolId);
-        if (error) throw error;
-        return data as any[];
+        try {
+            const { data, error } = await supabase.from('subjects').select('*').eq('school_id', schoolId);
+            if (error) {
+                console.error('Error fetching subjects:', error);
+                return [];
+            }
+            return data as any[];
+        } catch (error) {
+            console.error('Unexpected error fetching subjects:', error);
+            return [];
+        }
     };
 
     const fetchFinancials = async () => {
