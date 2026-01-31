@@ -52,6 +52,44 @@ export interface ImportResult {
 export * from './bulkImportService';
 
 /**
+ * Parse CSV text and extract data
+ */
+export const parseCSVText = <T>(text: string, requiredFields: string[]): { headers: string[], rows: T[] } => {
+    try {
+        const lines = text.split('\n').filter(line => line.trim());
+
+        if (lines.length < 2) {
+            throw new Error('CSV file must have at least a header and one data row');
+        }
+
+        // Parse header
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const missingFields = requiredFields.filter(field => !headers.includes(field.toLowerCase()));
+
+        if (missingFields.length > 0) {
+            throw new Error(`Missing required columns: ${missingFields.join(', ')}`);
+        }
+
+        // Parse data rows
+        const rows: any[] = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            if (values[0] === '') continue; // Skip empty rows
+
+            const row: any = {};
+            headers.forEach((header, index) => {
+                row[header] = values[index] || '';
+            });
+            rows.push(row);
+        }
+
+        return { headers, rows };
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
  * Parse CSV file and extract data for any entity type
  */
 export const parseCSVFileGeneric = async <T>(file: File, requiredFields: string[]): Promise<{ headers: string[], rows: T[] }> => {
@@ -61,36 +99,8 @@ export const parseCSVFileGeneric = async <T>(file: File, requiredFields: string[
         reader.onload = (e) => {
             try {
                 const text = e.target?.result as string;
-                const lines = text.split('\n').filter(line => line.trim());
-
-                if (lines.length < 2) {
-                    reject(new Error('CSV file must have at least a header and one data row'));
-                    return;
-                }
-
-                // Parse header
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-                const missingFields = requiredFields.filter(field => !headers.includes(field.toLowerCase()));
-
-                if (missingFields.length > 0) {
-                    reject(new Error(`Missing required columns: ${missingFields.join(', ')}`));
-                    return;
-                }
-
-                // Parse data rows
-                const rows: any[] = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',').map(v => v.trim());
-                    if (values[0] === '') continue; // Skip empty rows
-
-                    const row: any = {};
-                    headers.forEach((header, index) => {
-                        row[header] = values[index] || '';
-                    });
-                    rows.push(row);
-                }
-
-                resolve({ headers, rows });
+                const result = parseCSVText<T>(text, requiredFields);
+                resolve(result);
             } catch (error) {
                 reject(error);
             }
@@ -102,64 +112,229 @@ export const parseCSVFileGeneric = async <T>(file: File, requiredFields: string[
 };
 
 /**
+ * Validate staff import rows
+ */
+const validateStaffRows = (rows: any[]): { valid: StaffImportRow[], errors: Array<{ row: number, error: string }> } => {
+    const valid: StaffImportRow[] = [];
+    const errors: Array<{ row: number, error: string }> = [];
+
+    rows.forEach((row, index) => {
+        const rowNum = index + 2; // +2 for header + 1-based indexing
+
+        if (!row.staffid?.trim()) {
+            errors.push({ row: rowNum, error: 'StaffID is required' });
+            return;
+        }
+        if (!row.fullname?.trim()) {
+            errors.push({ row: rowNum, error: 'FullName is required' });
+            return;
+        }
+        if (!row.email?.trim()) {
+            errors.push({ row: rowNum, error: 'Email is required' });
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(row.email.trim())) {
+            errors.push({ row: rowNum, error: `Invalid email format: ${row.email}` });
+            return;
+        }
+
+        valid.push({
+            staffId: row.staffid.trim(),
+            fullName: row.fullname.trim(),
+            email: row.email.trim().toLowerCase(),
+            phoneNumber: row.phonenumber?.trim(),
+            role: row.role?.trim() || 'teacher',
+            department: row.department?.trim()
+        });
+    });
+
+    return { valid, errors };
+};
+
+/**
+ * Validate parent import rows
+ */
+const validateParentRows = (rows: any[]): { valid: ParentImportRow[], errors: Array<{ row: number, error: string }> } => {
+    const valid: ParentImportRow[] = [];
+    const errors: Array<{ row: number, error: string }> = [];
+
+    rows.forEach((row, index) => {
+        const rowNum = index + 2;
+
+        if (!row.fullname?.trim()) {
+            errors.push({ row: rowNum, error: 'FullName is required' });
+            return;
+        }
+        if (!row.email?.trim()) {
+            errors.push({ row: rowNum, error: 'Email is required' });
+            return;
+        }
+        if (!row.phonenumber?.trim()) {
+            errors.push({ row: rowNum, error: 'PhoneNumber is required' });
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(row.email.trim())) {
+            errors.push({ row: rowNum, error: `Invalid email format: ${row.email}` });
+            return;
+        }
+
+        valid.push({
+            fullName: row.fullname.trim(),
+            email: row.email.trim().toLowerCase(),
+            phoneNumber: row.phonenumber.trim(),
+            address: row.address?.trim(),
+            studentIds: row.studentids?.trim()
+        });
+    });
+
+    return { valid, errors };
+};
+
+/**
+ * Validate class import rows
+ */
+const validateClassRows = (rows: any[]): { valid: ClassImportRow[], errors: Array<{ row: number, error: string }> } => {
+    const valid: ClassImportRow[] = [];
+    const errors: Array<{ row: number, error: string }> = [];
+
+    rows.forEach((row, index) => {
+        const rowNum = index + 2;
+
+        if (!row.name?.trim()) {
+            errors.push({ row: rowNum, error: 'Name is required' });
+            return;
+        }
+        if (!row.level?.trim()) {
+            errors.push({ row: rowNum, error: 'Level is required' });
+            return;
+        }
+
+        valid.push({
+            name: row.name.trim(),
+            level: row.level.trim(),
+            section: row.section?.trim(),
+            academicYear: row.academicyear?.trim(),
+            classTeacherId: row.classteacherid?.trim(),
+            capacity: row.capacity ? parseInt(row.capacity) : undefined
+        });
+    });
+
+    return { valid, errors };
+};
+
+/**
+ * Validate subject import rows
+ */
+const validateSubjectRows = (rows: any[]): { valid: SubjectImportRow[], errors: Array<{ row: number, error: string }> } => {
+    const valid: SubjectImportRow[] = [];
+    const errors: Array<{ row: number, error: string }> = [];
+
+    rows.forEach((row, index) => {
+        const rowNum = index + 2;
+
+        if (!row.name?.trim()) {
+            errors.push({ row: rowNum, error: 'Name is required' });
+            return;
+        }
+        if (!row.code?.trim()) {
+            errors.push({ row: rowNum, error: 'Code is required' });
+            return;
+        }
+
+        valid.push({
+            name: row.name.trim(),
+            code: row.code.trim(),
+            description: row.description?.trim(),
+            teacherId: row.teacherid?.trim(),
+            classLevels: row.classlevels?.trim()
+        });
+    });
+
+    return { valid, errors };
+};
+
+/**
  * Bulk import staff members
  */
 export const bulkImportStaff = async (
-    rows: StaffImportRow[],
+    csvText: string,
     schoolId: string,
     currentUserId?: string,
     currentUserName?: string
 ): Promise<ImportResult> => {
     const result: ImportResult = {
         success: false,
-        totalRows: rows.length,
+        totalRows: 0,
         imported: 0,
         failed: 0,
         errors: []
     };
 
     try {
+        // Parse CSV
+        const { rows: parsedRows } = parseCSVText<any>(
+            csvText,
+            ['staffid', 'fullname', 'email']
+        );
+
+        result.totalRows = parsedRows.length;
+
+        // Validate rows
+        const { valid, errors: validationErrors } = validateStaffRows(parsedRows);
+        result.errors = validationErrors;
+        result.failed = validationErrors.length;
+
+        if (valid.length === 0) {
+            result.success = false;
+            return result;
+        }
+
         // Process in batches
         const batchSize = 50;
-        
-        for (let i = 0; i < rows.length; i += batchSize) {
-            const batch = rows.slice(i, i + batchSize);
+
+        for (let i = 0; i < valid.length; i += batchSize) {
+            const batch = valid.slice(i, i + batchSize);
             const usersToInsert: any[] = [];
-            
+
             for (const row of batch) {
-                const staffId = row.staffId.trim().toLowerCase();
+                const staffId = row.staffId.toLowerCase();
                 const userId = `staff_${schoolId}_${staffId}`;
-                
+
                 usersToInsert.push({
                     id: userId,
                     staff_id: staffId,
-                    full_name: row.fullName.trim(),
-                    email: row.email.trim().toLowerCase(),
-                    phone_number: row.phoneNumber?.trim(),
-                    role: row.role?.trim() || 'teacher',
-                    department: row.department?.trim(),
+                    full_name: row.fullName,
+                    email: row.email,
+                    phone_number: row.phoneNumber,
+                    role: row.role,
+                    department: row.department,
                     school_id: schoolId
                 });
             }
-            
+
             // Insert batch
             const { error } = await supabase
                 .from('users')
                 .upsert(usersToInsert, { onConflict: 'email,staff_id' });
-                
+
             if (error) {
                 result.failed += batch.length;
                 result.errors.push({
-                    row: i,
+                    row: i + 2,
                     error: `Failed to import batch: ${error.message}`
                 });
             } else {
                 result.imported += batch.length;
             }
         }
-        
-        result.success = result.failed === 0;
-        
+
+        result.success = result.failed === validationErrors.length; // Only validation errors
+
         // Log the import
         if (currentUserId && currentUserName) {
             await logAction(
@@ -177,7 +352,7 @@ export const bulkImportStaff = async (
                 }
             );
         }
-        
+
         return result;
     } catch (error) {
         result.success = false;
@@ -193,50 +368,68 @@ export const bulkImportStaff = async (
  * Bulk import parents
  */
 export const bulkImportParents = async (
-    rows: ParentImportRow[],
+    csvText: string,
     schoolId: string,
     currentUserId?: string,
     currentUserName?: string
 ): Promise<ImportResult> => {
     const result: ImportResult = {
         success: false,
-        totalRows: rows.length,
+        totalRows: 0,
         imported: 0,
         failed: 0,
         errors: []
     };
 
     try {
+        // Parse CSV
+        const { rows: parsedRows } = parseCSVText<any>(
+            csvText,
+            ['fullname', 'email', 'phonenumber']
+        );
+
+        result.totalRows = parsedRows.length;
+
+        // Validate rows
+        const { valid, errors: validationErrors } = validateParentRows(parsedRows);
+        result.errors = validationErrors;
+        result.failed = validationErrors.length;
+
+        if (valid.length === 0) {
+            result.success = false;
+            return result;
+        }
+
         // Get all students for linking
         const { data: students } = await supabase
             .from('users')
             .select('id, admission_number')
             .eq('school_id', schoolId)
             .eq('role', 'student');
-            
+
         const studentMap = new Map(students?.map(s => [s.admission_number?.toLowerCase(), s.id]) || []);
 
         // Process in batches
         const batchSize = 50;
-        
-        for (let i = 0; i < rows.length; i += batchSize) {
-            const batch = rows.slice(i, i + batchSize);
+
+        for (let i = 0; i < valid.length; i += batchSize) {
+            const batch = valid.slice(i, i + batchSize);
             const parentsToInsert: any[] = [];
             const linksToInsert: any[] = [];
-            
+
             for (const row of batch) {
                 const parentId = `parent_${uuidv4()}`;
-                
+
                 parentsToInsert.push({
                     id: parentId,
-                    full_name: row.fullName.trim(),
-                    email: row.email.trim().toLowerCase(),
-                    phone_number: row.phoneNumber.trim(),
-                    address: row.address?.trim(),
+                    full_name: row.fullName,
+                    email: row.email,
+                    phone_number: row.phoneNumber,
+                    address: row.address,
                     role: 'parent',
                     school_id: schoolId
                 });
-                
+
                 // Handle student links if provided
                 if (row.studentIds) {
                     const studentIds = row.studentIds.split(',').map(id => id.trim().toLowerCase());
@@ -253,33 +446,33 @@ export const bulkImportParents = async (
                     }
                 }
             }
-            
+
             // Insert parents
             const { error: parentError } = await supabase
                 .from('users')
                 .upsert(parentsToInsert, { onConflict: 'email' });
-                
+
             if (parentError) {
                 result.failed += batch.length;
                 result.errors.push({
-                    row: i,
+                    row: i + 2,
                     error: `Failed to import parents: ${parentError.message}`
                 });
                 continue;
             }
-            
+
             // Insert parent-student links if any
             if (linksToInsert.length > 0) {
                 await supabase
                     .from('parent_student_links')
                     .upsert(linksToInsert, { onConflict: 'parent_id,student_id' });
             }
-            
+
             result.imported += batch.length;
         }
-        
-        result.success = result.failed === 0;
-        
+
+        result.success = result.failed === validationErrors.length;
+
         // Log the import
         if (currentUserId && currentUserName) {
             await logAction(
@@ -297,7 +490,7 @@ export const bulkImportParents = async (
                 }
             );
         }
-        
+
         return result;
     } catch (error) {
         result.success = false;
@@ -313,36 +506,54 @@ export const bulkImportParents = async (
  * Bulk import classes
  */
 export const bulkImportClasses = async (
-    rows: ClassImportRow[],
+    csvText: string,
     schoolId: string,
     currentUserId?: string,
     currentUserName?: string
 ): Promise<ImportResult> => {
     const result: ImportResult = {
         success: false,
-        totalRows: rows.length,
+        totalRows: 0,
         imported: 0,
         failed: 0,
         errors: []
     };
 
     try {
+        // Parse CSV
+        const { rows: parsedRows } = parseCSVText<any>(
+            csvText,
+            ['name', 'level']
+        );
+
+        result.totalRows = parsedRows.length;
+
+        // Validate rows
+        const { valid, errors: validationErrors } = validateClassRows(parsedRows);
+        result.errors = validationErrors;
+        result.failed = validationErrors.length;
+
+        if (valid.length === 0) {
+            result.success = false;
+            return result;
+        }
+
         // Get all staff for class teacher mapping
         const { data: staff } = await supabase
             .from('users')
             .select('id, staff_id')
             .eq('school_id', schoolId)
             .in('role', ['teacher', 'admin']);
-            
+
         const staffMap = new Map(staff?.map(s => [s.staff_id?.toLowerCase(), s.id]) || []);
 
         // Process in batches
         const batchSize = 50;
         const classesToInsert: any[] = [];
-        
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            
+
+        for (let i = 0; i < valid.length; i++) {
+            const row = valid[i];
+
             // Map class teacher ID if provided
             let classTeacherId = null;
             if (row.classTeacherId) {
@@ -350,19 +561,19 @@ export const bulkImportClasses = async (
                 if (!classTeacherId) {
                     result.failed++;
                     result.errors.push({
-                        row: i + 2, // +2 for header + 1-indexing
+                        row: i + 2,
                         identifier: row.name,
                         error: `Class teacher not found: ${row.classTeacherId}`
                     });
                     continue;
                 }
             }
-            
+
             classesToInsert.push({
                 id: `class_${uuidv4()}`,
-                name: row.name.trim(),
-                level: row.level.trim(),
-                section: row.section?.trim(),
+                name: row.name,
+                level: row.level,
+                section: row.section,
                 academic_year: row.academicYear,
                 class_teacher_id: classTeacherId,
                 capacity: row.capacity,
@@ -371,27 +582,27 @@ export const bulkImportClasses = async (
                 updated_at: new Date().toISOString()
             });
         }
-        
+
         // Insert classes in batches
         for (let i = 0; i < classesToInsert.length; i += batchSize) {
             const batch = classesToInsert.slice(i, i + batchSize);
             const { error } = await supabase
                 .from('classes')
                 .upsert(batch, { onConflict: 'name,level,school_id' });
-                
+
             if (error) {
                 result.failed += batch.length;
                 result.errors.push({
-                    row: i + 2, // +2 for header + 1-indexing
+                    row: i + 2,
                     error: `Failed to import classes: ${error.message}`
                 });
             } else {
                 result.imported += batch.length;
             }
         }
-        
-        result.success = result.failed === 0;
-        
+
+        result.success = result.failed === validationErrors.length;
+
         // Log the import
         if (currentUserId && currentUserName) {
             await logAction(
@@ -409,7 +620,7 @@ export const bulkImportClasses = async (
                 }
             );
         }
-        
+
         return result;
     } catch (error) {
         result.success = false;
@@ -425,36 +636,54 @@ export const bulkImportClasses = async (
  * Bulk import subjects
  */
 export const bulkImportSubjects = async (
-    rows: SubjectImportRow[],
+    csvText: string,
     schoolId: string,
     currentUserId?: string,
     currentUserName?: string
 ): Promise<ImportResult> => {
     const result: ImportResult = {
         success: false,
-        totalRows: rows.length,
+        totalRows: 0,
         imported: 0,
         failed: 0,
         errors: []
     };
 
     try {
+        // Parse CSV
+        const { rows: parsedRows } = parseCSVText<any>(
+            csvText,
+            ['name', 'code']
+        );
+
+        result.totalRows = parsedRows.length;
+
+        // Validate rows
+        const { valid, errors: validationErrors } = validateSubjectRows(parsedRows);
+        result.errors = validationErrors;
+        result.failed = validationErrors.length;
+
+        if (valid.length === 0) {
+            result.success = false;
+            return result;
+        }
+
         // Get all teachers for subject teacher mapping
         const { data: teachers } = await supabase
             .from('users')
             .select('id, staff_id')
             .eq('school_id', schoolId)
             .eq('role', 'teacher');
-            
+
         const teacherMap = new Map(teachers?.map(t => [t.staff_id?.toLowerCase(), t.id]) || []);
 
         // Process in batches
         const batchSize = 50;
         const subjectsToInsert: any[] = [];
-        
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            
+
+        for (let i = 0; i < valid.length; i++) {
+            const row = valid[i];
+
             // Map teacher ID if provided
             let teacherId = null;
             if (row.teacherId) {
@@ -462,19 +691,19 @@ export const bulkImportSubjects = async (
                 if (!teacherId) {
                     result.failed++;
                     result.errors.push({
-                        row: i + 2, // +2 for header + 1-indexing
+                        row: i + 2,
                         identifier: row.name,
                         error: `Teacher not found: ${row.teacherId}`
                     });
                     continue;
                 }
             }
-            
+
             subjectsToInsert.push({
                 id: `subject_${uuidv4()}`,
-                name: row.name.trim(),
-                code: row.code.trim().toUpperCase(),
-                description: row.description?.trim(),
+                name: row.name,
+                code: row.code.toUpperCase(),
+                description: row.description,
                 teacher_id: teacherId,
                 class_levels: row.classLevels?.split(',').map(l => l.trim()).filter(Boolean) || [],
                 school_id: schoolId,
@@ -482,27 +711,27 @@ export const bulkImportSubjects = async (
                 updated_at: new Date().toISOString()
             });
         }
-        
+
         // Insert subjects in batches
         for (let i = 0; i < subjectsToInsert.length; i += batchSize) {
             const batch = subjectsToInsert.slice(i, i + batchSize);
             const { error } = await supabase
                 .from('subjects')
                 .upsert(batch, { onConflict: 'code,school_id' });
-                
+
             if (error) {
                 result.failed += batch.length;
                 result.errors.push({
-                    row: i + 2, // +2 for header + 1-indexing
+                    row: i + 2,
                     error: `Failed to import subjects: ${error.message}`
                 });
             } else {
                 result.imported += batch.length;
             }
         }
-        
-        result.success = result.failed === 0;
-        
+
+        result.success = result.failed === validationErrors.length;
+
         // Log the import
         if (currentUserId && currentUserName) {
             await logAction(
@@ -520,7 +749,7 @@ export const bulkImportSubjects = async (
                 }
             );
         }
-        
+
         return result;
     } catch (error) {
         result.success = false;
@@ -563,7 +792,7 @@ export const generateParentCSVTemplate = (): string => {
         'Email',
         'PhoneNumber',
         'Address',
-        'StudentIds'  // Comma-separated list of student admission numbers
+        'StudentIds'
     ];
 
     const sampleData = [
@@ -583,7 +812,7 @@ export const generateClassCSVTemplate = (): string => {
         'Level',
         'Section',
         'AcademicYear',
-        'ClassTeacherId',  // Staff ID of the class teacher
+        'ClassTeacherId',
         'Capacity'
     ];
 
@@ -604,8 +833,8 @@ export const generateSubjectCSVTemplate = (): string => {
         'Name',
         'Code',
         'Description',
-        'TeacherId',  // Staff ID of the subject teacher
-        'ClassLevels'  // Comma-separated list of class levels this subject is for
+        'TeacherId',
+        'ClassLevels'
     ];
 
     const sampleData = [

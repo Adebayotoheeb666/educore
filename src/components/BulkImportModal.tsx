@@ -134,12 +134,12 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-semibold">Bulk Import {selectedType ? `- ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}s` : ''}</h2>
-          <button 
-            onClick={resetAndClose} 
-            className="text-gray-500 hover:text-gray-700 p-1 hover:bg-gray-100 rounded-full"
+      <div className="bg-dark-card border border-white/10 rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
+        <div className="flex justify-between items-center p-4 border-b border-white/10">
+          <h2 className="text-xl font-semibold text-white">Bulk Import {selectedType ? `- ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}s` : ''}</h2>
+          <button
+            onClick={resetAndClose}
+            className="text-gray-500 hover:text-gray-300 p-1 hover:bg-white/10 rounded-full"
             aria-label="Close"
           >
             <X size={20} />
@@ -149,16 +149,16 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
         <div className="p-6 overflow-y-auto flex-1">
           {step === 'select' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-medium">What would you like to import?</h3>
+              <h3 className="text-lg font-medium text-white">What would you like to import?</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {['staff', 'parent', 'class', 'subject', 'student'].map((type) => (
                   <button
                     key={type}
                     onClick={() => handleTypeSelect(type)}
-                    className="p-4 border rounded-lg hover:bg-gray-50 text-left transition-colors duration-200"
+                    className="p-4 border border-white/10 rounded-lg hover:bg-white/5 hover:border-white/20 text-left transition-colors duration-200"
                   >
-                    <div className="font-medium capitalize">{type}</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="font-medium capitalize text-white">{type}</div>
+                    <div className="text-sm text-gray-400">
                       Import multiple {type}s at once
                     </div>
                   </button>
@@ -169,14 +169,14 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
 
           {step === 'upload' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-medium">Import {selectedType}s</h3>
-              <div 
-                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+              <h3 className="text-lg font-medium text-white">Import {selectedType}s</h3>
+              <div
+                className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center cursor-pointer hover:bg-white/5 hover:border-white/40 transition-colors duration-200"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium text-blue-600">Click to upload</span> or drag and drop
+                <p className="text-sm text-gray-300">
+                  <span className="font-medium text-teal-400">Click to upload</span> or drag and drop
                 </p>
                 <p className="text-xs text-gray-500 mt-1">CSV file (max 5MB)</p>
                 <input
@@ -187,18 +187,17 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
                   onChange={handleFileChange}
                 />
               </div>
-              <div className="flex justify-between items-center pt-4">
-                <Button 
-                  variant="outline" 
+              <div className="flex justify-between items-center pt-4 gap-3">
+                <Button
+                  variant="outline"
                   onClick={() => setStep('select')}
                   className="px-4 py-2"
                 >
                   Back
                 </Button>
-                <Button 
-                  onClick={handleDownloadTemplate} 
-                  variant="outline"
-                  className="px-4 py-2 flex items-center gap-2"
+                <Button
+                  onClick={handleDownloadTemplate}
+                  className="px-4 py-2 flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold"
                 >
                   <Download className="h-4 w-4" />
                   Download Template
@@ -209,29 +208,29 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
 
           {step === 'preview' && file && (
             <div className="space-y-6">
-              <h3 className="text-lg font-medium">Preview {selectedType}s</h3>
-              <div className="border rounded-lg overflow-hidden">
+              <h3 className="text-lg font-medium text-white">Preview {selectedType}s</h3>
+              <div className="border border-white/10 rounded-lg overflow-hidden">
                 <div className="overflow-x-auto max-h-64">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-white/10">
+                    <thead className="bg-white/5">
                       <tr>
                         {Object.keys(previewData[0] || {}).map((header) => (
-                          <th 
-                            key={header} 
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100"
+                          <th
+                            key={header}
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
                           >
                             {header}
                           </th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="divide-y divide-white/5">
                       {previewData.map((row, i) => (
-                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <tr key={i} className={i % 2 === 0 ? 'bg-white/2' : 'bg-white/5'}>
                           {Object.values(row).map((cell, j) => (
-                            <td 
-                              key={j} 
-                              className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 max-w-xs overflow-hidden text-ellipsis"
+                            <td
+                              key={j}
+                              className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 max-w-xs overflow-hidden text-ellipsis"
                               title={String(cell)}
                             >
                               {String(cell) || '-'}
@@ -246,17 +245,17 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
               <div className="text-sm text-gray-500 text-right">
                 Showing {Math.min(previewData.length, 5)} of {previewData.length} rows
               </div>
-              <div className="flex justify-between pt-4">
-                <Button 
-                  variant="outline" 
+              <div className="flex justify-between pt-4 gap-3">
+                <Button
+                  variant="outline"
                   onClick={() => setStep('upload')}
                   className="px-4 py-2"
                 >
                   Back
                 </Button>
-                <Button 
+                <Button
                   onClick={handleImport}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="px-6 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold"
                 >
                   Import {previewData.length} {selectedType}{previewData.length !== 1 ? 's' : ''}
                 </Button>
@@ -267,13 +266,13 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
           {step === 'importing' && (
             <div className="space-y-6 text-center py-8">
               <div className="animate-pulse">
-                <Upload className="mx-auto h-12 w-12 text-blue-600" />
+                <Upload className="mx-auto h-12 w-12 text-teal-400" />
               </div>
-              <h3 className="text-lg font-medium">Importing {selectedType}s...</h3>
-              <p className="text-gray-500">Please wait while we process your data</p>
+              <h3 className="text-lg font-medium text-white">Importing {selectedType}s...</h3>
+              <p className="text-gray-400">Please wait while we process your data</p>
               <div className="w-full max-w-md mx-auto">
                 <Progress value={progress} className="h-2.5" />
-                <p className="text-sm text-gray-500 mt-2">{progress}% complete</p>
+                <p className="text-sm text-gray-400 mt-2">{progress}% complete</p>
               </div>
             </div>
           )}
@@ -281,35 +280,35 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
           {step === 'complete' && result && (
             <div className="space-y-6 text-center py-8">
               {result.failed === 0 ? (
-                <div className="text-green-600">
+                <div className="text-green-400">
                   <CheckCircle className="mx-auto h-12 w-12 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">Import Complete!</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-xl font-semibold mb-2 text-white">Import Complete!</h3>
+                  <p className="text-gray-400">
                     Successfully imported {result.imported} {selectedType}{result.imported !== 1 ? 's' : ''}
                   </p>
                 </div>
               ) : (
-                <div className="text-yellow-600">
+                <div className="text-yellow-400">
                   <AlertCircle className="mx-auto h-12 w-12 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">
+                  <h3 className="text-xl font-semibold mb-2 text-white">
                     Import Complete with {result.failed} {result.failed === 1 ? 'Error' : 'Errors'}
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-400">
                     Imported {result.imported} of {result.totalRows} {selectedType}s
                   </p>
                 </div>
               )}
 
               {result.errors.length > 0 && (
-                <div className="text-left mt-6 border rounded-lg p-4 max-h-48 overflow-y-auto bg-gray-50">
-                  <h4 className="font-medium mb-3 text-sm text-gray-700 uppercase tracking-wider">Error Details:</h4>
+                <div className="text-left mt-6 border border-white/10 rounded-lg p-4 max-h-48 overflow-y-auto bg-white/5">
+                  <h4 className="font-medium mb-3 text-sm text-gray-400 uppercase tracking-wider">Error Details:</h4>
                   <ul className="text-sm space-y-2">
                     {result.errors.slice(0, 5).map((error, i) => (
-                      <li key={i} className="flex items-start">
-                        <span className="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded mr-2">
-                          Row {error.row + 1}
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="inline-block bg-red-500/30 text-red-300 text-xs px-2 py-1 rounded flex-shrink-0">
+                          Row {error.row}
                         </span>
-                        <span className="text-gray-700">{error.error}</span>
+                        <span className="text-gray-300">{error.error}</span>
                       </li>
                     ))}
                     {result.errors.length > 5 && (
@@ -322,9 +321,9 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
               )}
 
               <div className="pt-6">
-                <Button 
+                <Button
                   onClick={resetAndClose}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="px-6 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold"
                 >
                   Done
                 </Button>

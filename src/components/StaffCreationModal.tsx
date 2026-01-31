@@ -187,7 +187,7 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
     }
 
     return (
-        <div className="bg-dark-card w-full max-w-md space-y-6">
+        <div className="bg-dark-card w-full max-w-md space-y-6 px-6 py-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-white">
                     {initialData ? 'Edit Staff Account' : 'Create Staff Account'}

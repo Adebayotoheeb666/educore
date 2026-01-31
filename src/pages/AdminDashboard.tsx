@@ -527,40 +527,39 @@ export const AdminDashboard = () => {
 
             switch (type) {
                 case 'staff':
-                    result = await bulkImportStaff(fileText, schoolId);
+                    result = await bulkImportStaff(fileText, schoolId, user?.id, profile?.fullName);
                     break;
                 case 'parent':
-                    result = await bulkImportParents(fileText, schoolId);
+                    result = await bulkImportParents(fileText, schoolId, user?.id, profile?.fullName);
                     break;
                 case 'class':
-                    result = await bulkImportClasses(fileText, schoolId);
+                    result = await bulkImportClasses(fileText, schoolId, user?.id, profile?.fullName);
                     break;
                 case 'subject':
-                    result = await bulkImportSubjects(fileText, schoolId);
+                    result = await bulkImportSubjects(fileText, schoolId, user?.id, profile?.fullName);
                     break;
                 default:
                     throw new Error(`Unsupported import type: ${type}`);
             }
 
-            // Refresh the relevant data
-            switch (type) {
-                case 'staff':
-                    await fetchStaff();
-                    break;
-                case 'parent':
-                    await fetchParents();
-                    break;
-                case 'class':
-                    await fetchClasses();
-                    break;
-                case 'subject':
-                    await fetchSubjects();
-                    break;
+            // Show success message
+            if (result.imported > 0) {
+                showToast(`Successfully imported ${result.imported} ${type}${result.imported !== 1 ? 's' : ''}`, 'success');
             }
+
+            // Show error message if there were failures
+            if (result.failed > 0) {
+                showToast(`Failed to import ${result.failed} ${type}${result.failed !== 1 ? 's' : ''}. Check error details.`, 'error');
+            }
+
+            // Refresh the data
+            fetchData();
 
             return result;
         } catch (error) {
             console.error(`Error in bulk import (${type}):`, error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error during import';
+            showToast(`Import failed: ${errorMessage}`, 'error');
             throw error;
         }
     };
@@ -1041,7 +1040,7 @@ export const AdminDashboard = () => {
                                 <button onClick={() => { setShowClassModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create New Class</button>
                                 <button onClick={() => { setShowSubjectModal(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 border-b border-white/5">Create Subject</button>
                                 <button onClick={() => { setShowBulkImport(true); setShowAddMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 flex items-center justify-between">
-                                    <span>Bulk Student Upload</span>
+                                    <span>Bulk Import (All Types)</span>
                                     <Download className="w-4 h-4 text-teal-500" />
                                 </button>
                             </div>
@@ -1084,7 +1083,7 @@ export const AdminDashboard = () => {
                                 <button onClick={() => { setShowClassModal(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Create New Class</button>
                                 <button onClick={() => { setShowSubjectModal(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 border-b border-white/5">+ Create Subject</button>
                                 <button onClick={() => { setShowBulkImport(true); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-teal-400 hover:bg-white/5 flex items-center justify-between">
-                                    <span>+ Bulk Student Upload</span>
+                                    <span>+ Bulk Import (All Types)</span>
                                     <Download className="w-4 h-4" />
                                 </button>
                             </div>
