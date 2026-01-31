@@ -53,7 +53,8 @@ const createStaffAccountFallback = async (
 
     if (userError) {
         console.error('Development fallback error:', userError);
-        throw new Error(`Failed to create staff account: ${userError.message}`);
+        const errorMessage = userError.message || JSON.stringify(userError);
+        throw new Error(`Failed to create staff account: ${errorMessage}`);
     }
 
     console.log(
