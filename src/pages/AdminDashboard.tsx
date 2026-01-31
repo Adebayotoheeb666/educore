@@ -232,32 +232,48 @@ export const AdminDashboard = () => {
     const fetchFinancials = async () => {
         if (!schoolId) return { totalRevenue: 0, outstanding: 0 };
 
-        // This relies on users being fetched, but for simplicity we'll do a separate count or just re-fetch light data if needed
-        // Or we can combine queries. For now, independent fetches are safer for migration.
-        const { data: transData, error: transError } = await supabase
-            .from('financial_transactions')
-            .select('amount')
-            .eq('school_id', schoolId);
+        try {
+            // This relies on users being fetched, but for simplicity we'll do a separate count or just re-fetch light data if needed
+            // Or we can combine queries. For now, independent fetches are safer for migration.
+            const { data: transData, error: transError } = await supabase
+                .from('financial_transactions')
+                .select('amount')
+                .eq('school_id', schoolId);
 
-        if (transError) throw transError;
+            if (transError) {
+                console.error('Error fetching transactions:', transError);
+                // Return default values on error instead of throwing
+                return { totalRevenue: 0, outstanding: 0 };
+            }
 
-        const total = (transData || []).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+            const total = (transData || []).reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
-        // Estimate expected revenue (this is a bit rough as it depends on student count)
-        // We'll calculate "outstanding" in the component render or a derived memo, 
-        // passing student count as a dependency if possible, or just fetch student count here.
-        const { count } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('school_id', schoolId)
-            .eq('role', 'student');
+            // Estimate expected revenue (this is a bit rough as it depends on student count)
+            // We'll calculate "outstanding" in the component render or a derived memo,
+            // passing student count as a dependency if possible, or just fetch student count here.
+            const { count, error: countError } = await supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true })
+                .eq('school_id', schoolId)
+                .eq('role', 'student');
 
-        const totalExpected = (count || 0) * 150000;
+            if (countError) {
+                console.error('Error fetching student count:', countError);
+                // Return current revenue with zero outstanding if count fails
+                return { totalRevenue: total, outstanding: 0 };
+            }
 
-        return {
-            totalRevenue: total,
-            outstanding: totalExpected - total
-        };
+            const totalExpected = (count || 0) * 150000;
+
+            return {
+                totalRevenue: total,
+                outstanding: totalExpected - total
+            };
+        } catch (error) {
+            console.error('Unexpected error fetching financials:', error);
+            // Return default values on unexpected error
+            return { totalRevenue: 0, outstanding: 0 };
+        }
     };
 
     // Queries
