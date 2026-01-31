@@ -45,12 +45,14 @@ const createStaffAccountFallback = async (
     );
 
     const staffId = data.staffId || generateStaffId(schoolId);
+    const userId = generateUUID(); // Generate UUID to satisfy RLS policies
 
     // Create user profile directly in database
     // Note: This doesn't create an Auth account, which is a limitation in development
     const { data: userData, error: userError } = await supabase
         .from('users')
         .insert({
+            id: userId, // Include ID to satisfy RLS policies
             school_id: schoolId,
             email: data.email,
             full_name: data.fullName,
