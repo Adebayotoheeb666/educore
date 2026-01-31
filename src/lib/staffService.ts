@@ -61,14 +61,17 @@ const createStaffAccountFallback = async (
     schoolId: string,
     data: CreateStaffParams
 ): Promise<{ staffId: string; docId: string; message: string; warning?: string }> => {
-    console.log('Creating staff account with database fallback...');
+    console.log('Creating staff account...');
 
     const staffId = data.staffId || generateStaffId(schoolId);
-    const userId = generateUUID(); // Generate UUID to satisfy RLS policies
     const tempPassword = generateTemporaryPassword();
+    let authId: string | undefined;
+    let authCreatedSuccessfully = false;
 
     try {
-        // Create Auth account first
+        // Step 1: Attempt to create Auth account
+        console.log('Step 1: Creating Auth account for email:', data.email);
+
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email: data.email,
             password: tempPassword,
@@ -83,17 +86,33 @@ const createStaffAccountFallback = async (
         });
 
         if (authError) {
-            console.warn('Auth creation warning:', authError.message);
-            // Continue with database creation even if auth fails in some cases
+            console.error('Auth creation error:', authError.message);
+
+            // Check if email already exists
+            if (authError.message.includes('already registered') || authError.message.includes('User already exists')) {
+                console.log('Email already registered in Supabase Auth. This is ok - will use existing account.');
+                // Don't throw - we'll create the database record and the staff can be linked later
+            } else {
+                console.warn('Auth creation failed:', authError.message);
+                // Continue anyway - database record will be created
+            }
+        } else if (authData?.user?.id) {
+            authId = authData.user.id;
+            authCreatedSuccessfully = true;
+            console.log('✅ Auth account created successfully with ID:', authId);
         }
 
-        const authId = authData?.user?.id;
+        // Step 2: Create database record
+        // Use authId if we have it, otherwise generate a UUID for the database record
+        // The staff can be linked to Auth later if needed
+        const userId = authId || generateUUID();
 
-        // Create user profile in database
+        console.log('Step 2: Creating database record with ID:', userId);
+
         const { data: userData, error: userError } = await supabase
             .from('users')
             .insert({
-                id: authId || userId, // Use auth ID if available, otherwise generated UUID
+                id: userId,
                 school_id: schoolId,
                 email: data.email,
                 full_name: data.fullName,
@@ -124,14 +143,23 @@ const createStaffAccountFallback = async (
             throw new Error(`Database error: ${errorMsg}`);
         }
 
-        console.log('✅ Staff created with Auth account enabled');
+        console.log('✅ Database record created successfully');
 
-        return {
-            staffId,
-            docId: userData.id,
-            message: `✅ Staff account created successfully. Staff can now log in.`,
-            warning: authId ? undefined : '⚠️ Note: Auth account creation had issues, but database record created.'
-        };
+        // Return appropriate message based on what succeeded
+        if (authCreatedSuccessfully) {
+            return {
+                staffId,
+                docId: userData.id,
+                message: `✅ Staff account created successfully. Auth account created with email: ${data.email}. Staff can log in immediately.`
+            };
+        } else {
+            return {
+                staffId,
+                docId: userData.id,
+                message: `✅ Staff profile created successfully.`,
+                warning: `ℹ️ Auth account could not be created for ${data.email} at this moment. The staff record is active in the system. You can retry creating the Auth account from the Staff Auth page, or the staff can use password reset to set up their account.`
+            };
+        }
     } catch (error) {
         console.error('Staff creation error:', error);
         const errorMsg = error instanceof Error ? error.message : String(error);
