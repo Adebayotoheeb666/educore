@@ -86,7 +86,11 @@ const createStaffAccountFallback = async (
         });
 
         if (authError) {
-            console.error('Auth creation error:', authError.message);
+            console.error('Auth creation error details:', {
+                message: authError.message,
+                status: (authError as any).status,
+                code: (authError as any).code
+            });
 
             // Check if email already exists
             if (authError.message.includes('already registered') || authError.message.includes('User already exists')) {
@@ -100,6 +104,13 @@ const createStaffAccountFallback = async (
             authId = authData.user.id;
             authCreatedSuccessfully = true;
             console.log('✅ Auth account created successfully with ID:', authId);
+        } else if (authData?.user) {
+            // User was created but doesn't have an ID (rare but possible)
+            console.warn('Auth user created but without ID:', authData.user);
+            authCreatedSuccessfully = true; // Still consider it successful since signup succeeded
+            console.log('Signup succeeded even without immediate user ID (email confirmation may be pending)');
+        } else {
+            console.warn('Auth signup returned with no user and no error. This is unusual.', { authData });
         }
 
         // Step 2: Create database record
