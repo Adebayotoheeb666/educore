@@ -280,35 +280,35 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
           {step === 'complete' && result && (
             <div className="space-y-6 text-center py-8">
               {result.failed === 0 ? (
-                <div className="text-green-600">
+                <div className="text-green-400">
                   <CheckCircle className="mx-auto h-12 w-12 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">Import Complete!</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-xl font-semibold mb-2 text-white">Import Complete!</h3>
+                  <p className="text-gray-400">
                     Successfully imported {result.imported} {selectedType}{result.imported !== 1 ? 's' : ''}
                   </p>
                 </div>
               ) : (
-                <div className="text-yellow-600">
+                <div className="text-yellow-400">
                   <AlertCircle className="mx-auto h-12 w-12 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">
+                  <h3 className="text-xl font-semibold mb-2 text-white">
                     Import Complete with {result.failed} {result.failed === 1 ? 'Error' : 'Errors'}
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-400">
                     Imported {result.imported} of {result.totalRows} {selectedType}s
                   </p>
                 </div>
               )}
 
               {result.errors.length > 0 && (
-                <div className="text-left mt-6 border rounded-lg p-4 max-h-48 overflow-y-auto bg-gray-50">
-                  <h4 className="font-medium mb-3 text-sm text-gray-700 uppercase tracking-wider">Error Details:</h4>
+                <div className="text-left mt-6 border border-white/10 rounded-lg p-4 max-h-48 overflow-y-auto bg-white/5">
+                  <h4 className="font-medium mb-3 text-sm text-gray-400 uppercase tracking-wider">Error Details:</h4>
                   <ul className="text-sm space-y-2">
                     {result.errors.slice(0, 5).map((error, i) => (
-                      <li key={i} className="flex items-start">
-                        <span className="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded mr-2">
-                          Row {error.row + 1}
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="inline-block bg-red-500/30 text-red-300 text-xs px-2 py-1 rounded flex-shrink-0">
+                          Row {error.row}
                         </span>
-                        <span className="text-gray-700">{error.error}</span>
+                        <span className="text-gray-300">{error.error}</span>
                       </li>
                     ))}
                     {result.errors.length > 5 && (
@@ -321,9 +321,9 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
               )}
 
               <div className="pt-6">
-                <Button 
+                <Button
                   onClick={resetAndClose}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="px-6 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold"
                 >
                   Done
                 </Button>
