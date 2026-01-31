@@ -161,14 +161,14 @@ const createStaffAccountFallback = async (
             return {
                 staffId,
                 docId: userData.id,
-                message: `✅ Staff account created successfully. Auth account created with email: ${data.email}. Staff can log in immediately.`
+                message: `✅ Staff account created successfully. Auth account is ready. Staff can log in with email: ${data.email}`
             };
         } else {
             return {
                 staffId,
                 docId: userData.id,
-                message: `✅ Staff profile created successfully.`,
-                warning: `ℹ️ Auth account could not be created for ${data.email} at this moment. The staff record is active in the system. You can retry creating the Auth account from the Staff Auth page, or the staff can use password reset to set up their account.`
+                message: `✅ Staff profile created in the system.`,
+                warning: `The staff can log in after setting up their password. They can use the "Forgot Password" option on the login page to set their password with email: ${data.email}`
             };
         }
     } catch (error) {
