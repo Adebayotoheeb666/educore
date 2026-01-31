@@ -95,8 +95,10 @@ const createStaffAccountFallback = async (
 
                 // Check if email already exists
                 if (authError.message.includes('already registered') || authError.message.includes('User already exists')) {
-                    console.log('Email already registered in Supabase Auth.');
-                    authCreatedSuccessfully = true; // Consider it a success if it already exists
+                    console.log('Email already registered in Supabase Auth. This staff member likely already exists.');
+                    authCreatedSuccessfully = true;
+                    // Don't generate a new ID - we'll use the email-based lookup or let database decide
+                    authId = undefined; // Will generate UUID for database record, which will be independent
                 } else {
                     console.warn('Auth creation failed, will continue with database-only approach');
                 }
