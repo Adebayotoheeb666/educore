@@ -96,14 +96,18 @@ export const StaffCreationModal = ({ onClose, onSuccess, initialData, user: prop
             if (err instanceof Error) {
                 errorMessage = err.message;
                 // Provide more specific guidance for common errors
-                if (err.message.includes('Email already registered')) {
-                    errorMessage = 'Email already registered in system. Try using a different email address.';
+                if (err.message.includes('Email already registered') || err.message.includes('already in use')) {
+                    errorMessage = 'This email is already registered in the system. Please use a different email address or check if this staff member already exists.';
                 } else if (err.message.includes('Invalid email')) {
                     errorMessage = 'Invalid email format. Please provide a valid email address.';
                 } else if (err.message.includes('Not an admin')) {
                     errorMessage = 'You do not have permission to create staff accounts. Admin access required.';
                 } else if (err.message.includes('RLS')) {
                     errorMessage = 'Permission denied. Please ensure you have admin rights for this school.';
+                } else if (err.message.includes('User already registered')) {
+                    errorMessage = 'This staff member already exists in the system. Their Auth account is active. If you need to update their information, please edit the existing staff record.';
+                } else if (err.message.includes('Database error')) {
+                    errorMessage = 'Failed to save staff information to the database. This may happen if the email already exists. Please verify the email is unique.';
                 }
             }
 
