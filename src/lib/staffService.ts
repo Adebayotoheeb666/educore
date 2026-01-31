@@ -164,16 +164,17 @@ export const createStaffAccount = async (
     } catch (error) {
         console.error('Staff creation attempt failed:', error);
 
-        // Network/CORS error - likely function not deployed or network issue
+        // Network/infrastructure/CORS error - likely function not deployed or network issue
         if (!isProduction) {
-            const isNetworkError = error instanceof TypeError &&
-                (error.message.includes('Failed to fetch') ||
-                 error.message.includes('CORS') ||
-                 error.message.includes('NetworkError') ||
-                 error.message.includes('body stream already read'));
+            const isNetworkError = error instanceof (TypeError as any) &&
+                (error.message?.includes('Failed to fetch') ||
+                 error.message?.includes('CORS') ||
+                 error.message?.includes('NetworkError') ||
+                 error.message?.includes('body stream already read') ||
+                 error.message?.includes('Failed to read server response'));
 
             if (isNetworkError) {
-                console.warn('Edge function not reachable in development, using fallback...');
+                console.warn('Edge function not reachable or infrastructure error in development, using fallback...');
                 try {
                     return await createStaffAccountFallback(schoolId, data);
                 } catch (fallbackError) {
