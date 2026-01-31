@@ -71,11 +71,18 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
 
-    // Create an admin client with service role to verify the token and get user info
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    // Create a client with the anonKey and set the Authorization header
+    // to validate the user's token
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+      },
+    });
 
-    // Use the admin API to verify the token and get the user
-    const { data: { user }, error: authError } = await adminClient.auth.admin.getUserByIdToken(token);
+    // Set the authorization header to get the current user
+    const { data: { user }, error: authError } = await userClient
+      .auth
+      .getUser(token);
 
     if (authError || !user) {
       console.error("Token validation error:", authError);
