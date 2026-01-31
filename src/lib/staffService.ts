@@ -109,9 +109,11 @@ export const createStaffAccount = async (
         console.log('Edge function response status:', response.status);
 
         // Read the response body once to avoid "body stream already read" error
+        // Clone the response to get a fresh copy of the body stream
         let result;
         try {
-            const text = await response.text();
+            const responseClone = response.clone();
+            const text = await responseClone.text();
             console.log('Edge function response text:', text);
 
             if (text) {
