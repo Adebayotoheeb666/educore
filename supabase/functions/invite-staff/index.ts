@@ -1,10 +1,12 @@
-// @ts-nocheck
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// @deno-types="https://deno.land/x/types/deno.d.ts"
+import { serve } from "std/http/server.ts";
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+// Get environment variables
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || '';
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || '';
 
+// Interface for the request body
 interface InviteRequest {
     email: string;
     fullName: string;
@@ -14,6 +16,16 @@ interface InviteRequest {
     phoneNumber?: string;
     adminId: string; // Admin creating the staff account
     staffId?: string;
+}
+
+// Interface for the response
+interface ApiResponse {
+    success: boolean;
+    message: string;
+    staffId?: string;
+    authId?: string;
+    error?: string;
+    details?: any;
 }
 
 const corsHeaders = {
@@ -109,27 +121,68 @@ serve(async (req) => {
             }
 
             // 4. Create Auth user via admin API
-            console.log("Attempting to create Auth user for:", requestBody.email.toLowerCase().trim());
-            const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
-                email: requestBody.email.toLowerCase().trim(),
-                email_confirm: true,
-                user_metadata: {
-                    full_name: requestBody.fullName,
-                    role: requestBody.role,
-                    school_id: requestBody.schoolId,
-                    staff_id: staffId,
-                },
-            });
-
-            if (authError) {
+            const userEmail = requestBody.email.toLowerCase().trim();
+            console.log(`Attempting to create Auth user for: ${userEmail}`);
+            
+            try {
+                // First check if email is already in use
+                const { data: existingAuth, error: lookupError } = await adminClient.auth.admin.getUserByEmail(userEmail);
+                
+                if (lookupError && lookupError.status !== 404) {
+                    console.error("Error checking for existing auth user:", lookupError);
+                    throw new Error(`Failed to check for existing user: ${lookupError.message}`);
+                }
+                
+                if (existingAuth?.user) {
+                    console.log("Auth user already exists, using existing user");
+                    authId = existingAuth.user.id;
+                } else {
+                    console.log("Creating new auth user");
+                    const { data: authData, error: createError } = await adminClient.auth.admin.createUser({
+                        email: userEmail,
+                        email_confirm: true,
+                        user_metadata: {
+                            full_name: requestBody.fullName,
+                            role: requestBody.role,
+                            school_id: requestBody.schoolId,
+                            staff_id: staffId,
+                        },
+                    });
+                    
+                    if (createError) throw createError;
+                    if (authData?.user?.id) {
+                        authId = authData.user.id;
+                        console.log("Auth user created successfully");
+                    } else {
+                        throw new Error("Auth user creation succeeded but no user ID returned");
+                    }
+                }
+            } catch (error) {
+                const authError = error as { status?: number; message?: string };
                 console.error("Auth creation error:", authError);
                 console.error("Full error object:", JSON.stringify(authError, null, 2));
+                
+                // Check if this is a rate limiting error
+                if (authError.status === 429) {
+                    return new Response(
+                        JSON.stringify({
+                            error: "Rate limit exceeded",
+                            message: "Too many requests. Please wait a few minutes and try again."
+                        }),
+                        {
+                            status: 429,
+                            headers: { ...corsHeaders, "Content-Type": "application/json" }
+                        }
+                    );
+                }
 
                 // Provide more helpful error messages
-                let errorDetails = authError.message || String(authError);
+                let errorDetails = authError.message || 'An unknown error occurred';
+                let statusCode = 500;
 
-                if (authError.message?.includes('already exists')) {
-                    errorDetails = `Email already registered in system. Try using a different email address.`;
+                if (errorDetails.includes('already exists')) {
+                    errorDetails = 'Email already registered in system. Try using a different email address.';
+                    statusCode = 409; // Conflict
                 } else if (authError.message?.includes('invalid')) {
                     errorDetails = `Invalid email format. Please provide a valid email address.`;
                 } else if (authError.message?.includes('smtp')) {

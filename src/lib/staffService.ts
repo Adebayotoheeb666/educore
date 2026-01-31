@@ -221,6 +221,30 @@ export const deleteStaffAccount = async (
 ): Promise<{ success: boolean; message: string }> => {
     const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-staff`;
     const isProduction = import.meta.env.PROD;
+    
+    // Function to delete related records using the database function
+    const deleteRelatedRecords = async () => {
+        // First, check if the user exists and belongs to the school
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id, school_id')
+            .eq('id', staffId)
+            .eq('school_id', schoolId)
+            .single();
+            
+        if (userError || !userData) {
+            throw new Error('User not found or does not belong to this school');
+        }
+        
+        // Use the database function to safely delete the user and all related data
+        const { error: deleteError } = await supabase
+            .rpc('delete_user_safely', { p_user_id: staffId });
+            
+        if (deleteError) {
+            console.error('Error in delete_user_safely:', deleteError);
+            throw new Error(`Failed to delete user and related data: ${deleteError.message}`);
+        }
+    };
 
     console.log('[deleteStaffAccount] Attempting to delete staff:', {
         staffId,
@@ -231,98 +255,36 @@ export const deleteStaffAccount = async (
     });
 
     try {
-        // Try to use edge function (production or if deployed in development)
-        const response = await fetch(edgeFunctionUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseAnonKey}`
-            },
-            body: JSON.stringify({
-                staffId,
-                schoolId,
-                adminId
-            })
-        });
-
-        console.log('[deleteStaffAccount] Edge function response status:', response.status);
-
-        const result = await response.json();
-        console.log('[deleteStaffAccount] Edge function result:', result);
-
-        if (!response.ok) {
-            // If in development and function not deployed, fall back to direct delete
-            if (!isProduction && (response.status === 404 || response.status === 0)) {
-                console.log('[deleteStaffAccount] Function not deployed (404), using fallback...');
-                // Fallback: just delete from database (Auth account won't be deleted, but profile will be)
-                const { error, count } = await supabase
-                    .from('users')
-                    .delete({ count: 'exact' })
-                    .eq('id', staffId)
-                    .eq('school_id', schoolId);
-
-                if (error) {
-                    throw new Error(`Failed to delete staff account: ${error.message}`);
-                }
-
-                if (count === 0) {
-                    throw new Error('Staff member not found or access denied');
-                }
-
-                return {
-                    success: true,
-                    message: 'Staff member deleted from database (Auth account deletion unavailable in development)'
-                };
-            }
-
-            let errorMessage = result.error || `Failed to delete staff (HTTP ${response.status})`;
-            if (result.details) {
-                console.error('[deleteStaffAccount] Error details:', result.details);
-            }
-            throw new Error(errorMessage);
-        }
-
-        return {
-            success: true,
-            message: result.message || 'Staff member deleted successfully'
-        };
-    } catch (error) {
+        // Use the database function to handle all related deletions
+        await deleteRelatedRecords();
+        
+        // If we get here, the deletion was successful
+        return { success: true, message: 'User and all related data deleted successfully' };
+        
+    } catch (error: unknown) {
         console.error('[deleteStaffAccount] Error:', error);
-
-        // Network/CORS error - likely function not deployed
-        if (!isProduction) {
-            const isNetworkError = error instanceof TypeError &&
-                (error.message.includes('Failed to fetch') ||
-                 error.message.includes('CORS') ||
-                 error.message.includes('NetworkError'));
-
-            if (isNetworkError) {
-                console.warn('[deleteStaffAccount] Edge function not reachable in development, using fallback...');
-                try {
-                    // Fallback: just delete from database
-                    const { error: delError, count } = await supabase
-                        .from('users')
-                        .delete({ count: 'exact' })
-                        .eq('id', staffId)
-                        .eq('school_id', schoolId);
-
-                    if (delError) {
-                        throw new Error(`Failed to delete staff account: ${delError.message}`);
-                    }
-
-                    if (count === 0) {
-                        throw new Error('Staff member not found or access denied');
-                    }
-
-                    return {
-                        success: true,
-                        message: 'Staff member deleted from database (Auth account deletion unavailable in development)'
-                    };
-                } catch (fallbackError) {
-                    throw fallbackError;
-                }
+        
+        // If there's an error, try to get more details about remaining references
+        try {
+            const { data: references, error: refError } = await supabase
+                .rpc('check_user_references', { p_user_id: staffId });
+                
+            if (!refError && references && references.length > 0) {
+                console.error('Remaining references to this user:', references);
+                throw new Error(
+                    `Cannot delete user due to remaining references. ` +
+                    `References: ${JSON.stringify(references, null, 2)}`
+                );
             }
+        } catch (refCheckError) {
+            console.error('Error checking user references:', refCheckError);
+            // Continue with the original error if reference check fails
         }
-        throw error;
+        
+        const errorMessage = error instanceof Error 
+            ? error.message 
+            : 'An unknown error occurred while deleting the user';
+            
+        throw new Error(`Failed to delete user: ${errorMessage}`);
     }
 };
