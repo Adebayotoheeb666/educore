@@ -245,7 +245,10 @@ export const AdminDashboard = () => {
             }
             return data as any[];
         } catch (error) {
-            console.error('Unexpected error fetching classes:', error);
+            console.error('Network error fetching classes:', {
+                error: error instanceof Error ? error.message : String(error),
+                timestamp: new Date().toISOString()
+            });
             return [];
         }
     };
@@ -260,7 +263,10 @@ export const AdminDashboard = () => {
             }
             return data as any[];
         } catch (error) {
-            console.error('Unexpected error fetching subjects:', error);
+            console.error('Network error fetching subjects:', {
+                error: error instanceof Error ? error.message : String(error),
+                timestamp: new Date().toISOString()
+            });
             return [];
         }
     };
@@ -306,7 +312,10 @@ export const AdminDashboard = () => {
                 outstanding: totalExpected - total
             };
         } catch (error) {
-            console.error('Unexpected error fetching financials:', error);
+            console.error('Network error fetching financials:', {
+                error: error instanceof Error ? error.message : String(error),
+                timestamp: new Date().toISOString()
+            });
             // Return default values on unexpected error
             return { totalRevenue: 0, outstanding: 0 };
         }
