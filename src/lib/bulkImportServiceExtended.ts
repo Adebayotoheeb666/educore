@@ -636,36 +636,54 @@ export const bulkImportClasses = async (
  * Bulk import subjects
  */
 export const bulkImportSubjects = async (
-    rows: SubjectImportRow[],
+    csvText: string,
     schoolId: string,
     currentUserId?: string,
     currentUserName?: string
 ): Promise<ImportResult> => {
     const result: ImportResult = {
         success: false,
-        totalRows: rows.length,
+        totalRows: 0,
         imported: 0,
         failed: 0,
         errors: []
     };
 
     try {
+        // Parse CSV
+        const { rows: parsedRows } = parseCSVText<any>(
+            csvText,
+            ['name', 'code']
+        );
+
+        result.totalRows = parsedRows.length;
+
+        // Validate rows
+        const { valid, errors: validationErrors } = validateSubjectRows(parsedRows);
+        result.errors = validationErrors;
+        result.failed = validationErrors.length;
+
+        if (valid.length === 0) {
+            result.success = false;
+            return result;
+        }
+
         // Get all teachers for subject teacher mapping
         const { data: teachers } = await supabase
             .from('users')
             .select('id, staff_id')
             .eq('school_id', schoolId)
             .eq('role', 'teacher');
-            
+
         const teacherMap = new Map(teachers?.map(t => [t.staff_id?.toLowerCase(), t.id]) || []);
 
         // Process in batches
         const batchSize = 50;
         const subjectsToInsert: any[] = [];
-        
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            
+
+        for (let i = 0; i < valid.length; i++) {
+            const row = valid[i];
+
             // Map teacher ID if provided
             let teacherId = null;
             if (row.teacherId) {
@@ -673,19 +691,19 @@ export const bulkImportSubjects = async (
                 if (!teacherId) {
                     result.failed++;
                     result.errors.push({
-                        row: i + 2, // +2 for header + 1-indexing
+                        row: i + 2,
                         identifier: row.name,
                         error: `Teacher not found: ${row.teacherId}`
                     });
                     continue;
                 }
             }
-            
+
             subjectsToInsert.push({
                 id: `subject_${uuidv4()}`,
-                name: row.name.trim(),
-                code: row.code.trim().toUpperCase(),
-                description: row.description?.trim(),
+                name: row.name,
+                code: row.code.toUpperCase(),
+                description: row.description,
                 teacher_id: teacherId,
                 class_levels: row.classLevels?.split(',').map(l => l.trim()).filter(Boolean) || [],
                 school_id: schoolId,
@@ -693,27 +711,27 @@ export const bulkImportSubjects = async (
                 updated_at: new Date().toISOString()
             });
         }
-        
+
         // Insert subjects in batches
         for (let i = 0; i < subjectsToInsert.length; i += batchSize) {
             const batch = subjectsToInsert.slice(i, i + batchSize);
             const { error } = await supabase
                 .from('subjects')
                 .upsert(batch, { onConflict: 'code,school_id' });
-                
+
             if (error) {
                 result.failed += batch.length;
                 result.errors.push({
-                    row: i + 2, // +2 for header + 1-indexing
+                    row: i + 2,
                     error: `Failed to import subjects: ${error.message}`
                 });
             } else {
                 result.imported += batch.length;
             }
         }
-        
-        result.success = result.failed === 0;
-        
+
+        result.success = result.failed === validationErrors.length;
+
         // Log the import
         if (currentUserId && currentUserName) {
             await logAction(
@@ -731,7 +749,7 @@ export const bulkImportSubjects = async (
                 }
             );
         }
-        
+
         return result;
     } catch (error) {
         result.success = false;
