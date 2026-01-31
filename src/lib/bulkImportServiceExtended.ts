@@ -269,54 +269,72 @@ export const bulkImportStaff = async (
 ): Promise<ImportResult> => {
     const result: ImportResult = {
         success: false,
-        totalRows: rows.length,
+        totalRows: 0,
         imported: 0,
         failed: 0,
         errors: []
     };
 
     try {
+        // Parse CSV
+        const { rows: parsedRows } = parseCSVText<any>(
+            csvText,
+            ['staffid', 'fullname', 'email']
+        );
+
+        result.totalRows = parsedRows.length;
+
+        // Validate rows
+        const { valid, errors: validationErrors } = validateStaffRows(parsedRows);
+        result.errors = validationErrors;
+        result.failed = validationErrors.length;
+
+        if (valid.length === 0) {
+            result.success = false;
+            return result;
+        }
+
         // Process in batches
         const batchSize = 50;
-        
-        for (let i = 0; i < rows.length; i += batchSize) {
-            const batch = rows.slice(i, i + batchSize);
+
+        for (let i = 0; i < valid.length; i += batchSize) {
+            const batch = valid.slice(i, i + batchSize);
             const usersToInsert: any[] = [];
-            
+
             for (const row of batch) {
-                const staffId = row.staffId.trim().toLowerCase();
+                const staffId = row.staffId.toLowerCase();
                 const userId = `staff_${schoolId}_${staffId}`;
-                
+
                 usersToInsert.push({
                     id: userId,
                     staff_id: staffId,
-                    full_name: row.fullName.trim(),
-                    email: row.email.trim().toLowerCase(),
-                    phone_number: row.phoneNumber?.trim(),
-                    role: row.role?.trim() || 'teacher',
-                    department: row.department?.trim(),
+                    full_name: row.fullName,
+                    email: row.email,
+                    phone_number: row.phoneNumber,
+                    role: row.role,
+                    department: row.department,
                     school_id: schoolId
                 });
             }
-            
+
             // Insert batch
             const { error } = await supabase
                 .from('users')
                 .upsert(usersToInsert, { onConflict: 'email,staff_id' });
-                
+
             if (error) {
                 result.failed += batch.length;
                 result.errors.push({
-                    row: i,
+                    row: i + 2,
                     error: `Failed to import batch: ${error.message}`
                 });
             } else {
                 result.imported += batch.length;
             }
         }
-        
-        result.success = result.failed === 0;
-        
+
+        result.success = result.failed === validationErrors.length; // Only validation errors
+
         // Log the import
         if (currentUserId && currentUserName) {
             await logAction(
@@ -334,7 +352,7 @@ export const bulkImportStaff = async (
                 }
             );
         }
-        
+
         return result;
     } catch (error) {
         result.success = false;
