@@ -780,7 +780,15 @@ export const generateStaffCSVTemplate = (): string => {
         ['STF003', 'Admin User', 'admin@school.edu', '+1234567892', 'admin', 'Administration']
     ];
 
-    return [headers.join(','), ...sampleData.map(row => row.join(','))].join('\n');
+    const notes = [
+        '# Staff Import Template',
+        '# Required fields: StaffID, FullName, Email',
+        '# Optional fields: PhoneNumber, Role (default: teacher), Department',
+        '# Do not modify or delete this header row',
+        ''
+    ];
+
+    return [...notes, headers.join(','), ...sampleData.map(row => row.join(','))].join('\n');
 };
 
 /**
