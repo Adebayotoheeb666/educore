@@ -140,14 +140,15 @@ serve(async (req) => {
     }
 
     // Check if user is admin
-    const userRole = user.user_metadata?.role || user.app_metadata?.role;
-    if (userRole?.toLowerCase() !== "admin") {
-      console.warn(`User ${user.id} attempted to create staff auth but is not admin. Role: ${userRole}`);
+    if (userRecord.role?.toLowerCase() !== "admin") {
+      console.warn(`User ${userId} attempted to create staff auth but is not admin. Role: ${userRecord.role}`);
       return new Response(
-        JSON.stringify({ error: "Unauthorized: Admin access required" }),
+        JSON.stringify({ error: "Unauthorized: Admin access required", userRole: userRecord.role }),
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`Admin user ${userId} verified. Proceeding with staff auth creation.`);
 
     const { schoolId, staffId, staffName, email }: CreateAuthRequest =
       await req.json();
