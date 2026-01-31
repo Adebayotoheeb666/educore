@@ -800,17 +800,7 @@ export const generateParentCSVTemplate = (): string => {
         ['Jane Guardian', 'parent2@example.com', '+1234567891', '456 Oak Ave', 'STU003']
     ];
 
-    const notes = [
-        '# Parent Import Template',
-        '# Required fields: FullName, Email, PhoneNumber',
-        '# Optional fields: Address, StudentIds (comma-separated admission numbers)',
-        '# StudentIds are used to link parents to their students during import',
-        '# Example: STU001,STU002 links one parent to two students',
-        '# Do not modify or delete this header row',
-        ''
-    ];
-
-    return [...notes, headers.join(','), ...sampleData.map(row => row.join(','))].join('\n');
+    return [headers.join(','), ...sampleData.map(row => row.join(','))].join('\n');
 };
 
 /**
