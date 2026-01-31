@@ -1,6 +1,6 @@
 // @deno-types="https://deno.land/x/types/deno.d.ts"
 import { serve } from "std/http/server.ts";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 // Get environment variables
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || '';
