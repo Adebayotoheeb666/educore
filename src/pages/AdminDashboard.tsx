@@ -30,6 +30,7 @@ import { logAction } from '../lib/auditService';
 import { deleteStaffAccount } from '../lib/staffService';
 import { BulkImportModal } from '../components/BulkImportModal';
 import { bulkImportStaff, bulkImportParents, bulkImportClasses, bulkImportSubjects } from '../lib/bulkImportServiceExtended';
+import { bulkImportStudents, parseCSVFile } from '../lib/bulkImportService';
 import type { ImportResult } from '../lib/bulkImportService';
 import { ToastContainer, type ToastProps } from '../components/common/Toast';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
