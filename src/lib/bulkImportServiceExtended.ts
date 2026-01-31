@@ -506,36 +506,54 @@ export const bulkImportParents = async (
  * Bulk import classes
  */
 export const bulkImportClasses = async (
-    rows: ClassImportRow[],
+    csvText: string,
     schoolId: string,
     currentUserId?: string,
     currentUserName?: string
 ): Promise<ImportResult> => {
     const result: ImportResult = {
         success: false,
-        totalRows: rows.length,
+        totalRows: 0,
         imported: 0,
         failed: 0,
         errors: []
     };
 
     try {
+        // Parse CSV
+        const { rows: parsedRows } = parseCSVText<any>(
+            csvText,
+            ['name', 'level']
+        );
+
+        result.totalRows = parsedRows.length;
+
+        // Validate rows
+        const { valid, errors: validationErrors } = validateClassRows(parsedRows);
+        result.errors = validationErrors;
+        result.failed = validationErrors.length;
+
+        if (valid.length === 0) {
+            result.success = false;
+            return result;
+        }
+
         // Get all staff for class teacher mapping
         const { data: staff } = await supabase
             .from('users')
             .select('id, staff_id')
             .eq('school_id', schoolId)
             .in('role', ['teacher', 'admin']);
-            
+
         const staffMap = new Map(staff?.map(s => [s.staff_id?.toLowerCase(), s.id]) || []);
 
         // Process in batches
         const batchSize = 50;
         const classesToInsert: any[] = [];
-        
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            
+
+        for (let i = 0; i < valid.length; i++) {
+            const row = valid[i];
+
             // Map class teacher ID if provided
             let classTeacherId = null;
             if (row.classTeacherId) {
@@ -543,19 +561,19 @@ export const bulkImportClasses = async (
                 if (!classTeacherId) {
                     result.failed++;
                     result.errors.push({
-                        row: i + 2, // +2 for header + 1-indexing
+                        row: i + 2,
                         identifier: row.name,
                         error: `Class teacher not found: ${row.classTeacherId}`
                     });
                     continue;
                 }
             }
-            
+
             classesToInsert.push({
                 id: `class_${uuidv4()}`,
-                name: row.name.trim(),
-                level: row.level.trim(),
-                section: row.section?.trim(),
+                name: row.name,
+                level: row.level,
+                section: row.section,
                 academic_year: row.academicYear,
                 class_teacher_id: classTeacherId,
                 capacity: row.capacity,
@@ -564,27 +582,27 @@ export const bulkImportClasses = async (
                 updated_at: new Date().toISOString()
             });
         }
-        
+
         // Insert classes in batches
         for (let i = 0; i < classesToInsert.length; i += batchSize) {
             const batch = classesToInsert.slice(i, i + batchSize);
             const { error } = await supabase
                 .from('classes')
                 .upsert(batch, { onConflict: 'name,level,school_id' });
-                
+
             if (error) {
                 result.failed += batch.length;
                 result.errors.push({
-                    row: i + 2, // +2 for header + 1-indexing
+                    row: i + 2,
                     error: `Failed to import classes: ${error.message}`
                 });
             } else {
                 result.imported += batch.length;
             }
         }
-        
-        result.success = result.failed === 0;
-        
+
+        result.success = result.failed === validationErrors.length;
+
         // Log the import
         if (currentUserId && currentUserName) {
             await logAction(
@@ -602,7 +620,7 @@ export const bulkImportClasses = async (
                 }
             );
         }
-        
+
         return result;
     } catch (error) {
         result.success = false;
