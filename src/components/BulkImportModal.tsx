@@ -208,29 +208,29 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
 
           {step === 'preview' && file && (
             <div className="space-y-6">
-              <h3 className="text-lg font-medium">Preview {selectedType}s</h3>
-              <div className="border rounded-lg overflow-hidden">
+              <h3 className="text-lg font-medium text-white">Preview {selectedType}s</h3>
+              <div className="border border-white/10 rounded-lg overflow-hidden">
                 <div className="overflow-x-auto max-h-64">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-white/10">
+                    <thead className="bg-white/5">
                       <tr>
                         {Object.keys(previewData[0] || {}).map((header) => (
-                          <th 
-                            key={header} 
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100"
+                          <th
+                            key={header}
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
                           >
                             {header}
                           </th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="divide-y divide-white/5">
                       {previewData.map((row, i) => (
-                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <tr key={i} className={i % 2 === 0 ? 'bg-white/2' : 'bg-white/5'}>
                           {Object.values(row).map((cell, j) => (
-                            <td 
-                              key={j} 
-                              className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 max-w-xs overflow-hidden text-ellipsis"
+                            <td
+                              key={j}
+                              className="px-4 py-3 whitespace-nowrap text-sm text-gray-300 max-w-xs overflow-hidden text-ellipsis"
                               title={String(cell)}
                             >
                               {String(cell) || '-'}
@@ -245,17 +245,17 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
               <div className="text-sm text-gray-500 text-right">
                 Showing {Math.min(previewData.length, 5)} of {previewData.length} rows
               </div>
-              <div className="flex justify-between pt-4">
-                <Button 
-                  variant="outline" 
+              <div className="flex justify-between pt-4 gap-3">
+                <Button
+                  variant="outline"
                   onClick={() => setStep('upload')}
                   className="px-4 py-2"
                 >
                   Back
                 </Button>
-                <Button 
+                <Button
                   onClick={handleImport}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="px-6 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold"
                 >
                   Import {previewData.length} {selectedType}{previewData.length !== 1 ? 's' : ''}
                 </Button>
