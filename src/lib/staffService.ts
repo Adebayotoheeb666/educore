@@ -144,7 +144,16 @@ export const createStaffAccount = async (
 
         // Use fallback for development
         console.log('Using development fallback (direct database insert)...');
-        return await createStaffAccountFallback(schoolId, data);
+        try {
+            return await createStaffAccountFallback(schoolId, data);
+        } catch (fallbackError) {
+            console.error('Fallback failed. Check if:');
+            console.error('1. The users table exists and has the correct schema');
+            console.error('2. Email is not already in use');
+            console.error('3. You have database permissions');
+            console.error('Fallback error details:', fallbackError instanceof Error ? fallbackError.message : fallbackError);
+            throw fallbackError;
+        }
     }
 
     // In production, edge function is required
