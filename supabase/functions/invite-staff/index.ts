@@ -123,16 +123,16 @@ serve(async (req) => {
             // 4. Create Auth user via admin API
             const userEmail = requestBody.email.toLowerCase().trim();
             console.log(`Attempting to create Auth user for: ${userEmail}`);
-            
+
             try {
                 // First check if email is already in use
                 const { data: existingAuth, error: lookupError } = await adminClient.auth.admin.getUserByEmail(userEmail);
-                
+
                 if (lookupError && lookupError.status !== 404) {
                     console.error("Error checking for existing auth user:", lookupError);
                     throw new Error(`Failed to check for existing user: ${lookupError.message}`);
                 }
-                
+
                 if (existingAuth?.user) {
                     console.log("Auth user already exists, using existing user");
                     authId = existingAuth.user.id;
@@ -148,11 +148,11 @@ serve(async (req) => {
                             staff_id: staffId,
                         },
                     });
-                    
+
                     if (createError) throw createError;
                     if (authData?.user?.id) {
                         authId = authData.user.id;
-                        console.log("Auth user created successfully");
+                        console.log("Auth user created successfully with ID:", authId);
                     } else {
                         throw new Error("Auth user creation succeeded but no user ID returned");
                     }
@@ -161,7 +161,7 @@ serve(async (req) => {
                 const authError = error as { status?: number; message?: string };
                 console.error("Auth creation error:", authError);
                 console.error("Full error object:", JSON.stringify(authError, null, 2));
-                
+
                 // Check if this is a rate limiting error
                 if (authError.status === 429) {
                     return new Response(
@@ -256,8 +256,6 @@ serve(async (req) => {
                     }
                 );
             }
-            authId = authData.user?.id;
-            console.log("Auth user created successfully with ID:", authId);
         }
 
         // 5. Upsert user profile in DB
