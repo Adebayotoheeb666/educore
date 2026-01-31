@@ -8,7 +8,6 @@ export interface StaffImportRow {
     email: string;
     phoneNumber?: string;
     role?: string;
-    department?: string;
 }
 
 export interface ParentImportRow {
@@ -146,8 +145,7 @@ const validateStaffRows = (rows: any[]): { valid: StaffImportRow[], errors: Arra
             fullName: row.fullname.trim(),
             email: row.email.trim().toLowerCase(),
             phoneNumber: row.phonenumber?.trim(),
-            role: row.role?.trim() || 'teacher',
-            department: row.department?.trim()
+            role: row.role?.trim() || 'teacher'
         });
     });
 
@@ -312,7 +310,6 @@ export const bulkImportStaff = async (
                     email: row.email,
                     phone_number: row.phoneNumber,
                     role: row.role,
-                    department: row.department,
                     school_id: schoolId
                 });
             }
@@ -770,14 +767,13 @@ export const generateStaffCSVTemplate = (): string => {
         'FullName',
         'Email',
         'PhoneNumber',
-        'Role',
-        'Department'
+        'Role'
     ];
 
     const sampleData = [
-        ['STF001', 'John Doe', 'john.doe@school.edu', '+1234567890', 'teacher', 'Mathematics'],
-        ['STF002', 'Jane Smith', 'jane.smith@school.edu', '+1234567891', 'teacher', 'Science'],
-        ['STF003', 'Admin User', 'admin@school.edu', '+1234567892', 'admin', 'Administration']
+        ['STF001', 'John Doe', 'john.doe@school.edu', '+1234567890', 'teacher'],
+        ['STF002', 'Jane Smith', 'jane.smith@school.edu', '+1234567891', 'teacher'],
+        ['STF003', 'Admin User', 'admin@school.edu', '+1234567892', 'admin']
     ];
 
     return [headers.join(','), ...sampleData.map(row => row.join(','))].join('\n');
