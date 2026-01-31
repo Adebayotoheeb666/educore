@@ -862,8 +862,8 @@ export const generateSubjectCSVTemplate = (): string => {
         'Name',
         'Code',
         'Description',
-        'TeacherId',  // Staff ID of the subject teacher
-        'ClassLevels'  // Comma-separated list of class levels this subject is for
+        'TeacherId',
+        'ClassLevels'
     ];
 
     const sampleData = [
@@ -872,7 +872,18 @@ export const generateSubjectCSVTemplate = (): string => {
         ['English', 'ENG101', 'English Language', 'STF003', 'Grade 1,Grade 2,Grade 3']
     ];
 
-    return [headers.join(','), ...sampleData.map(row => row.join(','))].join('\n');
+    const notes = [
+        '# Subject Import Template',
+        '# Required fields: Name, Code',
+        '# Optional fields: Description, TeacherId (Staff ID), ClassLevels',
+        '# TeacherId must match an existing teacher\'s StaffID',
+        '# ClassLevels: comma-separated list of grades this subject applies to',
+        '# Code: Use unique subject codes like MATH101, SCI101, ENG101, etc.',
+        '# Do not modify or delete this header row',
+        ''
+    ];
+
+    return [...notes, headers.join(','), ...sampleData.map(row => row.join(','))].join('\n');
 };
 
 /**
