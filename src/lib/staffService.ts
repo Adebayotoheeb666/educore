@@ -52,12 +52,22 @@ const createStaffAccountFallback = async (
         .single();
 
     if (userError) {
-        console.error('Fallback database error:', {
+        const errorDetails = {
             code: (userError as any).code,
             message: userError.message,
             details: (userError as any).details,
-        });
-        throw new Error(`Database error: ${userError.message || 'Failed to insert user'}`);
+            hint: (userError as any).hint,
+        };
+        console.error('Fallback database error:', errorDetails);
+
+        let errorMsg = userError.message || 'Failed to insert user';
+        if ((userError as any).code === '23505') {
+            errorMsg = `Email '${data.email}' is already in use`;
+        } else if ((userError as any).hint) {
+            errorMsg = `${errorMsg} - ${(userError as any).hint}`;
+        }
+
+        throw new Error(`Database error: ${errorMsg}`);
     }
 
     console.log(
