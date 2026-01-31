@@ -109,11 +109,10 @@ export const createStaffAccount = async (
         console.log('Edge function response status:', response.status);
 
         // Read the response body once to avoid "body stream already read" error
-        // Clone the response to get a fresh copy of the body stream
         let result;
         try {
-            const responseClone = response.clone();
-            const text = await responseClone.text();
+            // Try to read response text directly
+            const text = await response.text();
             console.log('Edge function response text:', text);
 
             if (text) {
@@ -128,7 +127,13 @@ export const createStaffAccount = async (
             }
         } catch (readError) {
             console.error('Failed to read response:', readError);
-            result = { error: 'Failed to read server response', details: readError };
+            // If we can't read the response body, it's likely a proxy/middleware issue
+            // In development, fall back to direct database insert
+            if (!isProduction) {
+                console.warn('Response body already consumed (infrastructure issue), using fallback...');
+                return await createStaffAccountFallback(schoolId, data);
+            }
+            throw new Error(`Failed to read server response: ${readError}`);
         }
 
         console.log('Edge function result:', result);
