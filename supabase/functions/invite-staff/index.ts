@@ -1,6 +1,6 @@
 // @deno-types="https://deno.land/x/types/deno.d.ts"
-import { serve } from "std/http/server.ts";
-import { createClient } from "@supabase/supabase-js";
+import { serve } from "jsr:@std/http@1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 // Get environment variables
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || '';
@@ -86,21 +86,22 @@ serve(async (req) => {
             return `STF-${staffPrefix}-${randomSuffix}`;
         })();
 
-        // 2. Check if user already exists in Auth
-        console.log("Checking for existing user with email:", requestBody.email.toLowerCase().trim());
-        const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
-        if (listError) {
-            console.error("Error listing users:", listError);
-            throw new Error(`Failed to check existing users: ${listError.message}`);
+        // 2. Check if user already exists in Auth using getUserByEmail (more reliable than listUsers)
+        const userEmail = requestBody.email.toLowerCase().trim();
+        console.log("Checking for existing user with email:", userEmail);
+
+        const { data: existingAuth, error: lookupError } = await adminClient.auth.admin.getUserByEmail(userEmail);
+
+        if (lookupError && lookupError.status !== 404) {
+            console.error("Error checking for existing auth user:", lookupError);
+            throw new Error(`Failed to check for existing user: ${lookupError.message}`);
         }
 
-        console.log("Total users in system:", existingUsers?.users?.length || 0);
-        const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === requestBody.email.toLowerCase().trim());
-        console.log("Existing user found:", !!existingUser);
+        console.log("Existing auth user found:", !!existingAuth?.user);
 
-        let authId = existingUser?.id;
+        let authId = existingAuth?.user?.id;
 
-        if (!existingUser) {
+        if (!existingAuth?.user) {
             // 3. Verify admin creating this staff is actually admin of the school
             const { data: adminProfile } = await adminClient
                 .from("users")
@@ -121,47 +122,33 @@ serve(async (req) => {
             }
 
             // 4. Create Auth user via admin API
-            const userEmail = requestBody.email.toLowerCase().trim();
             console.log(`Attempting to create Auth user for: ${userEmail}`);
-            
+
             try {
-                // First check if email is already in use
-                const { data: existingAuth, error: lookupError } = await adminClient.auth.admin.getUserByEmail(userEmail);
-                
-                if (lookupError && lookupError.status !== 404) {
-                    console.error("Error checking for existing auth user:", lookupError);
-                    throw new Error(`Failed to check for existing user: ${lookupError.message}`);
-                }
-                
-                if (existingAuth?.user) {
-                    console.log("Auth user already exists, using existing user");
-                    authId = existingAuth.user.id;
+                console.log("Creating new auth user");
+                const { data: authData, error: createError } = await adminClient.auth.admin.createUser({
+                    email: userEmail,
+                    email_confirm: true,
+                    user_metadata: {
+                        full_name: requestBody.fullName,
+                        role: requestBody.role,
+                        school_id: requestBody.schoolId,
+                        staff_id: staffId,
+                    },
+                });
+
+                if (createError) throw createError;
+                if (authData?.user?.id) {
+                    authId = authData.user.id;
+                    console.log("Auth user created successfully with ID:", authId);
                 } else {
-                    console.log("Creating new auth user");
-                    const { data: authData, error: createError } = await adminClient.auth.admin.createUser({
-                        email: userEmail,
-                        email_confirm: true,
-                        user_metadata: {
-                            full_name: requestBody.fullName,
-                            role: requestBody.role,
-                            school_id: requestBody.schoolId,
-                            staff_id: staffId,
-                        },
-                    });
-                    
-                    if (createError) throw createError;
-                    if (authData?.user?.id) {
-                        authId = authData.user.id;
-                        console.log("Auth user created successfully");
-                    } else {
-                        throw new Error("Auth user creation succeeded but no user ID returned");
-                    }
+                    throw new Error("Auth user creation succeeded but no user ID returned");
                 }
             } catch (error) {
                 const authError = error as { status?: number; message?: string };
                 console.error("Auth creation error:", authError);
                 console.error("Full error object:", JSON.stringify(authError, null, 2));
-                
+
                 // Check if this is a rate limiting error
                 if (authError.status === 429) {
                     return new Response(
@@ -256,8 +243,6 @@ serve(async (req) => {
                     }
                 );
             }
-            authId = authData.user?.id;
-            console.log("Auth user created successfully with ID:", authId);
         }
 
         // 5. Upsert user profile in DB
@@ -315,7 +300,7 @@ serve(async (req) => {
         return new Response(
             JSON.stringify({
                 success: true,
-                message: existingUser
+                message: existingAuth?.user
                     ? "User already exists. Profile updated with school access."
                     : "Staff invited successfully. Confirmation email sent.",
                 staffId: staffId,

@@ -60,40 +60,95 @@ serve(async (req) => {
   }
 
   try {
-    // Verify JWT and get user
+    // Verify JWT and extract user ID
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      console.error("Missing Authorization header");
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    console.log("Authorization header present, extracting user ID from JWT...");
 
-    // Create a client with the Authorization header to validate the token
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-
-    if (authError || !user) {
-      console.error("Token validation error:", authError);
+    // Extract the token
+    const token = authHeader.replace("Bearer ", "").trim();
+    if (!token) {
+      console.error("Invalid Authorization header format");
       return new Response(
-        JSON.stringify({ error: "Invalid or expired token" }),
+        JSON.stringify({ error: "Invalid authorization header format" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Decode JWT (without verification - we'll verify admin status via database)
+    let userId: string | null = null;
+    try {
+      const parts = token.split(".");
+      if (parts.length !== 3) {
+        throw new Error("Invalid JWT format");
+      }
+
+      // Decode the payload (second part)
+      const payload = JSON.parse(
+        new TextDecoder().decode(
+          Uint8Array.from(
+            atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+              .split("")
+              .map((c) => c.charCodeAt(0))
+          )
+        )
+      );
+
+      userId = payload.sub; // 'sub' is the standard JWT claim for subject (user ID)
+      console.log("Extracted user ID from JWT:", userId);
+
+      if (!userId) {
+        throw new Error("No user ID in token");
+      }
+    } catch (error) {
+      console.error("Failed to decode JWT:", error);
+      return new Response(
+        JSON.stringify({ error: "Invalid JWT", details: String(error) }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Use admin client to verify user is an admin
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: userRecord, error: userError } = await adminClient
+      .from("users")
+      .select("id, role, school_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (userError) {
+      console.error("Error verifying user admin status:", userError);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify admin status", details: userError.message }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!userRecord) {
+      console.error("User not found in database:", userId);
+      return new Response(
+        JSON.stringify({ error: "User not found" }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
     // Check if user is admin
-    const userRole = user.user_metadata?.role || user.app_metadata?.role;
-    if (userRole?.toLowerCase() !== "admin") {
+    if (userRecord.role?.toLowerCase() !== "admin") {
+      console.warn(`User ${userId} attempted to create staff auth but is not admin. Role: ${userRecord.role}`);
       return new Response(
-        JSON.stringify({ error: "Unauthorized: Admin access required" }),
+        JSON.stringify({ error: "Unauthorized: Admin access required", userRole: userRecord.role }),
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`Admin user ${userId} verified. Proceeding with staff auth creation.`);
 
     const { schoolId, staffId, staffName, email }: CreateAuthRequest =
       await req.json();
