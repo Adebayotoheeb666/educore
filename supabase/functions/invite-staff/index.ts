@@ -300,7 +300,7 @@ serve(async (req) => {
         return new Response(
             JSON.stringify({
                 success: true,
-                message: existingUser
+                message: existingAuth?.user
                     ? "User already exists. Profile updated with school access."
                     : "Staff invited successfully. Confirmation email sent.",
                 staffId: staffId,
