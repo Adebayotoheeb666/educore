@@ -169,14 +169,14 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
 
           {step === 'upload' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-medium">Import {selectedType}s</h3>
-              <div 
-                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+              <h3 className="text-lg font-medium text-white">Import {selectedType}s</h3>
+              <div
+                className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center cursor-pointer hover:bg-white/5 hover:border-white/40 transition-colors duration-200"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium text-blue-600">Click to upload</span> or drag and drop
+                <p className="text-sm text-gray-300">
+                  <span className="font-medium text-teal-400">Click to upload</span> or drag and drop
                 </p>
                 <p className="text-xs text-gray-500 mt-1">CSV file (max 5MB)</p>
                 <input
@@ -187,18 +187,17 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
                   onChange={handleFileChange}
                 />
               </div>
-              <div className="flex justify-between items-center pt-4">
-                <Button 
-                  variant="outline" 
+              <div className="flex justify-between items-center pt-4 gap-3">
+                <Button
+                  variant="outline"
                   onClick={() => setStep('select')}
                   className="px-4 py-2"
                 >
                   Back
                 </Button>
-                <Button 
-                  onClick={handleDownloadTemplate} 
-                  variant="outline"
-                  className="px-4 py-2 flex items-center gap-2"
+                <Button
+                  onClick={handleDownloadTemplate}
+                  className="px-4 py-2 flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold"
                 >
                   <Download className="h-4 w-4" />
                   Download Template
