@@ -108,7 +108,23 @@ export const createStaffAccount = async (
 
         console.log('Edge function response status:', response.status);
 
-        const result = await response.json();
+        // Check status first, then parse based on content-type
+        let result;
+        const contentType = response.headers.get('content-type');
+
+        if (contentType && contentType.includes('application/json')) {
+            try {
+                result = await response.json();
+            } catch (parseError) {
+                console.error('Failed to parse response as JSON:', parseError);
+                result = { error: 'Invalid JSON response from server' };
+            }
+        } else {
+            // If not JSON, try to get text
+            const text = await response.text();
+            result = { error: `Unexpected response type: ${contentType || 'unknown'}`, details: text };
+        }
+
         console.log('Edge function result:', result);
 
         if (!response.ok) {
@@ -147,7 +163,8 @@ export const createStaffAccount = async (
             const isNetworkError = error instanceof TypeError &&
                 (error.message.includes('Failed to fetch') ||
                  error.message.includes('CORS') ||
-                 error.message.includes('NetworkError'));
+                 error.message.includes('NetworkError') ||
+                 error.message.includes('body stream already read'));
 
             if (isNetworkError) {
                 console.warn('Edge function not reachable in development, using fallback...');
