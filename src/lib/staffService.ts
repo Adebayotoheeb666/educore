@@ -90,70 +90,10 @@ export const createStaffAccount = async (
         isProduction
     });
 
-    // In development, try edge function but be ready to fallback
+    // In development, prioritize the direct fallback due to infrastructure issues with edge functions
     if (!isProduction) {
-        try {
-            console.log('Attempting to use edge function...');
-            const response = await fetch(edgeFunctionUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${supabaseAnonKey}`
-                },
-                body: JSON.stringify({
-                    email: data.email,
-                    fullName: data.fullName,
-                    schoolId,
-                    role: data.role,
-                    specialization: data.specialization,
-                    phoneNumber: data.phoneNumber,
-                    adminId,
-                    staffId: data.staffId
-                })
-            });
-
-            console.log('Edge function response status:', response.status);
-
-            // Try to read and parse the response
-            try {
-                const text = await response.text();
-                console.log('Edge function response text:', text);
-
-                if (text && response.ok) {
-                    const result = JSON.parse(text);
-                    console.log('Successfully used edge function');
-                    return {
-                        staffId: result.staffId,
-                        docId: result.authId,
-                        message: result.message || "Staff invited successfully. Confirmation email sent.",
-                        warning: result.warning || undefined
-                    };
-                }
-            } catch (parseError) {
-                console.warn('Could not parse edge function response, will use fallback');
-            }
-
-            // If status is not ok or we couldn't parse, try fallback
-            if (!response.ok) {
-                console.log('Edge function returned error status, using fallback...');
-            }
-        } catch (error) {
-            // Any error from edge function (network, proxy, etc) - use fallback
-            console.warn('Edge function failed, using fallback:', error instanceof Error ? error.message : error);
-        }
-
-        // Use fallback for development
-        console.log('Using development fallback (direct database insert)...');
-        try {
-            return await createStaffAccountFallback(schoolId, data);
-        } catch (fallbackError) {
-            console.error('Fallback failed. Check if:');
-            console.error('1. The users table exists and has the correct schema');
-            console.error('2. Email is not already in use');
-            console.error('3. You have database permissions');
-            console.error('Fallback error details:', fallbackError instanceof Error ? fallbackError.message : fallbackError);
-            throw fallbackError;
-        }
+        console.log('Development mode: Using direct database insert for staff creation...');
+        return await createStaffAccountFallback(schoolId, data);
     }
 
     // In production, edge function is required
