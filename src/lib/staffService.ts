@@ -52,9 +52,12 @@ const createStaffAccountFallback = async (
         .single();
 
     if (userError) {
-        console.error('Development fallback error:', userError);
-        const errorMessage = userError.message || JSON.stringify(userError);
-        throw new Error(`Failed to create staff account: ${errorMessage}`);
+        console.error('Fallback database error:', {
+            code: (userError as any).code,
+            message: userError.message,
+            details: (userError as any).details,
+        });
+        throw new Error(`Database error: ${userError.message || 'Failed to insert user'}`);
     }
 
     console.log(
