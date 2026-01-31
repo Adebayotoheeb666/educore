@@ -52,6 +52,44 @@ export interface ImportResult {
 export * from './bulkImportService';
 
 /**
+ * Parse CSV text and extract data
+ */
+export const parseCSVText = <T>(text: string, requiredFields: string[]): { headers: string[], rows: T[] } => {
+    try {
+        const lines = text.split('\n').filter(line => line.trim());
+
+        if (lines.length < 2) {
+            throw new Error('CSV file must have at least a header and one data row');
+        }
+
+        // Parse header
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const missingFields = requiredFields.filter(field => !headers.includes(field.toLowerCase()));
+
+        if (missingFields.length > 0) {
+            throw new Error(`Missing required columns: ${missingFields.join(', ')}`);
+        }
+
+        // Parse data rows
+        const rows: any[] = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            if (values[0] === '') continue; // Skip empty rows
+
+            const row: any = {};
+            headers.forEach((header, index) => {
+                row[header] = values[index] || '';
+            });
+            rows.push(row);
+        }
+
+        return { headers, rows };
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
  * Parse CSV file and extract data for any entity type
  */
 export const parseCSVFileGeneric = async <T>(file: File, requiredFields: string[]): Promise<{ headers: string[], rows: T[] }> => {
@@ -61,36 +99,8 @@ export const parseCSVFileGeneric = async <T>(file: File, requiredFields: string[
         reader.onload = (e) => {
             try {
                 const text = e.target?.result as string;
-                const lines = text.split('\n').filter(line => line.trim());
-
-                if (lines.length < 2) {
-                    reject(new Error('CSV file must have at least a header and one data row'));
-                    return;
-                }
-
-                // Parse header
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-                const missingFields = requiredFields.filter(field => !headers.includes(field.toLowerCase()));
-
-                if (missingFields.length > 0) {
-                    reject(new Error(`Missing required columns: ${missingFields.join(', ')}`));
-                    return;
-                }
-
-                // Parse data rows
-                const rows: any[] = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',').map(v => v.trim());
-                    if (values[0] === '') continue; // Skip empty rows
-
-                    const row: any = {};
-                    headers.forEach((header, index) => {
-                        row[header] = values[index] || '';
-                    });
-                    rows.push(row);
-                }
-
-                resolve({ headers, rows });
+                const result = parseCSVText<T>(text, requiredFields);
+                resolve(result);
             } catch (error) {
                 reject(error);
             }
