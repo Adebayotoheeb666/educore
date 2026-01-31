@@ -368,50 +368,68 @@ export const bulkImportStaff = async (
  * Bulk import parents
  */
 export const bulkImportParents = async (
-    rows: ParentImportRow[],
+    csvText: string,
     schoolId: string,
     currentUserId?: string,
     currentUserName?: string
 ): Promise<ImportResult> => {
     const result: ImportResult = {
         success: false,
-        totalRows: rows.length,
+        totalRows: 0,
         imported: 0,
         failed: 0,
         errors: []
     };
 
     try {
+        // Parse CSV
+        const { rows: parsedRows } = parseCSVText<any>(
+            csvText,
+            ['fullname', 'email', 'phonenumber']
+        );
+
+        result.totalRows = parsedRows.length;
+
+        // Validate rows
+        const { valid, errors: validationErrors } = validateParentRows(parsedRows);
+        result.errors = validationErrors;
+        result.failed = validationErrors.length;
+
+        if (valid.length === 0) {
+            result.success = false;
+            return result;
+        }
+
         // Get all students for linking
         const { data: students } = await supabase
             .from('users')
             .select('id, admission_number')
             .eq('school_id', schoolId)
             .eq('role', 'student');
-            
+
         const studentMap = new Map(students?.map(s => [s.admission_number?.toLowerCase(), s.id]) || []);
 
         // Process in batches
         const batchSize = 50;
-        
-        for (let i = 0; i < rows.length; i += batchSize) {
-            const batch = rows.slice(i, i + batchSize);
+
+        for (let i = 0; i < valid.length; i += batchSize) {
+            const batch = valid.slice(i, i + batchSize);
             const parentsToInsert: any[] = [];
             const linksToInsert: any[] = [];
-            
+
             for (const row of batch) {
                 const parentId = `parent_${uuidv4()}`;
-                
+
                 parentsToInsert.push({
                     id: parentId,
-                    full_name: row.fullName.trim(),
-                    email: row.email.trim().toLowerCase(),
-                    phone_number: row.phoneNumber.trim(),
-                    address: row.address?.trim(),
+                    full_name: row.fullName,
+                    email: row.email,
+                    phone_number: row.phoneNumber,
+                    address: row.address,
                     role: 'parent',
                     school_id: schoolId
                 });
-                
+
                 // Handle student links if provided
                 if (row.studentIds) {
                     const studentIds = row.studentIds.split(',').map(id => id.trim().toLowerCase());
@@ -428,33 +446,33 @@ export const bulkImportParents = async (
                     }
                 }
             }
-            
+
             // Insert parents
             const { error: parentError } = await supabase
                 .from('users')
                 .upsert(parentsToInsert, { onConflict: 'email' });
-                
+
             if (parentError) {
                 result.failed += batch.length;
                 result.errors.push({
-                    row: i,
+                    row: i + 2,
                     error: `Failed to import parents: ${parentError.message}`
                 });
                 continue;
             }
-            
+
             // Insert parent-student links if any
             if (linksToInsert.length > 0) {
                 await supabase
                     .from('parent_student_links')
                     .upsert(linksToInsert, { onConflict: 'parent_id,student_id' });
             }
-            
+
             result.imported += batch.length;
         }
-        
-        result.success = result.failed === 0;
-        
+
+        result.success = result.failed === validationErrors.length;
+
         // Log the import
         if (currentUserId && currentUserName) {
             await logAction(
@@ -472,7 +490,7 @@ export const bulkImportParents = async (
                 }
             );
         }
-        
+
         return result;
     } catch (error) {
         result.success = false;
