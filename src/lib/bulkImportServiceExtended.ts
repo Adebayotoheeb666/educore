@@ -830,7 +830,7 @@ export const generateClassCSVTemplate = (): string => {
         'Level',
         'Section',
         'AcademicYear',
-        'ClassTeacherId',  // Staff ID of the class teacher
+        'ClassTeacherId',
         'Capacity'
     ];
 
@@ -840,7 +840,18 @@ export const generateClassCSVTemplate = (): string => {
         ['A', 'Grade 2', '', '2023-2024', 'STF003', '28']
     ];
 
-    return [headers.join(','), ...sampleData.map(row => row.join(','))].join('\n');
+    const notes = [
+        '# Class Import Template',
+        '# Required fields: Name, Level',
+        '# Optional fields: Section, AcademicYear, ClassTeacherId (Staff ID), Capacity',
+        '# ClassTeacherId must match an existing staff member\'s StaffID',
+        '# Name example: A, B, C (or SS1A, SS1B, JS1A, etc.)',
+        '# Level example: Grade 1, Grade 2, Senior Secondary, Junior Secondary',
+        '# Do not modify or delete this header row',
+        ''
+    ];
+
+    return [...notes, headers.join(','), ...sampleData.map(row => row.join(','))].join('\n');
 };
 
 /**
