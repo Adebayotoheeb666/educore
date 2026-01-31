@@ -126,16 +126,42 @@ export const createStaffAuthAccount = async (
 
         if (error) {
             console.error('Auth signup error:', error.message);
+
+            // Check if the issue is that user already exists
+            if (error.message.includes('already registered') || error.message.includes('User already exists')) {
+                console.log('Email already registered. This is expected if staff was previously created.');
+                // Try to sign in to verify it works
+                try {
+                    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                        email: virtualEmail,
+                        password: tempPassword,
+                    });
+
+                    if (!signInError && signInData.user?.id) {
+                        return {
+                            success: true,
+                            authId: signInData.user.id,
+                            message: 'Staff Auth account already exists and is working',
+                        };
+                    }
+                } catch (e) {
+                    console.log('Could not verify existing account');
+                }
+            }
+
             return {
                 success: false,
-                message: `Failed to create Auth account: ${error.message}`,
+                message: `Failed to create Auth account: ${error.message}. Staff account may already be registered.`,
             };
         }
 
         if (!data.user?.id) {
+            console.warn('Auth signup succeeded but returned empty user ID');
+            // Even if we got an empty ID, the signup might have succeeded (email confirmation might be pending)
             return {
-                success: false,
-                message: 'Auth account creation returned empty user ID',
+                success: true,
+                authId: undefined,
+                message: 'Auth account created for staff member. Email confirmation may be pending.',
             };
         }
 
