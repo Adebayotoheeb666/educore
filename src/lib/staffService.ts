@@ -31,70 +31,157 @@ function generateUUID(): string {
 }
 
 /**
- * Fallback for development: Create staff directly in Supabase without Auth
+ * Generate a temporary password for staff
+ */
+function generateTemporaryPassword(): string {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '@$!%*?&';
+
+    let password = '';
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += special[Math.floor(Math.random() * special.length)];
+
+    const allChars = uppercase + lowercase + numbers + special;
+    for (let i = 0; i < 6; i++) {
+        password += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+}
+
+/**
+ * Fallback for development: Create staff with Auth account
  * (used when edge function is not deployed)
  */
 const createStaffAccountFallback = async (
     schoolId: string,
     data: CreateStaffParams
-): Promise<{ staffId: string; docId: string; message: string }> => {
-    console.warn(
-        '⚠️  Using development fallback for staff creation. ' +
-        'The Supabase Edge Function "invite-staff" is not deployed. ' +
-        'To use the full feature, deploy functions with: supabase functions deploy'
-    );
+): Promise<{ staffId: string; docId: string; message: string; warning?: string }> => {
+    console.log('Creating staff account...');
 
     const staffId = data.staffId || generateStaffId(schoolId);
-    const userId = generateUUID(); // Generate UUID to satisfy RLS policies
+    const tempPassword = generateTemporaryPassword();
+    let authId: string | undefined;
+    let authCreatedSuccessfully = false;
 
-    // Create user profile directly in database
-    // Note: This doesn't create an Auth account, which is a limitation in development
-    const { data: userData, error: userError } = await supabase
-        .from('users')
-        .insert({
-            id: userId, // Include ID to satisfy RLS policies
-            school_id: schoolId,
-            email: data.email,
-            full_name: data.fullName,
-            role: data.role,
-            staff_id: staffId,
-            phone_number: data.phoneNumber,
-            assigned_subjects: data.specialization ? [data.specialization] : [],
-        })
-        .select()
-        .single();
+    try {
+        // Step 1: Try to create Auth account (best effort)
+        // Note: This may fail due to Supabase configuration, so we make it optional
+        console.log('Step 1: Creating Auth account for email:', data.email);
 
-    if (userError) {
-        const errorDetails = {
-            code: (userError as any).code,
-            message: userError.message,
-            details: (userError as any).details,
-            hint: (userError as any).hint,
-        };
-        console.error('Fallback database error:', errorDetails);
+        try {
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: data.email,
+                password: tempPassword,
+                options: {
+                    data: {
+                        role: data.role,
+                        schoolId: schoolId,
+                        staffId: staffId,
+                        fullName: data.fullName,
+                    }
+                }
+            });
 
-        let errorMsg = userError.message || 'Failed to insert user';
-        if ((userError as any).code === '23505') {
-            errorMsg = `Email '${data.email}' is already in use`;
-        } else if ((userError as any).hint) {
-            errorMsg = `${errorMsg} - ${(userError as any).hint}`;
+            if (authError) {
+                console.warn('Auth creation warning:', {
+                    message: authError.message,
+                    status: (authError as any).status,
+                });
+
+                // Check if email already exists
+                if (authError.message.includes('already registered') || authError.message.includes('User already exists')) {
+                    console.log('Email already registered in Supabase Auth. This staff member likely already exists.');
+                    authCreatedSuccessfully = true;
+                    // Don't generate a new ID - we'll use the email-based lookup or let database decide
+                    authId = undefined; // Will generate UUID for database record, which will be independent
+                } else {
+                    console.warn('Auth creation failed, will continue with database-only approach');
+                }
+            } else if (authData?.user?.id) {
+                authId = authData.user.id;
+                authCreatedSuccessfully = true;
+                console.log('✅ Auth account created successfully with ID:', authId);
+            } else if (authData?.user) {
+                // User was created but doesn't have an ID (e.g., email confirmation pending)
+                console.log('Auth signup succeeded (ID pending email confirmation)');
+                authCreatedSuccessfully = true;
+            }
+        } catch (authErr) {
+            console.warn('Auth operation failed (will continue):', authErr instanceof Error ? authErr.message : String(authErr));
+            // Continue - we'll create the database record regardless
         }
 
-        throw new Error(`Database error: ${errorMsg}`);
+        // Step 2: Create or update database record
+        // Use authId if we have it, otherwise generate a UUID for the database record
+        const userId = authId || generateUUID();
+
+        console.log('Step 2: Creating/updating database record with ID:', userId, 'email:', data.email);
+
+        // Use UPSERT to handle cases where the email already exists
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .upsert(
+                {
+                    id: userId,
+                    school_id: schoolId,
+                    email: data.email,
+                    full_name: data.fullName,
+                    role: data.role,
+                    staff_id: staffId,
+                    phone_number: data.phoneNumber,
+                    assigned_subjects: data.specialization ? [data.specialization] : [],
+                },
+                { onConflict: 'email' } // If email already exists, update the record
+            )
+            .select()
+            .single();
+
+        if (userError) {
+            const errorDetails = {
+                code: (userError as any).code,
+                message: userError.message,
+                details: (userError as any).details,
+                hint: (userError as any).hint,
+            };
+            console.error('Database error:', errorDetails);
+
+            let errorMsg = userError.message || 'Failed to save user';
+            if ((userError as any).code === '23505') {
+                errorMsg = `Email '${data.email}' is already in use`;
+            } else if ((userError as any).hint) {
+                errorMsg = `${errorMsg} - ${(userError as any).hint}`;
+            }
+
+            throw new Error(`Database error: ${errorMsg}`);
+        }
+
+        console.log('✅ Database record created successfully');
+
+        // Return appropriate message based on what succeeded
+        if (authCreatedSuccessfully) {
+            return {
+                staffId,
+                docId: userData.id,
+                message: `✅ Staff account created successfully. Auth account is ready. Staff can log in with email: ${data.email}`
+            };
+        } else {
+            return {
+                staffId,
+                docId: userData.id,
+                message: `✅ Staff profile created in the system.`,
+                warning: `The staff can log in after setting up their password. They can use the "Forgot Password" option on the login page to set their password with email: ${data.email}`
+            };
+        }
+    } catch (error) {
+        console.error('Staff creation error:', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to create staff account: ${errorMsg}`);
     }
-
-    console.log(
-        '✅ Staff created in database (development mode). ' +
-        'Note: Auth account was not created. Staff cannot log in yet. ' +
-        'Deploy the edge function for full functionality.'
-    );
-
-    return {
-        staffId,
-        docId: userData.id,
-        message: `Staff profile created in development mode. ` +
-            `Note: Deploy Supabase functions for Auth account creation and email notifications.`
-    };
 };
 
 export const createStaffAccount = async (

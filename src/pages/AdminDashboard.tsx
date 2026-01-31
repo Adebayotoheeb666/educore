@@ -30,6 +30,7 @@ import { logAction } from '../lib/auditService';
 import { deleteStaffAccount } from '../lib/staffService';
 import { BulkImportModal } from '../components/BulkImportModal';
 import { bulkImportStaff, bulkImportParents, bulkImportClasses, bulkImportSubjects } from '../lib/bulkImportServiceExtended';
+import { bulkImportStudents, parseCSVFile } from '../lib/bulkImportService';
 import type { ImportResult } from '../lib/bulkImportService';
 import { ToastContainer, type ToastProps } from '../components/common/Toast';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
@@ -245,7 +246,10 @@ export const AdminDashboard = () => {
             }
             return data as any[];
         } catch (error) {
-            console.error('Unexpected error fetching classes:', error);
+            console.error('Network error fetching classes:', {
+                error: error instanceof Error ? error.message : String(error),
+                timestamp: new Date().toISOString()
+            });
             return [];
         }
     };
@@ -260,7 +264,10 @@ export const AdminDashboard = () => {
             }
             return data as any[];
         } catch (error) {
-            console.error('Unexpected error fetching subjects:', error);
+            console.error('Network error fetching subjects:', {
+                error: error instanceof Error ? error.message : String(error),
+                timestamp: new Date().toISOString()
+            });
             return [];
         }
     };
@@ -306,7 +313,10 @@ export const AdminDashboard = () => {
                 outstanding: totalExpected - total
             };
         } catch (error) {
-            console.error('Unexpected error fetching financials:', error);
+            console.error('Network error fetching financials:', {
+                error: error instanceof Error ? error.message : String(error),
+                timestamp: new Date().toISOString()
+            });
             // Return default values on unexpected error
             return { totalRevenue: 0, outstanding: 0 };
         }
@@ -537,6 +547,10 @@ export const AdminDashboard = () => {
                     break;
                 case 'subject':
                     result = await bulkImportSubjects(fileText, schoolId, user?.id, profile?.fullName);
+                    break;
+                case 'student':
+                    const studentRows = await parseCSVFile(file);
+                    result = await bulkImportStudents(studentRows, schoolId, false, user?.id, profile?.fullName);
                     break;
                 default:
                     throw new Error(`Unsupported import type: ${type}`);
