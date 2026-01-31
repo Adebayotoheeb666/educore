@@ -317,7 +317,7 @@ export const bulkImportStaff = async (
             // Insert batch
             const { error } = await supabase
                 .from('users')
-                .upsert(usersToInsert, { onConflict: 'email,staff_id' });
+                .upsert(usersToInsert, { onConflict: 'id' });
 
             if (error) {
                 result.failed += batch.length;
