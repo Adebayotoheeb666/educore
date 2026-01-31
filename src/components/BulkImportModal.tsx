@@ -266,13 +266,13 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
           {step === 'importing' && (
             <div className="space-y-6 text-center py-8">
               <div className="animate-pulse">
-                <Upload className="mx-auto h-12 w-12 text-blue-600" />
+                <Upload className="mx-auto h-12 w-12 text-teal-400" />
               </div>
-              <h3 className="text-lg font-medium">Importing {selectedType}s...</h3>
-              <p className="text-gray-500">Please wait while we process your data</p>
+              <h3 className="text-lg font-medium text-white">Importing {selectedType}s...</h3>
+              <p className="text-gray-400">Please wait while we process your data</p>
               <div className="w-full max-w-md mx-auto">
                 <Progress value={progress} className="h-2.5" />
-                <p className="text-sm text-gray-500 mt-2">{progress}% complete</p>
+                <p className="text-sm text-gray-400 mt-2">{progress}% complete</p>
               </div>
             </div>
           )}
