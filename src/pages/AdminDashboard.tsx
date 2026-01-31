@@ -28,6 +28,8 @@ import { SchoolSettingsModal } from '../components/SchoolSettingsModal';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/auditService';
 import { deleteStaffAccount } from '../lib/staffService';
+import { BulkImportModal } from '../components/BulkImportModal';
+import { bulkImportStaff, bulkImportParents, bulkImportClasses, bulkImportSubjects } from '../lib/bulkImportServiceExtended';
 import type { ImportResult } from '../lib/bulkImportService';
 import { ToastContainer, type ToastProps } from '../components/common/Toast';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
@@ -46,11 +48,11 @@ export const AdminDashboard = () => {
     const [financials, setFinancials] = useState({ totalRevenue: 0, outstanding: 0 });
     // const [loading, setLoading] = useState(true); // Replaced by derived state
     const [showAddMenu, setShowAddMenu] = useState(false);
+    const [showBulkImport, setShowBulkImport] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     // Modals
-    const [showBulkImport, setShowBulkImport] = useState(false);
     const [showStaffCreation, setShowStaffCreation] = useState(false);
     const [showStudentCreation, setShowStudentCreation] = useState(false);
     const [showParentCreation, setShowParentCreation] = useState(false);
@@ -69,6 +71,8 @@ export const AdminDashboard = () => {
     const [editingStaff, setEditingStaff] = useState<any | null>(null);
     const [editingStudent, setEditingStudent] = useState<any | null>(null);
     const [editingParent, setEditingParent] = useState<any | null>(null);
+    const [isCreatingSubject, setIsCreatingSubject] = useState(false);
+    const [isCreatingClass, setIsCreatingClass] = useState(false);
 
     // Toast/Notification state
     const [toasts, setToasts] = useState<Omit<ToastProps, 'onClose'>[]>([]);
@@ -408,6 +412,7 @@ export const AdminDashboard = () => {
 
     const handleCreateSubject = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsCreatingSubject(true);
         try {
             if (editingSubject) {
                 const { error, count } = await supabase
@@ -453,11 +458,14 @@ export const AdminDashboard = () => {
         } catch (err) {
             showToast(`Failed to ${editingSubject ? 'update' : 'create'} subject`, 'error');
             console.error('Subject operation error:', err instanceof Error ? err.message : String(err));
+        } finally {
+            setIsCreatingSubject(false);
         }
     };
 
     const handleCreateClass = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsCreatingClass(true);
         try {
             if (editingClass) {
                 const { error, count } = await supabase
@@ -503,6 +511,57 @@ export const AdminDashboard = () => {
         } catch (err) {
             showToast(`Failed to ${editingClass ? 'update' : 'create'} class`, 'error');
             console.error('Class operation error:', err instanceof Error ? err.message : String(err));
+        } finally {
+            setIsCreatingClass(false);
+        }
+    };
+
+    const handleBulkImport = async (file: File, type: string) => {
+        if (!schoolId) {
+            throw new Error('School ID is required for bulk import');
+        }
+
+        try {
+            const fileText = await file.text();
+            let result: ImportResult;
+
+            switch (type) {
+                case 'staff':
+                    result = await bulkImportStaff(fileText, schoolId);
+                    break;
+                case 'parent':
+                    result = await bulkImportParents(fileText, schoolId);
+                    break;
+                case 'class':
+                    result = await bulkImportClasses(fileText, schoolId);
+                    break;
+                case 'subject':
+                    result = await bulkImportSubjects(fileText, schoolId);
+                    break;
+                default:
+                    throw new Error(`Unsupported import type: ${type}`);
+            }
+
+            // Refresh the relevant data
+            switch (type) {
+                case 'staff':
+                    await fetchStaff();
+                    break;
+                case 'parent':
+                    await fetchParents();
+                    break;
+                case 'class':
+                    await fetchClasses();
+                    break;
+                case 'subject':
+                    await fetchSubjects();
+                    break;
+            }
+
+            return result;
+        } catch (error) {
+            console.error(`Error in bulk import (${type}):`, error);
+            throw error;
         }
     };
 
@@ -770,16 +829,16 @@ export const AdminDashboard = () => {
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
                 <div className="bg-dark-card border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                     <div className="sticky top-0 bg-dark-card border-b border-white/10 p-4 md:p-6 flex items-center justify-between">
-                        <h1 className="text-lg md:text-2xl font-bold text-white">Bulk Import Students</h1>
-                        <button onClick={() => setShowBulkImport(false)} className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white"><X className="w-5 md:w-6 h-5 md:h-6" /></button>
+                        <h1 className="text-lg md:text-2xl font-bold text-white">Bulk Import</h1>
+                        <button onClick={() => setShowBulkImport(false)} className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white">
+                            <X className="w-5 md:w-6 h-5 md:h-6" />
+                        </button>
                     </div>
                     <div className="p-4 md:p-6">
-                        <BulkStudentImport
-                            user={user}
-                            profile={profile}
-                            schoolId={schoolId}
-                            onSuccess={handleBulkImportSuccess}
+                        <BulkImportModal
+                            isOpen={showBulkImport}
                             onClose={() => setShowBulkImport(false)}
+                            onImport={handleBulkImport}
                         />
                     </div>
                 </div>
@@ -855,8 +914,22 @@ export const AdminDashboard = () => {
                                 <label className="text-sm text-gray-400">Subject Code (Optional)</label>
                                 <input type="text" className="w-full bg-dark-bg border border-white/10 rounded-lg p-3 text-white mt-1" value={newSubject.code} onChange={e => setNewSubject({ ...newSubject, code: e.target.value })} placeholder="e.g. MTH101" />
                             </div>
-                            <button type="submit" className="w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl">
-                                {editingSubject ? 'Update Subject' : 'Create Subject'}
+                            <button 
+                                type="submit" 
+                                className="w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-70"
+                                disabled={isCreatingSubject}
+                            >
+                                {isCreatingSubject ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        {editingSubject ? 'Updating...' : 'Creating...'}
+                                    </>
+                                ) : (
+                                    <>{editingSubject ? 'Update Subject' : 'Create Subject'}</>
+                                )}
                             </button>
                         </form>
                     </div>
@@ -886,8 +959,22 @@ export const AdminDashboard = () => {
                                     <option value="Nursery">Nursery</option>
                                 </select>
                             </div>
-                            <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl">
-                                {editingClass ? 'Update Class' : 'Create Class'}
+                            <button 
+                                type="submit" 
+                                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-70"
+                                disabled={isCreatingClass}
+                            >
+                                {isCreatingClass ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        {editingClass ? 'Updating...' : 'Creating...'}
+                                    </>
+                                ) : (
+                                    <>{editingClass ? 'Update Class' : 'Create Class'}</>
+                                )}
                             </button>
                         </form>
                     </div>
