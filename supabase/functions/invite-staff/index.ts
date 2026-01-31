@@ -1,5 +1,5 @@
 // @deno-types="https://deno.land/x/types/deno.d.ts"
-import { serve } from "std/http/server.ts";
+import { serve } from "jsr:@std/http@1/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 // Get environment variables
