@@ -116,25 +116,28 @@ const createStaffAccountFallback = async (
             // Continue - we'll create the database record regardless
         }
 
-        // Step 2: Create database record
+        // Step 2: Create or update database record
         // Use authId if we have it, otherwise generate a UUID for the database record
-        // The staff can be linked to Auth later if needed
         const userId = authId || generateUUID();
 
-        console.log('Step 2: Creating database record with ID:', userId);
+        console.log('Step 2: Creating/updating database record with ID:', userId, 'email:', data.email);
 
+        // Use UPSERT to handle cases where the email already exists
         const { data: userData, error: userError } = await supabase
             .from('users')
-            .insert({
-                id: userId,
-                school_id: schoolId,
-                email: data.email,
-                full_name: data.fullName,
-                role: data.role,
-                staff_id: staffId,
-                phone_number: data.phoneNumber,
-                assigned_subjects: data.specialization ? [data.specialization] : [],
-            })
+            .upsert(
+                {
+                    id: userId,
+                    school_id: schoolId,
+                    email: data.email,
+                    full_name: data.fullName,
+                    role: data.role,
+                    staff_id: staffId,
+                    phone_number: data.phoneNumber,
+                    assigned_subjects: data.specialization ? [data.specialization] : [],
+                },
+                { onConflict: 'email' } // If email already exists, update the record
+            )
             .select()
             .single();
 
@@ -147,7 +150,7 @@ const createStaffAccountFallback = async (
             };
             console.error('Database error:', errorDetails);
 
-            let errorMsg = userError.message || 'Failed to insert user';
+            let errorMsg = userError.message || 'Failed to save user';
             if ((userError as any).code === '23505') {
                 errorMsg = `Email '${data.email}' is already in use`;
             } else if ((userError as any).hint) {
