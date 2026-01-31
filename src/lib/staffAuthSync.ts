@@ -125,33 +125,33 @@ export const createStaffAuthAccount = async (
         });
 
         if (error) {
-            console.error('Auth signup error:', error.message);
+            console.error('Auth signup error:', {
+                message: error.message,
+                status: (error as any).status,
+            });
 
             // Check if the issue is that user already exists
             if (error.message.includes('already registered') || error.message.includes('User already exists')) {
-                console.log('Email already registered. This is expected if staff was previously created.');
-                // Try to sign in to verify it works
-                try {
-                    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                        email: virtualEmail,
-                        password: tempPassword,
-                    });
+                console.log('Email already registered in Auth system. This is expected if staff account exists.');
+                return {
+                    success: true,
+                    authId: undefined,
+                    message: `Auth account for ${virtualEmail} already exists. No action needed.`,
+                };
+            }
 
-                    if (!signInError && signInData.user?.id) {
-                        return {
-                            success: true,
-                            authId: signInData.user.id,
-                            message: 'Staff Auth account already exists and is working',
-                        };
-                    }
-                } catch (e) {
-                    console.log('Could not verify existing account');
-                }
+            // Check for other common errors
+            if (error.message.includes('Email not confirmed')) {
+                return {
+                    success: true,
+                    authId: undefined,
+                    message: `Auth account exists but email confirmation is pending for ${virtualEmail}`,
+                };
             }
 
             return {
                 success: false,
-                message: `Failed to create Auth account: ${error.message}. Staff account may already be registered.`,
+                message: `Failed to create Auth account: ${error.message}`,
             };
         }
 
