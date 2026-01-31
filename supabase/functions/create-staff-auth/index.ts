@@ -71,17 +71,16 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
 
-    // Create a client with the Authorization header to validate the token
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Create an admin client with service role to verify the token and get user info
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    // Use the admin API to verify the token and get the user
+    const { data: { user }, error: authError } = await adminClient.auth.admin.getUserByIdToken(token);
 
     if (authError || !user) {
       console.error("Token validation error:", authError);
       return new Response(
-        JSON.stringify({ error: "Invalid or expired token" }),
+        JSON.stringify({ error: "Invalid JWT" }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
