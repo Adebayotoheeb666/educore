@@ -69,48 +69,49 @@ const createStaffAccountFallback = async (
     let authCreatedSuccessfully = false;
 
     try {
-        // Step 1: Attempt to create Auth account
+        // Step 1: Try to create Auth account (best effort)
+        // Note: This may fail due to Supabase configuration, so we make it optional
         console.log('Step 1: Creating Auth account for email:', data.email);
 
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: data.email,
-            password: tempPassword,
-            options: {
-                data: {
-                    role: data.role,
-                    schoolId: schoolId,
-                    staffId: staffId,
-                    fullName: data.fullName,
+        try {
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: data.email,
+                password: tempPassword,
+                options: {
+                    data: {
+                        role: data.role,
+                        schoolId: schoolId,
+                        staffId: staffId,
+                        fullName: data.fullName,
+                    }
                 }
-            }
-        });
-
-        if (authError) {
-            console.error('Auth creation error details:', {
-                message: authError.message,
-                status: (authError as any).status,
-                code: (authError as any).code
             });
 
-            // Check if email already exists
-            if (authError.message.includes('already registered') || authError.message.includes('User already exists')) {
-                console.log('Email already registered in Supabase Auth. This is ok - will use existing account.');
-                // Don't throw - we'll create the database record and the staff can be linked later
-            } else {
-                console.warn('Auth creation failed:', authError.message);
-                // Continue anyway - database record will be created
+            if (authError) {
+                console.warn('Auth creation warning:', {
+                    message: authError.message,
+                    status: (authError as any).status,
+                });
+
+                // Check if email already exists
+                if (authError.message.includes('already registered') || authError.message.includes('User already exists')) {
+                    console.log('Email already registered in Supabase Auth.');
+                    authCreatedSuccessfully = true; // Consider it a success if it already exists
+                } else {
+                    console.warn('Auth creation failed, will continue with database-only approach');
+                }
+            } else if (authData?.user?.id) {
+                authId = authData.user.id;
+                authCreatedSuccessfully = true;
+                console.log('✅ Auth account created successfully with ID:', authId);
+            } else if (authData?.user) {
+                // User was created but doesn't have an ID (e.g., email confirmation pending)
+                console.log('Auth signup succeeded (ID pending email confirmation)');
+                authCreatedSuccessfully = true;
             }
-        } else if (authData?.user?.id) {
-            authId = authData.user.id;
-            authCreatedSuccessfully = true;
-            console.log('✅ Auth account created successfully with ID:', authId);
-        } else if (authData?.user) {
-            // User was created but doesn't have an ID (rare but possible)
-            console.warn('Auth user created but without ID:', authData.user);
-            authCreatedSuccessfully = true; // Still consider it successful since signup succeeded
-            console.log('Signup succeeded even without immediate user ID (email confirmation may be pending)');
-        } else {
-            console.warn('Auth signup returned with no user and no error. This is unusual.', { authData });
+        } catch (authErr) {
+            console.warn('Auth operation failed (will continue):', authErr instanceof Error ? authErr.message : String(authErr));
+            // Continue - we'll create the database record regardless
         }
 
         // Step 2: Create database record
