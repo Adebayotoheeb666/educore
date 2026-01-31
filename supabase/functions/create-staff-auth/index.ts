@@ -63,11 +63,14 @@ serve(async (req) => {
     // Verify JWT and get user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      console.error("Missing Authorization header");
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    console.log("Authorization header present, validating JWT...");
 
     // Create a client with the anonKey and global Authorization header
     // to validate the user's token
@@ -85,13 +88,27 @@ serve(async (req) => {
     // Get the current user using the Authorization header
     const { data: { user }, error: authError } = await userClient.auth.getUser();
 
+    if (authError) {
+      console.error("Token validation failed:", {
+        errorCode: (authError as any).code,
+        errorMessage: authError.message,
+        errorStatus: (authError as any).status,
+      });
+    }
+
     if (authError || !user) {
-      console.error("Token validation error:", authError);
+      console.error("Auth failed - Invalid or expired token");
       return new Response(
-        JSON.stringify({ error: "Invalid JWT", details: authError?.message }),
+        JSON.stringify({
+          error: "Invalid JWT",
+          details: authError?.message,
+          code: (authError as any).code,
+        }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    console.log("Token validated successfully for user:", user.id);
 
     // Check if user is admin
     const userRole = user.user_metadata?.role || user.app_metadata?.role;
