@@ -548,6 +548,10 @@ export const AdminDashboard = () => {
                 case 'subject':
                     result = await bulkImportSubjects(fileText, schoolId, user?.id, profile?.fullName);
                     break;
+                case 'student':
+                    const studentRows = await parseCSVFile(file);
+                    result = await bulkImportStudents(studentRows, schoolId, false, user?.id, profile?.fullName);
+                    break;
                 default:
                     throw new Error(`Unsupported import type: ${type}`);
             }
