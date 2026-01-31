@@ -86,8 +86,65 @@ export const createStaffAccount = async (
         isProduction
     });
 
+    // In development, try edge function but be ready to fallback
+    if (!isProduction) {
+        try {
+            console.log('Attempting to use edge function...');
+            const response = await fetch(edgeFunctionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${supabaseAnonKey}`
+                },
+                body: JSON.stringify({
+                    email: data.email,
+                    fullName: data.fullName,
+                    schoolId,
+                    role: data.role,
+                    specialization: data.specialization,
+                    phoneNumber: data.phoneNumber,
+                    adminId,
+                    staffId: data.staffId
+                })
+            });
+
+            console.log('Edge function response status:', response.status);
+
+            // Try to read and parse the response
+            try {
+                const text = await response.text();
+                console.log('Edge function response text:', text);
+
+                if (text && response.ok) {
+                    const result = JSON.parse(text);
+                    console.log('Successfully used edge function');
+                    return {
+                        staffId: result.staffId,
+                        docId: result.authId,
+                        message: result.message || "Staff invited successfully. Confirmation email sent.",
+                        warning: result.warning || undefined
+                    };
+                }
+            } catch (parseError) {
+                console.warn('Could not parse edge function response, will use fallback');
+            }
+
+            // If status is not ok or we couldn't parse, try fallback
+            if (!response.ok) {
+                console.log('Edge function returned error status, using fallback...');
+            }
+        } catch (error) {
+            // Any error from edge function (network, proxy, etc) - use fallback
+            console.warn('Edge function failed, using fallback:', error instanceof Error ? error.message : error);
+        }
+
+        // Use fallback for development
+        console.log('Using development fallback (direct database insert)...');
+        return await createStaffAccountFallback(schoolId, data);
+    }
+
+    // In production, edge function is required
     try {
-        // Try to use edge function (production or if deployed in development)
         const response = await fetch(edgeFunctionUrl, {
             method: 'POST',
             headers: {
@@ -106,60 +163,22 @@ export const createStaffAccount = async (
             })
         });
 
-        console.log('Edge function response status:', response.status);
+        const text = await response.text();
 
-        // Read the response body once to avoid "body stream already read" error
-        let result;
-        try {
-            // Try to read response text directly
-            const text = await response.text();
-            console.log('Edge function response text:', text);
-
-            if (text) {
-                try {
-                    result = JSON.parse(text);
-                } catch (parseError) {
-                    console.error('Failed to parse response as JSON:', parseError);
-                    result = { error: 'Invalid JSON response from server', details: text };
-                }
-            } else {
-                result = { error: 'Empty response from server' };
-            }
-        } catch (readError) {
-            console.error('Failed to read response:', readError);
-            // If we can't read the response body, it's likely a proxy/middleware issue
-            // In development, fall back to direct database insert
-            if (!isProduction) {
-                console.warn('Response body already consumed (infrastructure issue), using fallback...');
-                return await createStaffAccountFallback(schoolId, data);
-            }
-            throw new Error(`Failed to read server response: ${readError}`);
+        if (!text) {
+            throw new Error('Empty response from server');
         }
 
-        console.log('Edge function result:', result);
+        const result = JSON.parse(text);
 
         if (!response.ok) {
-            // If in development and function not deployed, fall back to direct insert
-            if (!isProduction && (response.status === 404 || response.status === 0)) {
-                console.log('Function not deployed (404), using fallback...');
-                return await createStaffAccountFallback(schoolId, data);
-            }
-
-            // Build detailed error message with any available details
             let errorMessage = result.error || `Failed to invite staff (HTTP ${response.status})`;
-            if (result.details) {
-                console.error('Edge function error details:', result.details);
-                // Include specific error info if available
-                if (typeof result.details === 'object') {
-                    if (result.details.message) {
-                        errorMessage += `: ${result.details.message}`;
-                    }
-                }
+            if (result.details?.message) {
+                errorMessage += `: ${result.details.message}`;
             }
             throw new Error(errorMessage);
         }
 
-        // Handle both successful auth creation and fallback profile-only creation
         return {
             staffId: result.staffId,
             docId: result.authId,
@@ -167,29 +186,7 @@ export const createStaffAccount = async (
             warning: result.warning || undefined
         };
     } catch (error) {
-        console.error('Staff creation attempt failed:', error);
-
-        // Network/infrastructure/CORS error - likely function not deployed or network issue
-        if (!isProduction) {
-            const isNetworkError = error instanceof (TypeError as any) &&
-                (error.message?.includes('Failed to fetch') ||
-                 error.message?.includes('CORS') ||
-                 error.message?.includes('NetworkError') ||
-                 error.message?.includes('body stream already read') ||
-                 error.message?.includes('Failed to read server response'));
-
-            if (isNetworkError) {
-                console.warn('Edge function not reachable or infrastructure error in development, using fallback...');
-                try {
-                    return await createStaffAccountFallback(schoolId, data);
-                } catch (fallbackError) {
-                    console.error('Fallback also failed:', fallbackError);
-                    throw new Error(`Failed to create staff account: ${
-                        fallbackError instanceof Error ? fallbackError.message : 'Unknown error'
-                    }`);
-                }
-            }
-        }
+        console.error('Production staff creation failed:', error);
         throw error;
     }
 };
