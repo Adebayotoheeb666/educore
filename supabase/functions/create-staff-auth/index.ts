@@ -69,25 +69,26 @@ serve(async (req) => {
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
-
-    // Create a client with the anonKey and set the Authorization header
+    // Create a client with the anonKey and global Authorization header
     // to validate the user's token
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
       },
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
     });
 
-    // Set the authorization header to get the current user
-    const { data: { user }, error: authError } = await userClient
-      .auth
-      .getUser(token);
+    // Get the current user using the Authorization header
+    const { data: { user }, error: authError } = await userClient.auth.getUser();
 
     if (authError || !user) {
       console.error("Token validation error:", authError);
       return new Response(
-        JSON.stringify({ error: "Invalid JWT" }),
+        JSON.stringify({ error: "Invalid JWT", details: authError?.message }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -95,6 +96,7 @@ serve(async (req) => {
     // Check if user is admin
     const userRole = user.user_metadata?.role || user.app_metadata?.role;
     if (userRole?.toLowerCase() !== "admin") {
+      console.warn(`User ${user.id} attempted to create staff auth but is not admin. Role: ${userRole}`);
       return new Response(
         JSON.stringify({ error: "Unauthorized: Admin access required" }),
         { status: 403, headers: { "Content-Type": "application/json" } }
