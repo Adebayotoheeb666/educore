@@ -134,12 +134,12 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-semibold">Bulk Import {selectedType ? `- ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}s` : ''}</h2>
-          <button 
-            onClick={resetAndClose} 
-            className="text-gray-500 hover:text-gray-700 p-1 hover:bg-gray-100 rounded-full"
+      <div className="bg-dark-card border border-white/10 rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
+        <div className="flex justify-between items-center p-4 border-b border-white/10">
+          <h2 className="text-xl font-semibold text-white">Bulk Import {selectedType ? `- ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}s` : ''}</h2>
+          <button
+            onClick={resetAndClose}
+            className="text-gray-500 hover:text-gray-300 p-1 hover:bg-white/10 rounded-full"
             aria-label="Close"
           >
             <X size={20} />
@@ -149,16 +149,16 @@ export function BulkImportModal({ isOpen, onClose, onImport }: BulkImportModalPr
         <div className="p-6 overflow-y-auto flex-1">
           {step === 'select' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-medium">What would you like to import?</h3>
+              <h3 className="text-lg font-medium text-white">What would you like to import?</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {['staff', 'parent', 'class', 'subject', 'student'].map((type) => (
                   <button
                     key={type}
                     onClick={() => handleTypeSelect(type)}
-                    className="p-4 border rounded-lg hover:bg-gray-50 text-left transition-colors duration-200"
+                    className="p-4 border border-white/10 rounded-lg hover:bg-white/5 hover:border-white/20 text-left transition-colors duration-200"
                   >
-                    <div className="font-medium capitalize">{type}</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="font-medium capitalize text-white">{type}</div>
+                    <div className="text-sm text-gray-400">
                       Import multiple {type}s at once
                     </div>
                   </button>
