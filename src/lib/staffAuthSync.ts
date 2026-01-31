@@ -18,9 +18,31 @@ export const getStaffVirtualEmail = (schoolId: string, staffId: string): string 
 };
 
 /**
+ * Generate a temporary password for staff
+ */
+function generateTemporaryPassword(): string {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '@$!%*?&';
+
+    let password = '';
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += special[Math.floor(Math.random() * special.length)];
+
+    const allChars = uppercase + lowercase + numbers + special;
+    for (let i = 0; i < 6; i++) {
+        password += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+}
+
+/**
  * Create Auth account for a staff member
- * Called when staff is created in the database
- * Uses Edge Function for service role access
+ * Attempts Edge Function first, falls back to client-side Auth creation
  */
 export const createStaffAuthAccount = async (
     schoolId: string,
@@ -37,98 +59,95 @@ export const createStaffAuthAccount = async (
             };
         }
 
-        // Get the session and auth token
+        // Try Edge Function first (if deployed)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        if (sessionError || !session?.access_token) {
-            return {
-                success: false,
-                message: 'Unable to authenticate request',
-            };
+        if (!sessionError && session?.access_token) {
+            // Call Edge Function to create auth with service role
+            const url = `${supabaseUrl}/functions/v1/create-staff-auth`;
+            console.log('Attempting to create staff auth via Edge Function...');
+
+            // Add a timeout to prevent hanging
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({
+                        schoolId,
+                        staffId,
+                        staffName,
+                        email,
+                    }),
+                    signal: controller.signal,
+                });
+
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return {
+                        success: true,
+                        authId: data.authId,
+                        message: data.message || 'Auth account created for staff member',
+                    };
+                }
+
+                // If Edge Function fails, fall through to client-side creation
+                console.warn(`Edge Function returned ${response.status}, attempting client-side creation...`);
+            } catch (err) {
+                clearTimeout(timeoutId);
+                console.warn('Edge Function unavailable, attempting client-side creation...', err);
+            }
         }
 
-        // Call Edge Function to create auth with service role
-        const url = `${supabaseUrl}/functions/v1/create-staff-auth`;
-        console.log('Calling create-staff-auth function at:', url);
+        // Fallback: Create Auth account directly using client SDK
+        console.log('Creating staff Auth account via client SDK...');
+        const tempPassword = generateTemporaryPassword();
+        const virtualEmail = email || getStaffVirtualEmail(schoolId, staffId);
 
-        // Add a timeout to prevent hanging
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-                schoolId,
-                staffId,
-                staffName,
-                email,
-            }),
-            signal: controller.signal,
+        const { data, error } = await supabase.auth.signUp({
+            email: virtualEmail,
+            password: tempPassword,
+            options: {
+                data: {
+                    role: 'staff',
+                    schoolId,
+                    staffId,
+                    fullName: staffName,
+                }
+            }
         });
 
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            let errorMessage = 'Unknown error';
-            try {
-                const data = await response.json();
-                errorMessage = data.error || data.message || errorMessage;
-            } catch (e) {
-                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-            }
-
-            console.warn(`Create-staff-auth function returned ${response.status}:`, errorMessage);
-
-            if (response.status === 404) {
-                return {
-                    success: false,
-                    message: 'Edge Function not found. Please deploy it using: supabase functions deploy create-staff-auth',
-                };
-            }
-
+        if (error) {
+            console.error('Auth signup error:', error.message);
             return {
                 success: false,
-                message: `Failed to create Auth account: ${errorMessage}`,
+                message: `Failed to create Auth account: ${error.message}`,
             };
         }
 
-        const data = await response.json();
+        if (!data.user?.id) {
+            return {
+                success: false,
+                message: 'Auth account creation returned empty user ID',
+            };
+        }
+
+        console.log('✅ Staff Auth account created successfully');
         return {
             success: true,
-            authId: data.authId,
-            message: data.message || 'Auth account created for staff member',
+            authId: data.user.id,
+            message: 'Auth account created for staff member',
         };
     } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         console.error('Staff auth creation error:', errorMsg);
-
-        // Check if it's a timeout/abort error
-        if (err instanceof Error && err.name === 'AbortError') {
-            return {
-                success: false,
-                message: 'Request timed out. The Edge Function may be slow or not responding. Please try again.',
-            };
-        }
-
-        // Check if it's a network error
-        if (err instanceof TypeError && errorMsg.includes('fetch')) {
-            return {
-                success: false,
-                message: 'Network error. Please check your connection and ensure Edge Functions are deployed.',
-            };
-        }
-
-        // In development, if Edge Function fails, suggest deploying it
-        if (!isProduction) {
-            return {
-                success: false,
-                message: `Edge Function error: ${errorMsg}. If not deployed, run: supabase functions deploy create-staff-auth`,
-            };
-        }
 
         return {
             success: false,
