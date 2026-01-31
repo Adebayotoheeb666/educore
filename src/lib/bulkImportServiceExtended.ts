@@ -112,10 +112,157 @@ export const parseCSVFileGeneric = async <T>(file: File, requiredFields: string[
 };
 
 /**
+ * Validate staff import rows
+ */
+const validateStaffRows = (rows: any[]): { valid: StaffImportRow[], errors: Array<{ row: number, error: string }> } => {
+    const valid: StaffImportRow[] = [];
+    const errors: Array<{ row: number, error: string }> = [];
+
+    rows.forEach((row, index) => {
+        const rowNum = index + 2; // +2 for header + 1-based indexing
+
+        if (!row.staffid?.trim()) {
+            errors.push({ row: rowNum, error: 'StaffID is required' });
+            return;
+        }
+        if (!row.fullname?.trim()) {
+            errors.push({ row: rowNum, error: 'FullName is required' });
+            return;
+        }
+        if (!row.email?.trim()) {
+            errors.push({ row: rowNum, error: 'Email is required' });
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(row.email.trim())) {
+            errors.push({ row: rowNum, error: `Invalid email format: ${row.email}` });
+            return;
+        }
+
+        valid.push({
+            staffId: row.staffid.trim(),
+            fullName: row.fullname.trim(),
+            email: row.email.trim().toLowerCase(),
+            phoneNumber: row.phonenumber?.trim(),
+            role: row.role?.trim() || 'teacher',
+            department: row.department?.trim()
+        });
+    });
+
+    return { valid, errors };
+};
+
+/**
+ * Validate parent import rows
+ */
+const validateParentRows = (rows: any[]): { valid: ParentImportRow[], errors: Array<{ row: number, error: string }> } => {
+    const valid: ParentImportRow[] = [];
+    const errors: Array<{ row: number, error: string }> = [];
+
+    rows.forEach((row, index) => {
+        const rowNum = index + 2;
+
+        if (!row.fullname?.trim()) {
+            errors.push({ row: rowNum, error: 'FullName is required' });
+            return;
+        }
+        if (!row.email?.trim()) {
+            errors.push({ row: rowNum, error: 'Email is required' });
+            return;
+        }
+        if (!row.phonenumber?.trim()) {
+            errors.push({ row: rowNum, error: 'PhoneNumber is required' });
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(row.email.trim())) {
+            errors.push({ row: rowNum, error: `Invalid email format: ${row.email}` });
+            return;
+        }
+
+        valid.push({
+            fullName: row.fullname.trim(),
+            email: row.email.trim().toLowerCase(),
+            phoneNumber: row.phonenumber.trim(),
+            address: row.address?.trim(),
+            studentIds: row.studentids?.trim()
+        });
+    });
+
+    return { valid, errors };
+};
+
+/**
+ * Validate class import rows
+ */
+const validateClassRows = (rows: any[]): { valid: ClassImportRow[], errors: Array<{ row: number, error: string }> } => {
+    const valid: ClassImportRow[] = [];
+    const errors: Array<{ row: number, error: string }> = [];
+
+    rows.forEach((row, index) => {
+        const rowNum = index + 2;
+
+        if (!row.name?.trim()) {
+            errors.push({ row: rowNum, error: 'Name is required' });
+            return;
+        }
+        if (!row.level?.trim()) {
+            errors.push({ row: rowNum, error: 'Level is required' });
+            return;
+        }
+
+        valid.push({
+            name: row.name.trim(),
+            level: row.level.trim(),
+            section: row.section?.trim(),
+            academicYear: row.academicyear?.trim(),
+            classTeacherId: row.classteacherid?.trim(),
+            capacity: row.capacity ? parseInt(row.capacity) : undefined
+        });
+    });
+
+    return { valid, errors };
+};
+
+/**
+ * Validate subject import rows
+ */
+const validateSubjectRows = (rows: any[]): { valid: SubjectImportRow[], errors: Array<{ row: number, error: string }> } => {
+    const valid: SubjectImportRow[] = [];
+    const errors: Array<{ row: number, error: string }> = [];
+
+    rows.forEach((row, index) => {
+        const rowNum = index + 2;
+
+        if (!row.name?.trim()) {
+            errors.push({ row: rowNum, error: 'Name is required' });
+            return;
+        }
+        if (!row.code?.trim()) {
+            errors.push({ row: rowNum, error: 'Code is required' });
+            return;
+        }
+
+        valid.push({
+            name: row.name.trim(),
+            code: row.code.trim(),
+            description: row.description?.trim(),
+            teacherId: row.teacherid?.trim(),
+            classLevels: row.classlevels?.trim()
+        });
+    });
+
+    return { valid, errors };
+};
+
+/**
  * Bulk import staff members
  */
 export const bulkImportStaff = async (
-    rows: StaffImportRow[],
+    csvText: string,
     schoolId: string,
     currentUserId?: string,
     currentUserName?: string
