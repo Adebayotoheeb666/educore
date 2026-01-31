@@ -108,21 +108,25 @@ export const createStaffAccount = async (
 
         console.log('Edge function response status:', response.status);
 
-        // Check status first, then parse based on content-type
+        // Read the response body once to avoid "body stream already read" error
         let result;
-        const contentType = response.headers.get('content-type');
-
-        if (contentType && contentType.includes('application/json')) {
-            try {
-                result = await response.json();
-            } catch (parseError) {
-                console.error('Failed to parse response as JSON:', parseError);
-                result = { error: 'Invalid JSON response from server' };
-            }
-        } else {
-            // If not JSON, try to get text
+        try {
             const text = await response.text();
-            result = { error: `Unexpected response type: ${contentType || 'unknown'}`, details: text };
+            console.log('Edge function response text:', text);
+
+            if (text) {
+                try {
+                    result = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('Failed to parse response as JSON:', parseError);
+                    result = { error: 'Invalid JSON response from server', details: text };
+                }
+            } else {
+                result = { error: 'Empty response from server' };
+            }
+        } catch (readError) {
+            console.error('Failed to read response:', readError);
+            result = { error: 'Failed to read server response', details: readError };
         }
 
         console.log('Edge function result:', result);
