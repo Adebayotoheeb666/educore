@@ -259,6 +259,29 @@ const validateSubjectRows = (rows: any[]): { valid: SubjectImportRow[], errors: 
 };
 
 /**
+ * Generate a temporary password
+ */
+const generateTempPassword = (): string => {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const symbols = '!@#$%';
+
+    let password = '';
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += symbols[Math.floor(Math.random() * symbols.length)];
+
+    const all = uppercase + lowercase + numbers;
+    for (let i = 0; i < 8; i++) {
+        password += all[Math.floor(Math.random() * all.length)];
+    }
+
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+};
+
+/**
  * Bulk import staff members
  */
 export const bulkImportStaff = async (
@@ -294,47 +317,47 @@ export const bulkImportStaff = async (
             return result;
         }
 
-        // Process in batches
-        const batchSize = 50;
+        // Process staff one by one to create auth accounts
+        for (let i = 0; i < valid.length; i++) {
+            const row = valid[i];
+            const staffId = row.staffId.toLowerCase();
+            const tempPassword = generateTempPassword();
 
-        for (let i = 0; i < valid.length; i += batchSize) {
-            const batch = valid.slice(i, i + batchSize);
-            const usersToInsert: any[] = [];
+            try {
+                // Create user via RPC which creates both auth account and profile
+                const { data: createResult, error: createError } = await supabase.rpc(
+                    'create_user_with_profile',
+                    {
+                        user_data: JSON.stringify({
+                            email: row.email,
+                            password: tempPassword,
+                            user_metadata: {
+                                full_name: row.fullName,
+                                role: row.role || 'staff',
+                                school_id: schoolId,
+                                staff_id: staffId
+                            }
+                        })
+                    }
+                );
 
-            for (const row of batch) {
-                const staffId = row.staffId.toLowerCase();
-                const userId = uuidv4(); // Generate a proper UUID
-
-                // Ensure role is one of: 'admin', 'staff', 'student', 'parent', 'bursar'
-                const validRoles = ['admin', 'staff', 'student', 'parent', 'bursar'] as const;
-                const role = (row.role && validRoles.includes(row.role.toLowerCase() as typeof validRoles[number])) 
-                    ? row.role.toLowerCase() 
-                    : 'staff'; // Default to 'staff' if not provided or invalid
-
-                usersToInsert.push({
-                    id: userId,
-                    staff_id: staffId,
-                    full_name: row.fullName,
-                    email: row.email,
-                    phone_number: row.phoneNumber,
-                    role: role,
-                    school_id: schoolId
-                });
-            }
-
-            // Insert batch
-            const { error } = await supabase
-                .from('users')
-                .upsert(usersToInsert, { onConflict: 'id' });
-
-            if (error) {
-                result.failed += batch.length;
+                if (createError) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        identifier: row.staffId,
+                        error: `Failed to create user: ${createError.message}`
+                    });
+                } else {
+                    result.imported++;
+                }
+            } catch (error) {
+                result.failed++;
                 result.errors.push({
                     row: i + 2,
-                    error: `Failed to import batch: ${error.message}`
+                    identifier: row.staffId,
+                    error: `Error creating staff account: ${error instanceof Error ? error.message : 'Unknown error'}`
                 });
-            } else {
-                result.imported += batch.length;
             }
         }
 
