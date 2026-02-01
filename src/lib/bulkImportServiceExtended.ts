@@ -464,39 +464,64 @@ export const bulkImportParents = async (
 
         const studentMap = new Map(students?.map(s => [s.admission_number?.toLowerCase(), s.id]) || []);
 
-        // Process parents one by one to create auth accounts
+        // Process parents one by one to create auth accounts and profiles
         for (let i = 0; i < valid.length; i++) {
             const row = valid[i];
             const tempPassword = generateTempPassword();
 
             try {
-                // Create parent user via RPC which creates both auth account and profile
-                const { data: createResult, error: createError } = await supabase.rpc(
-                    'create_user_with_profile',
-                    {
-                        user_data: {
-                            email: row.email,
-                            password: tempPassword,
-                            user_metadata: {
-                                full_name: row.fullName,
-                                role: 'parent',
-                                school_id: schoolId
-                            }
-                        }
+                // 1. Create auth user via Supabase Auth API
+                const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+                    email: row.email,
+                    password: tempPassword,
+                    email_confirm: true,
+                    user_metadata: {
+                        full_name: row.fullName,
+                        role: 'parent',
+                        school_id: schoolId
                     }
-                );
+                });
 
-                if (createError) {
+                if (authError) {
                     result.failed++;
                     result.errors.push({
                         row: i + 2,
-                        error: `Failed to create parent account: ${createError.message}`
+                        error: `Failed to create parent auth account: ${authError.message}`
                     });
                     continue;
                 }
 
-                // If parent was created, link to students if provided
-                if (createResult?.id && row.studentIds) {
+                if (!authData?.user?.id) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        error: 'Failed to create parent auth account: No user ID returned'
+                    });
+                    continue;
+                }
+
+                const parentId = authData.user.id;
+
+                // 2. Create profile record via RPC
+                const { error: profileError } = await supabase.rpc('create_user_profile', {
+                    user_id: parentId,
+                    user_email: row.email,
+                    user_full_name: row.fullName,
+                    user_role: 'parent',
+                    user_school_id: schoolId
+                });
+
+                if (profileError) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        error: `Failed to create parent profile: ${profileError.message}`
+                    });
+                    continue;
+                }
+
+                // 3. Link to students if provided
+                if (row.studentIds) {
                     const studentIds = row.studentIds.split(',').map(id => id.trim().toLowerCase());
                     for (const studentId of studentIds) {
                         const studentUid = studentMap.get(studentId);
@@ -505,7 +530,7 @@ export const bulkImportParents = async (
                                 .from('parent_student_links')
                                 .upsert({
                                     school_id: schoolId,
-                                    parent_id: createResult.id,
+                                    parent_id: parentId,
                                     student_id: studentUid,
                                     relationship: 'Guardian'
                                 }, { onConflict: 'parent_id,student_id' });
