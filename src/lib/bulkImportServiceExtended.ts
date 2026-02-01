@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, supabaseUrl } from './supabase';
 import { logAction } from './auditService';
 import { v4 as uuidv4 } from 'uuid';
 
