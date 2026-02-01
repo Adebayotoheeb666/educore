@@ -189,76 +189,115 @@ export const bulkImportStudents = async (
             classesData.forEach(c => classMap.set(c.name.toLowerCase().trim(), c.id));
         }
 
-        // Process students one by one to create auth accounts
+        // Process students one by one to create auth accounts and profiles
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             const admissionNum = row.admissionNumber.trim().toLowerCase();
             const tempPassword = generateTempPassword();
 
             try {
-                // Create student user via RPC which creates both auth account and profile
-                const { data: studentCreateResult, error: studentCreateError } = await supabase.rpc(
-                    'create_user_with_profile',
-                    {
-                        user_data: {
-                            email: row.email || `student_${admissionNum}@${schoolId}.educore.app`,
-                            password: tempPassword,
-                            user_metadata: {
-                                full_name: row.fullName,
-                                role: 'student',
-                                school_id: schoolId
-                            }
-                        }
+                // 1. Create student auth user via Supabase Auth API
+                const studentEmail = row.email || `student_${admissionNum}@${schoolId}.educore.app`;
+                const { data: studentAuthData, error: studentAuthError } = await supabase.auth.admin.createUser({
+                    email: studentEmail,
+                    password: tempPassword,
+                    email_confirm: true,
+                    user_metadata: {
+                        full_name: row.fullName,
+                        role: 'student',
+                        school_id: schoolId
                     }
-                );
+                });
 
-                if (studentCreateError) {
+                if (studentAuthError) {
                     result.failed++;
                     result.errors.push({
                         row: i + 2,
                         admissionNumber: row.admissionNumber,
-                        error: `Failed to create student account: ${studentCreateError.message}`
+                        error: `Failed to create student auth account: ${studentAuthError.message}`
                     });
                     continue;
                 }
 
-                const studentId = studentCreateResult?.id;
+                if (!studentAuthData?.user?.id) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        admissionNumber: row.admissionNumber,
+                        error: 'Failed to create student auth account: No user ID returned'
+                    });
+                    continue;
+                }
 
-                // Create parent if requested
-                if (createParents && studentId && (row.parentEmail || row.parentPhone)) {
+                const studentId = studentAuthData.user.id;
+
+                // 2. Create student profile record via RPC
+                const { error: studentProfileError } = await supabase.rpc('create_user_profile', {
+                    user_id: studentId,
+                    user_email: studentEmail,
+                    user_full_name: row.fullName,
+                    user_role: 'student',
+                    user_school_id: schoolId
+                });
+
+                if (studentProfileError) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        admissionNumber: row.admissionNumber,
+                        error: `Failed to create student profile: ${studentProfileError.message}`
+                    });
+                    continue;
+                }
+
+                // Update student profile with admission number
+                await supabase
+                    .from('users')
+                    .update({ admission_number: row.admissionNumber.trim() })
+                    .eq('id', studentId);
+
+                // 3. Create parent if requested
+                if (createParents && (row.parentEmail || row.parentPhone)) {
                     const parentTempPassword = generateTempPassword();
                     const parentEmail = row.parentEmail || `parent_${admissionNum}@${schoolId}.educore.app`;
 
-                    const { data: parentCreateResult, error: parentCreateError } = await supabase.rpc(
-                        'create_user_with_profile',
-                        {
-                            user_data: {
-                                email: parentEmail,
-                                password: parentTempPassword,
-                                user_metadata: {
-                                    full_name: row.parentName || `Parent of ${row.fullName}`,
-                                    role: 'parent',
-                                    school_id: schoolId
-                                }
-                            }
+                    const { data: parentAuthData, error: parentAuthError } = await supabase.auth.admin.createUser({
+                        email: parentEmail,
+                        password: parentTempPassword,
+                        email_confirm: true,
+                        user_metadata: {
+                            full_name: row.parentName || `Parent of ${row.fullName}`,
+                            role: 'parent',
+                            school_id: schoolId
                         }
-                    );
+                    });
 
-                    if (!parentCreateError && parentCreateResult?.id) {
+                    if (!parentAuthError && parentAuthData?.user?.id) {
+                        const parentId = parentAuthData.user.id;
+
+                        // Create parent profile via RPC
+                        await supabase.rpc('create_user_profile', {
+                            user_id: parentId,
+                            user_email: parentEmail,
+                            user_full_name: row.parentName || `Parent of ${row.fullName}`,
+                            user_role: 'parent',
+                            user_school_id: schoolId
+                        });
+
                         // Link parent to student
                         await supabase
                             .from('parent_student_links')
                             .upsert({
                                 school_id: schoolId,
-                                parent_id: parentCreateResult.id,
+                                parent_id: parentId,
                                 student_id: studentId,
                                 relationship: 'Guardian'
                             }, { onConflict: 'parent_id,student_id' });
                     }
                 }
 
-                // Record class enrollment if provided
-                if (studentId && row.className) {
+                // 4. Record class enrollment if provided
+                if (row.className) {
                     const classId = classMap.get(row.className.trim().toLowerCase());
                     if (classId) {
                         try {
