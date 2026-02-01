@@ -317,36 +317,63 @@ export const bulkImportStaff = async (
             return result;
         }
 
-        // Process staff one by one to create auth accounts
+        // Process staff one by one to create auth accounts and profiles
         for (let i = 0; i < valid.length; i++) {
             const row = valid[i];
             const staffId = row.staffId.toLowerCase();
             const tempPassword = generateTempPassword();
+            const userId = uuidv4();
 
             try {
-                // Create user via RPC which creates both auth account and profile
-                const { data: createResult, error: createError } = await supabase.rpc(
-                    'create_user_with_profile',
-                    {
-                        user_data: {
-                            email: row.email,
-                            password: tempPassword,
-                            user_metadata: {
-                                full_name: row.fullName,
-                                role: row.role || 'staff',
-                                school_id: schoolId,
-                                staff_id: staffId
-                            }
-                        }
+                // 1. Create auth user via Supabase Auth API
+                const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+                    email: row.email,
+                    password: tempPassword,
+                    email_confirm: true,
+                    user_metadata: {
+                        full_name: row.fullName,
+                        role: row.role || 'staff',
+                        school_id: schoolId,
+                        staff_id: staffId
                     }
-                );
+                });
 
-                if (createError) {
+                if (authError) {
                     result.failed++;
                     result.errors.push({
                         row: i + 2,
                         identifier: row.staffId,
-                        error: `Failed to create user: ${createError.message}`
+                        error: `Failed to create auth account: ${authError.message}`
+                    });
+                    continue;
+                }
+
+                if (!authData?.user?.id) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        identifier: row.staffId,
+                        error: 'Failed to create auth account: No user ID returned'
+                    });
+                    continue;
+                }
+
+                // 2. Create profile record via RPC
+                const { error: profileError } = await supabase.rpc('create_user_profile', {
+                    user_id: authData.user.id,
+                    user_email: row.email,
+                    user_full_name: row.fullName,
+                    user_role: row.role || 'staff',
+                    user_school_id: schoolId,
+                    user_staff_id: staffId
+                });
+
+                if (profileError) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        identifier: row.staffId,
+                        error: `Failed to create profile: ${profileError.message}`
                     });
                 } else {
                     result.imported++;
