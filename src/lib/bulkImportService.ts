@@ -187,7 +187,6 @@ export const bulkImportStudents = async (
                 // Student Profile
                 usersToInsert.push({
                     id: studentUid,
-                    original_student_id: `student_${schoolId}_${admissionNum}`,
                     full_name: row.fullName.trim(),
                     email: row.email?.trim(),
                     role: 'student',
