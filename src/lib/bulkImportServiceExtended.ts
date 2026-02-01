@@ -325,58 +325,46 @@ export const bulkImportStaff = async (
             const userId = uuidv4();
 
             try {
-                // 1. Create auth user via Supabase Auth API
-                const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-                    email: row.email,
-                    password: tempPassword,
-                    email_confirm: true,
-                    user_metadata: {
-                        full_name: row.fullName,
-                        role: row.role || 'staff',
-                        school_id: schoolId,
-                        staff_id: staffId
+                // 1. Create auth user and profile via edge function (has service role)
+                const response = await fetch(
+                    `${supabase.supabaseUrl}/functions/v1/create-bulk-users`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                        },
+                        body: JSON.stringify({
+                            email: row.email,
+                            password: tempPassword,
+                            user_metadata: {
+                                full_name: row.fullName,
+                                role: row.role || 'staff',
+                                school_id: schoolId,
+                                staff_id: staffId
+                            }
+                        })
                     }
-                });
+                );
 
-                if (authError) {
+                const responseData = await response.json();
+
+                if (!response.ok) {
                     result.failed++;
                     result.errors.push({
                         row: i + 2,
                         identifier: row.staffId,
-                        error: `Failed to create auth account: ${authError.message}`
+                        error: `Failed to create staff account: ${responseData.error}`
                     });
-                    continue;
-                }
-
-                if (!authData?.user?.id) {
-                    result.failed++;
-                    result.errors.push({
-                        row: i + 2,
-                        identifier: row.staffId,
-                        error: 'Failed to create auth account: No user ID returned'
-                    });
-                    continue;
-                }
-
-                // 2. Create profile record via RPC
-                const { error: profileError } = await supabase.rpc('create_user_profile', {
-                    user_id: authData.user.id,
-                    user_email: row.email,
-                    user_full_name: row.fullName,
-                    user_role: row.role || 'staff',
-                    user_school_id: schoolId,
-                    user_staff_id: staffId
-                });
-
-                if (profileError) {
-                    result.failed++;
-                    result.errors.push({
-                        row: i + 2,
-                        identifier: row.staffId,
-                        error: `Failed to create profile: ${profileError.message}`
-                    });
-                } else {
+                } else if (responseData.id) {
                     result.imported++;
+                } else {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        identifier: row.staffId,
+                        error: 'Failed to create staff account: Unknown error'
+                    });
                 }
             } catch (error) {
                 result.failed++;
