@@ -232,7 +232,7 @@ export const bulkImportStudents = async (
                     const { data: parentCreateResult, error: parentCreateError } = await supabase.rpc(
                         'create_user_with_profile',
                         {
-                            user_data: JSON.stringify({
+                            user_data: {
                                 email: parentEmail,
                                 password: parentTempPassword,
                                 user_metadata: {
@@ -240,7 +240,7 @@ export const bulkImportStudents = async (
                                     role: 'parent',
                                     school_id: schoolId
                                 }
-                            })
+                            }
                         }
                     );
 
