@@ -199,7 +199,7 @@ export const bulkImportStudents = async (
                 // 1. Create student auth user and profile via edge function
                 const studentEmail = row.email || `student_${admissionNum}@${schoolId}.educore.app`;
                 const studentResponse = await fetch(
-                    `${supabase.supabaseUrl}/functions/v1/create-bulk-users`,
+                    `${supabaseUrl}/functions/v1/create-bulk-users`,
                     {
                         method: 'POST',
                         headers: {
