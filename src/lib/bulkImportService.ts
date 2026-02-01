@@ -199,7 +199,6 @@ export const bulkImportStudents = async (
 
                     parentsToInsert.push({
                         id: parentUid,
-                        original_parent_id: `parent_${schoolId}_${row.parentEmail?.toLowerCase().replace(/[^a-z0-9]/g, '') || admissionNum}`,
                         full_name: row.parentName || `Parent of ${row.fullName}`,
                         email: row.parentEmail?.trim(),
                         phone_number: row.parentPhone?.trim(),
