@@ -327,7 +327,7 @@ export const bulkImportStaff = async (
             try {
                 // 1. Create auth user and profile via edge function (has service role)
                 const response = await fetch(
-                    `${supabase.supabaseUrl}/functions/v1/create-bulk-users`,
+                    `${supabaseUrl}/functions/v1/create-bulk-users`,
                     {
                         method: 'POST',
                         headers: {
@@ -460,7 +460,7 @@ export const bulkImportParents = async (
             try {
                 // 1. Create auth user and profile via edge function (has service role)
                 const response = await fetch(
-                    `${supabase.supabaseUrl}/functions/v1/create-bulk-users`,
+                    `${supabaseUrl}/functions/v1/create-bulk-users`,
                     {
                         method: 'POST',
                         headers: {
