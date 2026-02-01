@@ -313,8 +313,6 @@ export const bulkImportStaff = async (
 
                 usersToInsert.push({
                     id: userId,
-                    // Store the original staff ID in a separate field for reference
-                    original_staff_id: `staff_${schoolId}_${staffId}`,
                     staff_id: staffId,
                     full_name: row.fullName,
                     email: row.email,
