@@ -437,68 +437,63 @@ export const bulkImportParents = async (
 
         const studentMap = new Map(students?.map(s => [s.admission_number?.toLowerCase(), s.id]) || []);
 
-        // Process in batches
-        const batchSize = 50;
+        // Process parents one by one to create auth accounts
+        for (let i = 0; i < valid.length; i++) {
+            const row = valid[i];
+            const tempPassword = generateTempPassword();
 
-        for (let i = 0; i < valid.length; i += batchSize) {
-            const batch = valid.slice(i, i + batchSize);
-            const parentsToInsert: any[] = [];
-            const linksToInsert: any[] = [];
+            try {
+                // Create parent user via RPC which creates both auth account and profile
+                const { data: createResult, error: createError } = await supabase.rpc(
+                    'create_user_with_profile',
+                    {
+                        user_data: JSON.stringify({
+                            email: row.email,
+                            password: tempPassword,
+                            user_metadata: {
+                                full_name: row.fullName,
+                                role: 'parent',
+                                school_id: schoolId
+                            }
+                        })
+                    }
+                );
 
-            for (const row of batch) {
-                // Generate a UUID for the database ID
-                const dbId = uuidv4();
-                // Store the custom parent ID if provided
-                const customParentId = row.parentId?.trim();
-                
-                parentsToInsert.push({
-                    id: dbId,
-                    full_name: row.fullName,
-                    email: row.email,
-                    phone_number: row.phoneNumber,
-                    role: 'parent',
-                    school_id: schoolId
-                });
+                if (createError) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        error: `Failed to create parent account: ${createError.message}`
+                    });
+                    continue;
+                }
 
-                // Handle student links if provided
-                if (row.studentIds) {
+                // If parent was created, link to students if provided
+                if (createResult?.id && row.studentIds) {
                     const studentIds = row.studentIds.split(',').map(id => id.trim().toLowerCase());
                     for (const studentId of studentIds) {
                         const studentUid = studentMap.get(studentId);
                         if (studentUid) {
-                            linksToInsert.push({
-                                school_id: schoolId,
-                                parent_id: dbId, // Use the database ID for the relationship
-                                student_id: studentUid,
-                                relationship: 'Guardian'
-                            });
+                            await supabase
+                                .from('parent_student_links')
+                                .upsert({
+                                    school_id: schoolId,
+                                    parent_id: createResult.id,
+                                    student_id: studentUid,
+                                    relationship: 'Guardian'
+                                }, { onConflict: 'parent_id,student_id' });
                         }
                     }
                 }
-            }
 
-            // Insert parents - using 'id' for conflict resolution since it's the primary key
-            const { error: parentError } = await supabase
-                .from('users')
-                .upsert(parentsToInsert, { onConflict: 'id' });
-
-            if (parentError) {
-                result.failed += batch.length;
+                result.imported++;
+            } catch (error) {
+                result.failed++;
                 result.errors.push({
                     row: i + 2,
-                    error: `Failed to import parents: ${parentError.message}`
+                    error: `Error creating parent account: ${error instanceof Error ? error.message : 'Unknown error'}`
                 });
-                continue;
             }
-
-            // Insert parent-student links if any
-            if (linksToInsert.length > 0) {
-                await supabase
-                    .from('parent_student_links')
-                    .upsert(linksToInsert, { onConflict: 'parent_id,student_id' });
-            }
-
-            result.imported += batch.length;
         }
 
         result.success = result.failed === validationErrors.length;
