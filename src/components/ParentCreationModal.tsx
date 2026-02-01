@@ -9,7 +9,7 @@ import { createParentAccount, type CreateParentParams } from '../lib/parentServi
 
 interface ParentCreationModalProps {
     onClose: () => void;
-    onSuccess: (created?: { parentUid?: string }) => void;
+    onSuccess: (created?: { parentId?: string }) => void;
     initialData?: any;
     user?: User | null;
     profile?: UserProfile | null;
@@ -30,7 +30,13 @@ export const ParentCreationModal = ({ onClose, onSuccess, initialData, user: pro
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [createdCredentials, setCreatedCredentials] = useState<{ parentId: string; message: string } | null>(null);
+    const [createdCredentials, setCreatedCredentials] = useState<{ 
+        parentId: string; 
+        docId: string;
+        message: string; 
+        warning?: string;
+        tempPassword?: string;
+    } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,10 +92,13 @@ export const ParentCreationModal = ({ onClose, onSuccess, initialData, user: pro
                 onSuccess();
             } else {
                 // CREATE flow
-                const result = await createParentAccount(schoolId, formData);
+                const result = await createParentAccount(schoolId, user.id, formData);
                 setCreatedCredentials({
                     parentId: result.parentId,
-                    message: result.message
+                    docId: result.docId,
+                    message: result.message,
+                    warning: result.warning,
+                    tempPassword: result.tempPassword
                 });
 
                 // Log the create action
@@ -100,7 +109,7 @@ export const ParentCreationModal = ({ onClose, onSuccess, initialData, user: pro
                         user.email || 'Unknown',
                         'create',
                         'parent',
-                        result.parentUid,
+result.docId,
                         {
                             parent_id: result.parentId,
                             email: formData.email,
@@ -168,7 +177,10 @@ export const ParentCreationModal = ({ onClose, onSuccess, initialData, user: pro
                 </div>
 
                 <button
-                    onClick={onSuccess}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        onSuccess({ parentId: createdCredentials?.parentId });
+                    }}
                     className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-colors"
                 >
                     Done

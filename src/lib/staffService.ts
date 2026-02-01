@@ -1,13 +1,22 @@
-import { supabase, supabaseAnonKey } from './supabase';
+import { supabase } from './supabase';
 import type { UserProfile } from './types';
+import { logAction } from './auditService';
+import { getVirtualEmail } from './authService';
+
+declare const process: {
+    env: {
+        NODE_ENV?: 'development' | 'production' | 'test';
+    };
+};
 
 export interface CreateStaffParams {
     fullName: string;
-    email: string;
-    role: 'staff' | 'bursar';
+    email?: string;  // Made optional as we'll use virtual email if not provided
+    role: 'staff' | 'bursar' | 'admin';
     specialization?: string;
     phoneNumber?: string;
     staffId?: string;
+    sendInviteEmail?: boolean; // Whether to send an invitation email
 }
 
 /**
@@ -20,14 +29,23 @@ function generateStaffId(schoolId: string): string {
 }
 
 /**
- * Generate a UUID v4
+ * Generate a deterministic UUID from staff data
  */
-function generateUUID(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
-        const v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
+async function generateDeterministicUUID(schoolId: string, staffId: string): Promise<string> {
+    const input = `staff_${schoolId}_${staffId.toLowerCase()}`;
+    const msgUint8 = new TextEncoder().encode(input);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    // Convert to UUID format (8-4-4-4-12)
+    return [
+        hex.substring(0, 8),
+        hex.substring(8, 12),
+        hex.substring(12, 16),
+        hex.substring(16, 20),
+        hex.substring(20, 32)
+    ].join('-');
 }
 
 /**
@@ -53,204 +71,97 @@ function generateTemporaryPassword(): string {
     return password.split('').sort(() => Math.random() - 0.5).join('');
 }
 
+
 /**
- * Fallback for development: Create staff with Auth account
- * (used when edge function is not deployed)
+ * Create a staff account with auth user
  */
-const createStaffAccountFallback = async (
-    schoolId: string,
-    data: CreateStaffParams
-): Promise<{ staffId: string; docId: string; message: string; warning?: string }> => {
-    console.log('Creating staff account...');
-
-    const staffId = data.staffId || generateStaffId(schoolId);
-    const tempPassword = generateTemporaryPassword();
-    let authId: string | undefined;
-    let authCreatedSuccessfully = false;
-
-    try {
-        // Step 1: Try to create Auth account (best effort)
-        // Note: This may fail due to Supabase configuration, so we make it optional
-        console.log('Step 1: Creating Auth account for email:', data.email);
-
-        try {
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: data.email,
-                password: tempPassword,
-                options: {
-                    data: {
-                        role: data.role,
-                        schoolId: schoolId,
-                        staffId: staffId,
-                        fullName: data.fullName,
-                    }
-                }
-            });
-
-            if (authError) {
-                console.warn('Auth creation warning:', {
-                    message: authError.message,
-                    status: (authError as any).status,
-                });
-
-                // Check if email already exists
-                if (authError.message.includes('already registered') || authError.message.includes('User already exists')) {
-                    console.log('Email already registered in Supabase Auth. This staff member likely already exists.');
-                    authCreatedSuccessfully = true;
-                    // Don't generate a new ID - we'll use the email-based lookup or let database decide
-                    authId = undefined; // Will generate UUID for database record, which will be independent
-                } else {
-                    console.warn('Auth creation failed, will continue with database-only approach');
-                }
-            } else if (authData?.user?.id) {
-                authId = authData.user.id;
-                authCreatedSuccessfully = true;
-                console.log('✅ Auth account created successfully with ID:', authId);
-            } else if (authData?.user) {
-                // User was created but doesn't have an ID (e.g., email confirmation pending)
-                console.log('Auth signup succeeded (ID pending email confirmation)');
-                authCreatedSuccessfully = true;
-            }
-        } catch (authErr) {
-            console.warn('Auth operation failed (will continue):', authErr instanceof Error ? authErr.message : String(authErr));
-            // Continue - we'll create the database record regardless
-        }
-
-        // Step 2: Create or update database record
-        // Use authId if we have it, otherwise generate a UUID for the database record
-        const userId = authId || generateUUID();
-
-        console.log('Step 2: Creating/updating database record with ID:', userId, 'email:', data.email);
-
-        // Use UPSERT to handle cases where the email already exists
-        const { data: userData, error: userError } = await supabase
-            .from('users')
-            .upsert(
-                {
-                    id: userId,
-                    school_id: schoolId,
-                    email: data.email,
-                    full_name: data.fullName,
-                    role: data.role,
-                    staff_id: staffId,
-                    phone_number: data.phoneNumber,
-                    assigned_subjects: data.specialization ? [data.specialization] : [],
-                },
-                { onConflict: 'email' } // If email already exists, update the record
-            )
-            .select()
-            .single();
-
-        if (userError) {
-            const errorDetails = {
-                code: (userError as any).code,
-                message: userError.message,
-                details: (userError as any).details,
-                hint: (userError as any).hint,
-            };
-            console.error('Database error:', errorDetails);
-
-            let errorMsg = userError.message || 'Failed to save user';
-            if ((userError as any).code === '23505') {
-                errorMsg = `Email '${data.email}' is already in use`;
-            } else if ((userError as any).hint) {
-                errorMsg = `${errorMsg} - ${(userError as any).hint}`;
-            }
-
-            throw new Error(`Database error: ${errorMsg}`);
-        }
-
-        console.log('✅ Database record created successfully');
-
-        // Return appropriate message based on what succeeded
-        if (authCreatedSuccessfully) {
-            return {
-                staffId,
-                docId: userData.id,
-                message: `✅ Staff account created successfully. Auth account is ready. Staff can log in with email: ${data.email}`
-            };
-        } else {
-            return {
-                staffId,
-                docId: userData.id,
-                message: `✅ Staff profile created in the system.`,
-                warning: `The staff can log in after setting up their password. They can use the "Forgot Password" option on the login page to set their password with email: ${data.email}`
-            };
-        }
-    } catch (error) {
-        console.error('Staff creation error:', error);
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to create staff account: ${errorMsg}`);
-    }
-};
+interface CreateStaffAccountResult {
+    staffId: string;
+    docId: string;
+    message: string;
+    warning?: string;
+    tempPassword?: string;
+}
 
 export const createStaffAccount = async (
     schoolId: string,
     adminId: string,
     data: CreateStaffParams
-) => {
-    const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-staff`;
-    const isProduction = import.meta.env.PROD;
-
-    console.log('Creating staff account with:', {
-        email: data.email,
-        schoolId,
-        role: data.role,
-        edgeFunctionUrl,
-        isProduction
-    });
-
-    // In development, prioritize the direct fallback due to infrastructure issues with edge functions
-    if (!isProduction) {
-        console.log('Development mode: Using direct database insert for staff creation...');
-        return await createStaffAccountFallback(schoolId, data);
-    }
-
-    // In production, edge function is required
+): Promise<CreateStaffAccountResult> => {
+    const staffId = data.staffId || generateStaffId(schoolId);
+    const email = data.email || getVirtualEmail(schoolId, staffId);
+    const tempPassword = generateTemporaryPassword();
+    
     try {
-        const response = await fetch(edgeFunctionUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseAnonKey}`
-            },
-            body: JSON.stringify({
-                email: data.email,
-                fullName: data.fullName,
-                schoolId,
+        // 1. Generate deterministic staff UUID
+        const userId = await generateDeterministicUUID(schoolId, staffId);
+
+        // 2. Prepare user data for the RPC call
+        const userData = {
+            id: userId,
+            email: email,
+            password: tempPassword,
+            user_metadata: {
+                full_name: data.fullName,
                 role: data.role,
-                specialization: data.specialization,
-                phoneNumber: data.phoneNumber,
-                adminId,
-                staffId: data.staffId
-            })
+                schoolId: schoolId,
+                staff_id: staffId,
+                phone_number: data.phoneNumber || null,
+                specialization: data.specialization || null
+            }
+        };
+
+        console.log('Creating user with data:', JSON.stringify(userData, null, 2));
+
+        // 3. Call the RPC function to create the user
+        const { data: createdUser, error: rpcError } = await supabase.rpc('create_user_with_profile', {
+            user_data: userData
         });
 
-        const text = await response.text();
-
-        if (!text) {
-            throw new Error('Empty response from server');
+        if (rpcError) {
+            console.error('User creation failed:', rpcError);
+            throw new Error(`Failed to create user: ${rpcError.message}`);
         }
 
-        const result = JSON.parse(text);
+        if (!createdUser) {
+            throw new Error('User creation returned no data');
+        }
 
-        if (!response.ok) {
-            let errorMessage = result.error || `Failed to invite staff (HTTP ${response.status})`;
-            if (result.details?.message) {
-                errorMessage += `: ${result.details.message}`;
+        // 4. Log the action
+        await logAction(
+            schoolId, 
+            adminId, 
+            'System', // User name - in a real app, you might want to fetch this from the admin user
+            'create', 
+            'staff',
+            userId,
+            {
+                staffId,
+                fullName: data.fullName,
+                email: email,
+                role: data.role
+            },
+            { 
+                timestamp: new Date().toISOString(),
+                staffId: staffId
             }
-            throw new Error(errorMessage);
+        );
+
+        const result: CreateStaffAccountResult = {
+            staffId,
+            docId: userId,
+            message: `Staff account created successfully. Login with email: ${email} and temporary password.`,
+        };
+
+        // Include the temporary password in non-production environments
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+            result.tempPassword = tempPassword;
         }
 
-        return {
-            staffId: result.staffId,
-            docId: result.authId,
-            message: result.message || "Staff invited successfully. Confirmation email sent.",
-            warning: result.warning || undefined
-        };
-    } catch (error) {
-        console.error('Production staff creation failed:', error);
-        throw error;
+        return result;
+    } catch (err) {
+        console.error('Error creating staff:', err);
+        throw err;
     }
 };
 

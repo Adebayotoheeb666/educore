@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { logAction } from './auditService';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface StudentImportRow {
     admissionNumber: string;
@@ -23,27 +24,6 @@ export interface ImportResult {
     }>;
 }
 
-/**
- * Generates a deterministic UUID v5-like string from a name.
- * This ensures valid UUID syntax while remaining idempotent.
- */
-async function generateDeterministicUUID(name: string): Promise<string> {
-    // Basic hash function to create a hex string from name
-    // Using simple hashing since we just need valid UUID syntax and determinism
-    const msgUint8 = new TextEncoder().encode(name);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-    // Format as UUID: 8-4-4-4-12
-    return [
-        hex.substring(0, 8),
-        hex.substring(8, 12),
-        hex.substring(12, 16),
-        hex.substring(16, 20),
-        hex.substring(20, 32)
-    ].join('-');
-}
 
 /**
  * Parse CSV file and extract student data
@@ -200,13 +180,14 @@ export const bulkImportStudents = async (
             for (const row of batch) {
                 const admissionNum = row.admissionNumber.trim().toLowerCase();
 
-                // Generate deterministic UIDs for the student and parent
-                const studentUid = await generateDeterministicUUID(`student_${schoolId}_${admissionNum}`);
-                const parentUid = await generateDeterministicUUID(`parent_${schoolId}_${admissionNum}`);
+                // Generate UUIDs for the student and parent
+                const studentUid = uuidv4();
+                const parentUid = uuidv4();
 
                 // Student Profile
                 usersToInsert.push({
                     id: studentUid,
+                    original_student_id: `student_${schoolId}_${admissionNum}`,
                     full_name: row.fullName.trim(),
                     email: row.email?.trim(),
                     role: 'student',
@@ -219,6 +200,7 @@ export const bulkImportStudents = async (
 
                     parentsToInsert.push({
                         id: parentUid,
+                        original_parent_id: `parent_${schoolId}_${row.parentEmail?.toLowerCase().replace(/[^a-z0-9]/g, '') || admissionNum}`,
                         full_name: row.parentName || `Parent of ${row.fullName}`,
                         email: row.parentEmail?.trim(),
                         phone_number: row.parentPhone?.trim(),
@@ -281,9 +263,46 @@ export const bulkImportStudents = async (
 
             // 4. Record Class Enrollments
             if (enrollmentsToInsert.length > 0) {
-                const { error: enrollError } = await supabase.from('student_classes').upsert(enrollmentsToInsert, { onConflict: 'student_id,class_id' });
-                if (enrollError) {
-                    result.errors.push({ row: i, error: `Class enrollment failed: ${enrollError.message}` });
+                // Process enrollments one by one to handle potential duplicates
+                for (const enrollment of enrollmentsToInsert) {
+                    try {
+                        // Check if enrollment already exists
+                        const { data: existing, error: checkError } = await supabase
+                            .from('student_classes')
+                            .select('id')
+                            .eq('student_id', enrollment.student_id)
+                            .eq('class_id', enrollment.class_id)
+                            .maybeSingle();
+
+                        if (checkError) throw checkError;
+
+                        if (existing) {
+                            // Update existing enrollment
+                            const { error: updateError } = await supabase
+                                .from('student_classes')
+                                .update({
+                                    status: enrollment.status,
+                                    enrollment_date: enrollment.enrollment_date,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', existing.id);
+
+                            if (updateError) throw updateError;
+                        } else {
+                            // Insert new enrollment
+                            const { error: insertError } = await supabase
+                                .from('student_classes')
+                                .insert([enrollment]);
+
+                            if (insertError) throw insertError;
+                        }
+                    } catch (error) {
+                        result.errors.push({ 
+                            row: i, 
+                            error: `Class enrollment failed for student ${enrollment.student_id}: ${error instanceof Error ? error.message : 'Unknown error'}` 
+                        });
+                        console.error('Enrollment error:', error);
+                    }
                 }
             }
 

@@ -32,7 +32,13 @@ export const StudentCreationModal = ({ onClose, onSuccess, initialData, classes 
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [createdCredentials, setCreatedCredentials] = useState<{ admissionNumber: string; message: string } | null>(null);
+    const [createdCredentials, setCreatedCredentials] = useState<{ 
+        admissionNumber: string; 
+        docId: string;
+        message: string; 
+        warning?: string;
+        tempPassword?: string;
+    } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,8 +52,9 @@ export const StudentCreationModal = ({ onClose, onSuccess, initialData, classes 
             return;
         }
 
-        if (!formData.email.trim()) {
-            setError('Email is required');
+        // If email is provided, validate it
+        if (formData.email && !formData.email.trim()) {
+            setError('Email cannot be empty');
             return;
         }
 
@@ -88,10 +95,13 @@ export const StudentCreationModal = ({ onClose, onSuccess, initialData, classes 
                 onSuccess();
             } else {
                 // CREATE flow
-                const result = await createStudentAccount(schoolId, formData);
+                const result = await createStudentAccount(schoolId, user.id, formData);
                 setCreatedCredentials({
                     admissionNumber: result.admissionNumber,
-                    message: result.message
+                    docId: result.docId,
+                    message: result.message,
+                    warning: result.warning,
+                    tempPassword: result.tempPassword
                 });
             }
         } catch (err) {
