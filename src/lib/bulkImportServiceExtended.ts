@@ -458,57 +458,50 @@ export const bulkImportParents = async (
             const tempPassword = generateTempPassword();
 
             try {
-                // 1. Create auth user via Supabase Auth API
-                const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-                    email: row.email,
-                    password: tempPassword,
-                    email_confirm: true,
-                    user_metadata: {
-                        full_name: row.fullName,
-                        role: 'parent',
-                        school_id: schoolId
+                // 1. Create auth user and profile via edge function (has service role)
+                const response = await fetch(
+                    `${supabase.supabaseUrl}/functions/v1/create-bulk-users`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                        },
+                        body: JSON.stringify({
+                            email: row.email,
+                            password: tempPassword,
+                            user_metadata: {
+                                full_name: row.fullName,
+                                role: 'parent',
+                                school_id: schoolId
+                            }
+                        })
                     }
-                });
+                );
 
-                if (authError) {
+                const responseData = await response.json();
+
+                if (!response.ok) {
                     result.failed++;
                     result.errors.push({
                         row: i + 2,
-                        error: `Failed to create parent auth account: ${authError.message}`
+                        error: `Failed to create parent account: ${responseData.error}`
                     });
                     continue;
                 }
 
-                if (!authData?.user?.id) {
+                if (!responseData.id) {
                     result.failed++;
                     result.errors.push({
                         row: i + 2,
-                        error: 'Failed to create parent auth account: No user ID returned'
+                        error: 'Failed to create parent account: Unknown error'
                     });
                     continue;
                 }
 
-                const parentId = authData.user.id;
+                const parentId = responseData.id;
 
-                // 2. Create profile record via RPC
-                const { error: profileError } = await supabase.rpc('create_user_profile', {
-                    user_id: parentId,
-                    user_email: row.email,
-                    user_full_name: row.fullName,
-                    user_role: 'parent',
-                    user_school_id: schoolId
-                });
-
-                if (profileError) {
-                    result.failed++;
-                    result.errors.push({
-                        row: i + 2,
-                        error: `Failed to create parent profile: ${profileError.message}`
-                    });
-                    continue;
-                }
-
-                // 3. Link to students if provided
+                // 2. Link to students if provided
                 if (row.studentIds) {
                     const studentIds = row.studentIds.split(',').map(id => id.trim().toLowerCase());
                     for (const studentId of studentIds) {
