@@ -430,8 +430,6 @@ export const bulkImportParents = async (
                 
                 parentsToInsert.push({
                     id: dbId,
-                    parent_id: customParentId, // Store the custom ID in a separate field
-                    original_parent_id: `parent_${schoolId}_${row.email?.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
                     full_name: row.fullName,
                     email: row.email,
                     phone_number: row.phoneNumber,
