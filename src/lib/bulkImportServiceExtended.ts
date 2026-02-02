@@ -346,6 +346,11 @@ export const bulkImportStaff = async (
                     }
                 );
 
+                if (!response.ok && response.status === 0) {
+                    // Network error or CORS issue
+                    throw new Error('Network error or CORS issue - unable to reach server. Please check your connection.');
+                }
+
                 const responseData = await response.json();
 
                 if (!response.ok) {
