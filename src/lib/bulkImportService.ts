@@ -217,6 +217,11 @@ export const bulkImportStudents = async (
                     }
                 );
 
+                if (!studentResponse.ok && studentResponse.status === 0) {
+                    // Network error or CORS issue
+                    throw new Error('Network error or CORS issue - unable to reach server. Please check your connection.');
+                }
+
                 const studentResponseData = await studentResponse.json();
 
                 if (!studentResponse.ok) {
