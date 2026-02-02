@@ -203,8 +203,7 @@ export const bulkImportStudents = async (
                     {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                             email: studentEmail,
