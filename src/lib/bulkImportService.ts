@@ -253,12 +253,11 @@ export const bulkImportStudents = async (
                     const parentEmail = row.parentEmail || `parent_${admissionNum}@${schoolId}.educore.app`;
 
                     const parentResponse = await fetch(
-                        `${supabase.supabaseUrl}/functions/v1/create-bulk-users`,
+                        `${supabaseUrl}/functions/v1/create-bulk-users`,
                         {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
                                 email: parentEmail,
