@@ -68,14 +68,14 @@ serve(async (req) => {
     if (authError) {
       return new Response(
         JSON.stringify({ error: authError.message }),
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     if (!authData?.user?.id) {
       return new Response(
         JSON.stringify({ error: "No user ID returned from auth" }),
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
