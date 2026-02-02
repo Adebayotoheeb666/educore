@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, supabaseUrl } from './supabase';
 import { logAction } from './auditService';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -130,6 +130,29 @@ export const validateStudentData = (rows: StudentImportRow[]): { valid: boolean;
 };
 
 /**
+ * Generate a temporary password
+ */
+const generateTempPassword = (): string => {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const symbols = '!@#$%';
+
+    let password = '';
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += symbols[Math.floor(Math.random() * symbols.length)];
+
+    const all = uppercase + lowercase + numbers;
+    for (let i = 0; i < 8; i++) {
+        password += all[Math.floor(Math.random() * all.length)];
+    }
+
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+};
+
+/**
  * Import students in bulk into Supabase
  */
 export const bulkImportStudents = async (
@@ -166,147 +189,167 @@ export const bulkImportStudents = async (
             classesData.forEach(c => classMap.set(c.name.toLowerCase().trim(), c.id));
         }
 
-        // Process students in batches
-        const batchSize = 50;
+        // Process students one by one to create auth accounts and profiles
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const admissionNum = row.admissionNumber.trim().toLowerCase();
+            const tempPassword = generateTempPassword();
 
-        for (let i = 0; i < rows.length; i += batchSize) {
-            const batch = rows.slice(i, i + batchSize);
+            try {
+                // 1. Create student auth user and profile via edge function
+                const studentEmail = row.email || `student_${admissionNum}@${schoolId}.educore.app`;
+                const studentResponse = await fetch(
+                    `${supabaseUrl}/functions/v1/create-bulk-users`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                        },
+                        body: JSON.stringify({
+                            email: studentEmail,
+                            password: tempPassword,
+                            user_metadata: {
+                                full_name: row.fullName,
+                                role: 'student',
+                                school_id: schoolId
+                            }
+                        })
+                    }
+                );
 
-            const usersToInsert: any[] = [];
-            const parentsToInsert: any[] = [];
-            const linksToInsert: any[] = [];
-            const enrollmentsToInsert: any[] = [];
+                const studentResponseData = await studentResponse.json();
 
-            for (const row of batch) {
-                const admissionNum = row.admissionNumber.trim().toLowerCase();
-
-                // Generate UUIDs for the student and parent
-                const studentUid = uuidv4();
-                const parentUid = uuidv4();
-
-                // Student Profile
-                usersToInsert.push({
-                    id: studentUid,
-                    original_student_id: `student_${schoolId}_${admissionNum}`,
-                    full_name: row.fullName.trim(),
-                    email: row.email?.trim(),
-                    role: 'student',
-                    school_id: schoolId,
-                    admission_number: row.admissionNumber.trim()
-                });
-
-                // Parent Handling
-                if (createParents && (row.parentEmail || row.parentPhone)) {
-
-                    parentsToInsert.push({
-                        id: parentUid,
-                        original_parent_id: `parent_${schoolId}_${row.parentEmail?.toLowerCase().replace(/[^a-z0-9]/g, '') || admissionNum}`,
-                        full_name: row.parentName || `Parent of ${row.fullName}`,
-                        email: row.parentEmail?.trim(),
-                        phone_number: row.parentPhone?.trim(),
-                        role: 'parent',
-                        school_id: schoolId
+                if (!studentResponse.ok) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        admissionNumber: row.admissionNumber,
+                        error: `Failed to create student account: ${studentResponseData.error}`
                     });
-
-                    linksToInsert.push({
-                        school_id: schoolId,
-                        parent_id: parentUid,
-                        student_id: studentUid,
-                        relationship: 'Guardian'
-                    });
+                    continue;
                 }
 
+                if (!studentResponseData.id) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        admissionNumber: row.admissionNumber,
+                        error: 'Failed to create student account: Unknown error'
+                    });
+                    continue;
+                }
+
+                const studentId = studentResponseData.id;
+
+                // Update student profile with admission number
+                await supabase
+                    .from('users')
+                    .update({ admission_number: row.admissionNumber.trim() })
+                    .eq('id', studentId);
+
+                // 2. Create parent if requested
+                if (createParents && (row.parentEmail || row.parentPhone)) {
+                    const parentTempPassword = generateTempPassword();
+                    const parentEmail = row.parentEmail || `parent_${admissionNum}@${schoolId}.educore.app`;
+
+                    const parentResponse = await fetch(
+                        `${supabase.supabaseUrl}/functions/v1/create-bulk-users`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                            },
+                            body: JSON.stringify({
+                                email: parentEmail,
+                                password: parentTempPassword,
+                                user_metadata: {
+                                    full_name: row.parentName || `Parent of ${row.fullName}`,
+                                    role: 'parent',
+                                    school_id: schoolId
+                                }
+                            })
+                        }
+                    );
+
+                    const parentResponseData = await parentResponse.json();
+
+                    if (parentResponse.ok && parentResponseData.id) {
+                        const parentId = parentResponseData.id;
+
+                        // Link parent to student
+                        await supabase
+                            .from('parent_student_links')
+                            .upsert({
+                                school_id: schoolId,
+                                parent_id: parentId,
+                                student_id: studentId,
+                                relationship: 'Guardian'
+                            }, { onConflict: 'parent_id,student_id' });
+                    }
+                }
+
+                // 4. Record class enrollment if provided
                 if (row.className) {
                     const classId = classMap.get(row.className.trim().toLowerCase());
                     if (classId) {
-                        enrollmentsToInsert.push({
-                            school_id: schoolId,
-                            student_id: studentUid,
-                            class_id: classId,
-                            enrollment_date: new Date().toISOString().split('T')[0],
-                            status: 'active'
-                        });
-                    } else {
-                        result.errors.push({ row: i, error: `Class not found: ${row.className}` });
-                    }
-                }
-            }
-
-            // Perform Supabase Inserts (Sequential to maintain integrity if possible, or parallel)
-            // Note: In a real scenario, use upsert/onConflict if re-importing is allowed.
-
-            // 1. Insert Students
-            const { error: studentError } = await supabase.from('users').upsert(usersToInsert);
-            if (studentError) {
-                result.failed += batch.length;
-                result.errors.push({ row: i, error: `Batch student insert failed: ${studentError.message}` });
-                continue;
-            }
-
-            // 2. Insert Parents
-            if (parentsToInsert.length > 0) {
-                const { error: parentError } = await supabase.from('users').upsert(parentsToInsert);
-                if (parentError) {
-                    // Log error but explicit failure not crucial if students succeeded? 
-                    // Let's count as error.
-                    result.errors.push({ row: i, error: `Batch parent insert failed: ${parentError.message}` });
-                }
-            }
-
-            // 3. Insert Parent-Student Links
-            if (linksToInsert.length > 0) {
-                const { error: linkError } = await supabase.from('parent_student_links').upsert(linksToInsert, { onConflict: 'student_id,parent_id' });
-                if (linkError) {
-                    result.errors.push({ row: i, error: `Parent linking failed: ${linkError.message}` });
-                }
-            }
-
-            // 4. Record Class Enrollments
-            if (enrollmentsToInsert.length > 0) {
-                // Process enrollments one by one to handle potential duplicates
-                for (const enrollment of enrollmentsToInsert) {
-                    try {
-                        // Check if enrollment already exists
-                        const { data: existing, error: checkError } = await supabase
-                            .from('student_classes')
-                            .select('id')
-                            .eq('student_id', enrollment.student_id)
-                            .eq('class_id', enrollment.class_id)
-                            .maybeSingle();
-
-                        if (checkError) throw checkError;
-
-                        if (existing) {
-                            // Update existing enrollment
-                            const { error: updateError } = await supabase
+                        try {
+                            // Check if enrollment already exists
+                            const { data: existing } = await supabase
                                 .from('student_classes')
-                                .update({
-                                    status: enrollment.status,
-                                    enrollment_date: enrollment.enrollment_date,
-                                    updated_at: new Date().toISOString()
-                                })
-                                .eq('id', existing.id);
+                                .select('id')
+                                .eq('student_id', studentId)
+                                .eq('class_id', classId)
+                                .maybeSingle();
 
-                            if (updateError) throw updateError;
-                        } else {
-                            // Insert new enrollment
-                            const { error: insertError } = await supabase
-                                .from('student_classes')
-                                .insert([enrollment]);
-
-                            if (insertError) throw insertError;
+                            if (existing) {
+                                // Update existing enrollment
+                                await supabase
+                                    .from('student_classes')
+                                    .update({
+                                        status: 'active',
+                                        enrollment_date: new Date().toISOString().split('T')[0],
+                                        updated_at: new Date().toISOString()
+                                    })
+                                    .eq('id', existing.id);
+                            } else {
+                                // Insert new enrollment
+                                await supabase
+                                    .from('student_classes')
+                                    .insert([{
+                                        school_id: schoolId,
+                                        student_id: studentId,
+                                        class_id: classId,
+                                        enrollment_date: new Date().toISOString().split('T')[0],
+                                        status: 'active'
+                                    }]);
+                            }
+                        } catch (enrollError) {
+                            result.errors.push({
+                                row: i + 2,
+                                admissionNumber: row.admissionNumber,
+                                error: `Class enrollment failed: ${enrollError instanceof Error ? enrollError.message : 'Unknown error'}`
+                            });
                         }
-                    } catch (error) {
-                        result.errors.push({ 
-                            row: i, 
-                            error: `Class enrollment failed for student ${enrollment.student_id}: ${error instanceof Error ? error.message : 'Unknown error'}` 
+                    } else {
+                        result.errors.push({
+                            row: i + 2,
+                            admissionNumber: row.admissionNumber,
+                            error: `Class not found: ${row.className}`
                         });
-                        console.error('Enrollment error:', error);
                     }
                 }
-            }
 
-            result.imported += batch.length;
+                result.imported++;
+            } catch (error) {
+                result.failed++;
+                result.errors.push({
+                    row: i + 2,
+                    admissionNumber: row.admissionNumber,
+                    error: `Error creating student: ${error instanceof Error ? error.message : 'Unknown error'}`
+                });
+            }
         }
 
         result.success = result.failed === 0;

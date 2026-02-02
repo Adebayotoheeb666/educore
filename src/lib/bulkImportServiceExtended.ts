@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, supabaseUrl } from './supabase';
 import { logAction } from './auditService';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -259,6 +259,29 @@ const validateSubjectRows = (rows: any[]): { valid: SubjectImportRow[], errors: 
 };
 
 /**
+ * Generate a temporary password
+ */
+const generateTempPassword = (): string => {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const symbols = '!@#$%';
+
+    let password = '';
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += symbols[Math.floor(Math.random() * symbols.length)];
+
+    const all = uppercase + lowercase + numbers;
+    for (let i = 0; i < 8; i++) {
+        password += all[Math.floor(Math.random() * all.length)];
+    }
+
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+};
+
+/**
  * Bulk import staff members
  */
 export const bulkImportStaff = async (
@@ -294,49 +317,62 @@ export const bulkImportStaff = async (
             return result;
         }
 
-        // Process in batches
-        const batchSize = 50;
+        // Process staff one by one to create auth accounts and profiles
+        for (let i = 0; i < valid.length; i++) {
+            const row = valid[i];
+            const staffId = row.staffId.toLowerCase();
+            const tempPassword = generateTempPassword();
+            const userId = uuidv4();
 
-        for (let i = 0; i < valid.length; i += batchSize) {
-            const batch = valid.slice(i, i + batchSize);
-            const usersToInsert: any[] = [];
+            try {
+                // 1. Create auth user and profile via edge function (has service role)
+                const response = await fetch(
+                    `${supabaseUrl}/functions/v1/create-bulk-users`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                        },
+                        body: JSON.stringify({
+                            email: row.email,
+                            password: tempPassword,
+                            user_metadata: {
+                                full_name: row.fullName,
+                                role: row.role || 'staff',
+                                school_id: schoolId,
+                                staff_id: staffId
+                            }
+                        })
+                    }
+                );
 
-            for (const row of batch) {
-                const staffId = row.staffId.toLowerCase();
-                const userId = uuidv4(); // Generate a proper UUID
+                const responseData = await response.json();
 
-                // Ensure role is one of: 'admin', 'staff', 'student', 'parent', 'bursar'
-                const validRoles = ['admin', 'staff', 'student', 'parent', 'bursar'] as const;
-                const role = (row.role && validRoles.includes(row.role.toLowerCase() as typeof validRoles[number])) 
-                    ? row.role.toLowerCase() 
-                    : 'staff'; // Default to 'staff' if not provided or invalid
-
-                usersToInsert.push({
-                    id: userId,
-                    // Store the original staff ID in a separate field for reference
-                    original_staff_id: `staff_${schoolId}_${staffId}`,
-                    staff_id: staffId,
-                    full_name: row.fullName,
-                    email: row.email,
-                    phone_number: row.phoneNumber,
-                    role: role,
-                    school_id: schoolId
-                });
-            }
-
-            // Insert batch
-            const { error } = await supabase
-                .from('users')
-                .upsert(usersToInsert, { onConflict: 'id' });
-
-            if (error) {
-                result.failed += batch.length;
+                if (!response.ok) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        identifier: row.staffId,
+                        error: `Failed to create staff account: ${responseData.error}`
+                    });
+                } else if (responseData.id) {
+                    result.imported++;
+                } else {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        identifier: row.staffId,
+                        error: 'Failed to create staff account: Unknown error'
+                    });
+                }
+            } catch (error) {
+                result.failed++;
                 result.errors.push({
                     row: i + 2,
-                    error: `Failed to import batch: ${error.message}`
+                    identifier: row.staffId,
+                    error: `Error creating staff account: ${error instanceof Error ? error.message : 'Unknown error'}`
                 });
-            } else {
-                result.imported += batch.length;
             }
         }
 
@@ -416,70 +452,81 @@ export const bulkImportParents = async (
 
         const studentMap = new Map(students?.map(s => [s.admission_number?.toLowerCase(), s.id]) || []);
 
-        // Process in batches
-        const batchSize = 50;
+        // Process parents one by one to create auth accounts and profiles
+        for (let i = 0; i < valid.length; i++) {
+            const row = valid[i];
+            const tempPassword = generateTempPassword();
 
-        for (let i = 0; i < valid.length; i += batchSize) {
-            const batch = valid.slice(i, i + batchSize);
-            const parentsToInsert: any[] = [];
-            const linksToInsert: any[] = [];
+            try {
+                // 1. Create auth user and profile via edge function (has service role)
+                const response = await fetch(
+                    `${supabaseUrl}/functions/v1/create-bulk-users`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                        },
+                        body: JSON.stringify({
+                            email: row.email,
+                            password: tempPassword,
+                            user_metadata: {
+                                full_name: row.fullName,
+                                role: 'parent',
+                                school_id: schoolId
+                            }
+                        })
+                    }
+                );
 
-            for (const row of batch) {
-                // Generate a UUID for the database ID
-                const dbId = uuidv4();
-                // Store the custom parent ID if provided
-                const customParentId = row.parentId?.trim();
-                
-                parentsToInsert.push({
-                    id: dbId,
-                    parent_id: customParentId, // Store the custom ID in a separate field
-                    original_parent_id: `parent_${schoolId}_${row.email?.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-                    full_name: row.fullName,
-                    email: row.email,
-                    phone_number: row.phoneNumber,
-                    role: 'parent',
-                    school_id: schoolId
-                });
+                const responseData = await response.json();
 
-                // Handle student links if provided
+                if (!response.ok) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        error: `Failed to create parent account: ${responseData.error}`
+                    });
+                    continue;
+                }
+
+                if (!responseData.id) {
+                    result.failed++;
+                    result.errors.push({
+                        row: i + 2,
+                        error: 'Failed to create parent account: Unknown error'
+                    });
+                    continue;
+                }
+
+                const parentId = responseData.id;
+
+                // 2. Link to students if provided
                 if (row.studentIds) {
                     const studentIds = row.studentIds.split(',').map(id => id.trim().toLowerCase());
                     for (const studentId of studentIds) {
                         const studentUid = studentMap.get(studentId);
                         if (studentUid) {
-                            linksToInsert.push({
-                                school_id: schoolId,
-                                parent_id: dbId, // Use the database ID for the relationship
-                                student_id: studentUid,
-                                relationship: 'Guardian'
-                            });
+                            await supabase
+                                .from('parent_student_links')
+                                .upsert({
+                                    school_id: schoolId,
+                                    parent_id: parentId,
+                                    student_id: studentUid,
+                                    relationship: 'Guardian'
+                                }, { onConflict: 'parent_id,student_id' });
                         }
                     }
                 }
-            }
 
-            // Insert parents - using 'id' for conflict resolution since it's the primary key
-            const { error: parentError } = await supabase
-                .from('users')
-                .upsert(parentsToInsert, { onConflict: 'id' });
-
-            if (parentError) {
-                result.failed += batch.length;
+                result.imported++;
+            } catch (error) {
+                result.failed++;
                 result.errors.push({
                     row: i + 2,
-                    error: `Failed to import parents: ${parentError.message}`
+                    error: `Error creating parent account: ${error instanceof Error ? error.message : 'Unknown error'}`
                 });
-                continue;
             }
-
-            // Insert parent-student links if any
-            if (linksToInsert.length > 0) {
-                await supabase
-                    .from('parent_student_links')
-                    .upsert(linksToInsert, { onConflict: 'parent_id,student_id' });
-            }
-
-            result.imported += batch.length;
         }
 
         result.success = result.failed === validationErrors.length;
