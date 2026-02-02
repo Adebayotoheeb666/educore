@@ -203,8 +203,7 @@ export const bulkImportStudents = async (
                     {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                             email: studentEmail,
@@ -217,6 +216,11 @@ export const bulkImportStudents = async (
                         })
                     }
                 );
+
+                if (!studentResponse.ok && studentResponse.status === 0) {
+                    // Network error or CORS issue
+                    throw new Error('Network error or CORS issue - unable to reach server. Please check your connection.');
+                }
 
                 const studentResponseData = await studentResponse.json();
 
@@ -254,12 +258,11 @@ export const bulkImportStudents = async (
                     const parentEmail = row.parentEmail || `parent_${admissionNum}@${schoolId}.educore.app`;
 
                     const parentResponse = await fetch(
-                        `${supabase.supabaseUrl}/functions/v1/create-bulk-users`,
+                        `${supabaseUrl}/functions/v1/create-bulk-users`,
                         {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
                                 email: parentEmail,
@@ -272,6 +275,11 @@ export const bulkImportStudents = async (
                             })
                         }
                     );
+
+                    if (!parentResponse.ok && parentResponse.status === 0) {
+                        // Network error or CORS issue
+                        throw new Error('Network error or CORS issue - unable to reach server. Please check your connection.');
+                    }
 
                     const parentResponseData = await parentResponse.json();
 

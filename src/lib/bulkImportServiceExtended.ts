@@ -331,8 +331,7 @@ export const bulkImportStaff = async (
                     {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                             email: row.email,
@@ -346,6 +345,11 @@ export const bulkImportStaff = async (
                         })
                     }
                 );
+
+                if (!response.ok && response.status === 0) {
+                    // Network error or CORS issue
+                    throw new Error('Network error or CORS issue - unable to reach server. Please check your connection.');
+                }
 
                 const responseData = await response.json();
 
@@ -464,8 +468,7 @@ export const bulkImportParents = async (
                     {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                             email: row.email,
@@ -478,6 +481,11 @@ export const bulkImportParents = async (
                         })
                     }
                 );
+
+                if (!response.ok && response.status === 0) {
+                    // Network error or CORS issue
+                    throw new Error('Network error or CORS issue - unable to reach server. Please check your connection.');
+                }
 
                 const responseData = await response.json();
 

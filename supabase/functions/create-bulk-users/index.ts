@@ -12,13 +12,25 @@ interface CreateUserRequest {
   };
 }
 
+// Add CORS headers helper
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     // Only allow POST requests
     if (req.method !== "POST") {
       return new Response(
         JSON.stringify({ error: "Method not allowed" }),
-        { status: 405 }
+        { status: 405, headers: corsHeaders }
       );
     }
 
@@ -28,7 +40,7 @@ serve(async (req) => {
     if (!body.email || !body.password || !body.user_metadata) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: email, password, user_metadata" }),
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -39,7 +51,7 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseServiceKey) {
       return new Response(
         JSON.stringify({ error: "Missing environment variables" }),
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -56,14 +68,14 @@ serve(async (req) => {
     if (authError) {
       return new Response(
         JSON.stringify({ error: authError.message }),
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     if (!authData?.user?.id) {
       return new Response(
         JSON.stringify({ error: "No user ID returned from auth" }),
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -85,7 +97,7 @@ serve(async (req) => {
       await supabase.auth.admin.deleteUser(authData.user.id);
       return new Response(
         JSON.stringify({ error: "Failed to create profile: " + profileError.message }),
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -96,13 +108,13 @@ serve(async (req) => {
         user_metadata: body.user_metadata,
         message: "User created successfully",
       }),
-      { status: 200 }
+      { status: 200, headers: corsHeaders }
     );
   } catch (error) {
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Internal server error" }),
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 });
