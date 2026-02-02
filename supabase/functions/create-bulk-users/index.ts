@@ -97,7 +97,7 @@ serve(async (req) => {
       await supabase.auth.admin.deleteUser(authData.user.id);
       return new Response(
         JSON.stringify({ error: "Failed to create profile: " + profileError.message }),
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
