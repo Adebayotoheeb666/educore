@@ -108,7 +108,7 @@ serve(async (req) => {
         user_metadata: body.user_metadata,
         message: "User created successfully",
       }),
-      { status: 200 }
+      { status: 200, headers: corsHeaders }
     );
   } catch (error) {
     console.error("Error:", error);
