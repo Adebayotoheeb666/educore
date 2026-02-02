@@ -40,7 +40,7 @@ serve(async (req) => {
     if (!body.email || !body.password || !body.user_metadata) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: email, password, user_metadata" }),
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
