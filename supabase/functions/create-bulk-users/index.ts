@@ -51,7 +51,7 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseServiceKey) {
       return new Response(
         JSON.stringify({ error: "Missing environment variables" }),
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
