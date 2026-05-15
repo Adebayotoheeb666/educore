@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { getStudents } from '../../services/studentService';
+import { getStudents, deleteStudent } from '../../services/studentService';
 import './Students.css';
 
 const Students = () => {
@@ -11,6 +11,8 @@ const Students = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -47,6 +49,21 @@ const Students = () => {
       return matchesSearch && matchesClass && matchesGender;
     });
   }, [students, searchQuery, classFilter, genderFilter]);
+
+  const handleDelete = async (studentId) => {
+    setDeletingId(studentId);
+    try {
+      await deleteStudent(studentId);
+      setStudents(prev => prev.filter(s => (s._id ?? s.id) !== studentId));
+      setTotal(prev => prev - 1);
+      toast.success('Student deleted');
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? 'Failed to delete student');
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
+    }
+  };
 
   return (
     <div className="students-container">
@@ -151,7 +168,33 @@ const Students = () => {
                     </span>
                   </td>
                   <td>
-                    <Link to={`/students/${student._id ?? student.id}`} className="view-profile-link">View Profile</Link>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Link to={`/students/${student._id ?? student.id}`} className="view-profile-link">View</Link>
+                      {confirmDeleteId === (student._id ?? student.id) ? (
+                        <>
+                          <button
+                            onClick={() => handleDelete(student._id ?? student.id)}
+                            disabled={!!deletingId}
+                            style={{ padding: '0.5rem 1.2rem', borderRadius: '6px', background: '#ef4444', color: '#fff', border: 'none', fontSize: '1.2rem', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            {deletingId === (student._id ?? student.id) ? '…' : 'Confirm'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            style={{ padding: '0.5rem 1.2rem', borderRadius: '6px', background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', fontSize: '1.2rem', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(student._id ?? student.id)}
+                          style={{ padding: '0.5rem 1.2rem', borderRadius: '6px', background: '#fff0f0', color: '#ef4444', border: '1px solid #fecaca', fontSize: '1.2rem', fontWeight: 700, cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

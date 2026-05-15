@@ -34,6 +34,7 @@ import './pages/dashboard/Dashboard.css';
 // Lazy-loaded app pages
 const Students       = lazy(() => import('./pages/students/Students'));
 const AddStudent     = lazy(() => import('./pages/students/AddStudent'));
+const EditStudent    = lazy(() => import('./pages/students/EditStudent'));
 const StudentDetail  = lazy(() => import('./pages/students/StudentDetail'));
 const BulkImport     = lazy(() => import('./pages/students/BulkImport'));
 
@@ -375,6 +376,7 @@ function App() {
             <Route path="/students" element={<RoleRoute allowed={ADMIN_ROLES}><Students /></RoleRoute>} />
             <Route path="/students/add" element={<RoleRoute allowed={ADMIN_ROLES}><AddStudent /></RoleRoute>} />
             <Route path="/students/bulk-import" element={<RoleRoute allowed={ADMIN_ROLES}><BulkImport /></RoleRoute>} />
+            <Route path="/students/:id/edit" element={<RoleRoute allowed={ADMIN_ROLES}><EditStudent /></RoleRoute>} />
             <Route path="/students/:id" element={<RoleRoute allowed={ADMIN_ROLES}><StudentDetail /></RoleRoute>} />
 
             {/* Teachers */}

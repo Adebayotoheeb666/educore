@@ -63,15 +63,36 @@ const getStudentById = async (req, res) => {
 
 const updateStudent = async (req, res) => {
   try {
-    const student = await User.findOneAndUpdate({ _id: req.params.id, schoolId: req.school._id, role: 'student' }, req.body, { new: true });
+    const existing = await User.findOne({ _id: req.params.id, schoolId: req.school._id, role: 'student' });
+    if (!existing) return res.status(404).json({ message: 'Student not found' });
+
+    const ALLOWED = ['firstName', 'lastName', 'dob', 'gender', 'parentPhone', 'isActive', 'classId'];
+    const update = {};
+    ALLOWED.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
+
+    if (update.firstName !== undefined || update.lastName !== undefined) {
+      update.name = `${update.firstName ?? existing.firstName ?? ''} ${update.lastName ?? existing.lastName ?? ''}`.trim();
+    }
+
+    const classId = update.classId;
+    delete update.classId;
+    if (classId) {
+      await Class.updateMany({ students: existing._id }, { $pull: { students: existing._id } });
+      await Class.findByIdAndUpdate(classId, { $addToSet: { students: existing._id } });
+    }
+
+    const student = await User.findByIdAndUpdate(existing._id, update, { new: true });
     res.status(200).json(student);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
 const deleteStudent = async (req, res) => {
   try {
-    await User.findOneAndDelete({ _id: req.params.id, schoolId: req.school._id, role: 'student' });
-    res.status(200).json({ message: "Student deleted" });
+    const student = await User.findOneAndDelete({ _id: req.params.id, schoolId: req.school._id, role: 'student' });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    await Class.updateMany({ students: student._id }, { $pull: { students: student._id } });
+    await User.updateMany({ role: 'parent', children: student._id }, { $pull: { children: student._id } });
+    res.status(200).json({ message: 'Student deleted' });
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
