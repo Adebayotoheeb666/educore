@@ -44,6 +44,8 @@ const EditTeacher    = lazy(() => import('./pages/teachers/EditTeacher'));
 const TeacherDetail  = lazy(() => import('./pages/teachers/TeacherDetail'));
 
 const Classes        = lazy(() => import('./pages/classes/Classes'));
+const AddClass       = lazy(() => import('./pages/classes/AddClass'));
+const EditClass      = lazy(() => import('./pages/classes/EditClass'));
 const ClassDetail    = lazy(() => import('./pages/classes/ClassDetail'));
 
 const Subjects       = lazy(() => import('./pages/subjects/Subjects'));
@@ -388,6 +390,8 @@ function App() {
 
             {/* Classes */}
             <Route path="/classes" element={<RoleRoute allowed={ADMIN_ROLES}><Classes /></RoleRoute>} />
+            <Route path="/classes/add" element={<RoleRoute allowed={ADMIN_ROLES}><AddClass /></RoleRoute>} />
+            <Route path="/classes/:id/edit" element={<RoleRoute allowed={ADMIN_ROLES}><EditClass /></RoleRoute>} />
             <Route path="/classes/:id" element={<RoleRoute allowed={ADMIN_ROLES}><ClassDetail /></RoleRoute>} />
 
             {/* Subjects */}
