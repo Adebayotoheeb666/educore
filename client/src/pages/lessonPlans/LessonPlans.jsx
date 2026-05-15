@@ -18,7 +18,12 @@ const LessonPlans = () => {
         setLoading(true);
         setError(null);
         const { data } = await getLessonPlans();
-        const plans = Array.isArray(data) ? data : (data.plans ?? []);
+
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid lesson plans response format - expected array');
+        }
+
+        const plans = data;
         setLessonPlans(plans);
         setStats({
           total: plans.length,
@@ -27,10 +32,10 @@ const LessonPlans = () => {
           aiAssisted: plans.filter(p => p.aiGenerated).length,
         });
       } catch (err) {
-        const message = err.response?.data?.message || err.message || 'Failed to load lesson plans';
+        const message = err?.message || err?.response?.data?.message || 'Failed to load lesson plans';
         setError(message);
+        console.error('Error loading lesson plans:', err);
         toast.error(message);
-        setLessonPlans([]);
       } finally {
         setLoading(false);
       }

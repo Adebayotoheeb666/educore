@@ -19,11 +19,18 @@ const AttendanceMark = () => {
   useEffect(() => {
     getClasses()
       .then(({ data }) => {
-        const list = data.classes ?? data;
+        if (!data || (!Array.isArray(data) && !data.classes)) {
+          throw new Error('Invalid classes response format');
+        }
+        const list = Array.isArray(data) ? data : data.classes;
         setClasses(list);
         if (list.length > 0) setSelectedClass(list[0]._id ?? list[0].id);
       })
-      .catch(() => toast.error('Failed to load classes'));
+      .catch((error) => {
+        const message = error?.message || 'Failed to load classes';
+        console.error('Error loading classes:', error);
+        toast.error(message);
+      });
   }, []);
 
   // Load attendance roster when class or date changes
@@ -32,17 +39,26 @@ const AttendanceMark = () => {
     setLoading(true);
     getAttendanceByDate(selectedClass, selectedDate)
       .then(({ data }) => {
-        const roster = data.students ?? data;
+        if (!data) {
+          setStudents([]);
+          return;
+        }
+        const roster = data.records || [];
         setStudents(roster.map(s => ({
           _id: s._id ?? s.id,
           admissionNo: s.admissionNo ?? s.id,
           name: s.name,
           initials: (s.name ?? '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
-          status: s.attendance?.status ?? 'present',
-          note: s.attendance?.note ?? '',
+          status: s.status ?? 'present',
+          note: s.note ?? '',
         })));
       })
-      .catch(() => toast.error('Failed to load attendance roster'))
+      .catch((error) => {
+        const message = error?.message || 'Failed to load attendance roster';
+        console.error('Error loading attendance roster:', error);
+        toast.error(message);
+        setStudents([]);
+      })
       .finally(() => setLoading(false));
   }, [selectedClass, selectedDate]);
 
