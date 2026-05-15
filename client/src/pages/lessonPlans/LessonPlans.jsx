@@ -9,12 +9,15 @@ const LessonPlans = () => {
   const [view, setView] = useState('list');
   const [lessonPlans, setLessonPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [stats, setStats] = useState({ total: 0, approved: 0, pending: 0, aiAssisted: 0 });
 
   useEffect(() => {
-    setLoading(true);
-    getLessonPlans()
-      .then(({ data }) => {
+    const loadPlans = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const { data } = await getLessonPlans();
         const plans = Array.isArray(data) ? data : (data.plans ?? []);
         setLessonPlans(plans);
         setStats({
@@ -23,9 +26,17 @@ const LessonPlans = () => {
           pending: plans.filter(p => p.status === 'pending').length,
           aiAssisted: plans.filter(p => p.aiGenerated).length,
         });
-      })
-      .catch(() => toast.error('Failed to load lesson plans'))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        const message = err.response?.data?.message || err.message || 'Failed to load lesson plans';
+        setError(message);
+        toast.error(message);
+        setLessonPlans([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPlans();
   }, []);
 
   return (
@@ -71,11 +82,27 @@ const LessonPlans = () => {
         </div>
       </div>
 
+      {error && !loading ? (
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444', backgroundColor: '#fee2e2', borderRadius: '8px', marginBottom: '2rem' }}>
+          <h3>⚠️ Error Loading Lesson Plans</h3>
+          <p>{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#6A5ACD', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
       {view === 'list' ? (
         loading ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Loading lesson plans…</div>
+          <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>
+            <div className="spinner-border text-primary"></div>
+            <p style={{ marginTop: '1rem' }}>Loading lesson plans…</p>
+          </div>
         ) : lessonPlans.length === 0 ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>No lesson plans found.</div>
+          <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>No lesson plans found. Create your first lesson plan to get started.</div>
         ) : (
           <div className="lp-grid">
             {lessonPlans.map(plan => {
