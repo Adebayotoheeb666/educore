@@ -17,16 +17,21 @@ const SchemeOfWork = () => {
         setLoading(true);
         setError(null);
         const { data } = await getSchemesOfWork();
-        const schemeList = Array.isArray(data) ? data : (data.schemes ?? []);
+
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid schemes response format - expected array');
+        }
+
+        const schemeList = data;
         setSchemes(schemeList);
         if (schemeList.length > 0) {
           setSelectedScheme(schemeList[0]);
         }
       } catch (err) {
-        const message = err.response?.data?.message || err.message || 'Failed to load schemes of work';
+        const message = err?.message || err?.response?.data?.message || 'Failed to load schemes of work';
         setError(message);
+        console.error('Error loading schemes:', err);
         toast.error(message);
-        setSchemes([]);
       } finally {
         setLoading(false);
       }

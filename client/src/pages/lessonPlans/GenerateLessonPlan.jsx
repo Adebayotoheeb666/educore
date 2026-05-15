@@ -18,8 +18,20 @@ const GenerateLessonPlan = () => {
 
   useEffect(() => {
     Promise.all([axios.get('/api/subjects'), axios.get('/api/classes')])
-      .then(([s, c]) => { setSubjects(s.data || []); setClasses(c.data || []); })
-      .catch(() => {});
+      .then(([s, c]) => {
+        if (!Array.isArray(s.data)) {
+          throw new Error('Invalid subjects response');
+        }
+        if (!Array.isArray(c.data)) {
+          throw new Error('Invalid classes response');
+        }
+        setSubjects(s.data);
+        setClasses(c.data);
+      })
+      .catch((error) => {
+        console.error('Error loading subjects/classes:', error);
+        toast.error(error?.message || 'Failed to load form data');
+      });
   }, []);
 
   const handleGenerate = async (e) => {
@@ -31,8 +43,13 @@ const GenerateLessonPlan = () => {
       setGenerated(data);
       toast.success('Lesson plan generated!');
     } catch (err) {
-      if (err.response?.status === 503) toast.error('AI service unavailable — try again shortly');
-      else toast.error(err.response?.data?.message || 'Generation failed');
+      console.error('Error generating lesson plan:', err);
+      if (err?.status === 503) {
+        toast.error('AI service unavailable — try again shortly');
+      } else {
+        const message = err?.message || 'Failed to generate lesson plan';
+        toast.error(message);
+      }
     } finally { setLoading(false); }
   };
 
@@ -43,7 +60,11 @@ const GenerateLessonPlan = () => {
       await saveLessonPlan({ ...generated, subject: form.subject, class: form.classId, topic: form.topic, aiGenerated: true });
       toast.success('Lesson plan saved!');
       navigate('/dashboard/lesson-plans');
-    } catch { toast.error('Failed to save'); }
+    } catch (error) {
+      console.error('Error saving lesson plan:', error);
+      const message = error?.message || 'Failed to save lesson plan';
+      toast.error(message);
+    }
     finally { setSaving(false); }
   };
 

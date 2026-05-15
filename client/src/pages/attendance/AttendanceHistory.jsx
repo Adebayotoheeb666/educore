@@ -29,10 +29,22 @@ const AttendanceHistory = () => {
       getAttendanceSummary({ student: id }),
     ])
       .then(([recRes, sumRes]) => {
-        setRecords(recRes.data || []);
-        setSummary(sumRes.data || null);
+        if (!Array.isArray(recRes.data)) {
+          throw new Error('Invalid attendance records response');
+        }
+        if (!sumRes.data || typeof sumRes.data !== 'object') {
+          throw new Error('Invalid attendance summary response');
+        }
+        setRecords(recRes.data);
+        setSummary(sumRes.data);
       })
-      .catch(() => toast.error('Failed to load attendance history'))
+      .catch((error) => {
+        const message = error?.message || 'Failed to load attendance history';
+        console.error('Error loading attendance history:', error);
+        toast.error(message);
+        setRecords([]);
+        setSummary(null);
+      })
       .finally(() => setLoading(false));
   };
 
