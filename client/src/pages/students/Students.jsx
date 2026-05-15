@@ -28,9 +28,16 @@ const Students = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  // Build a list of unique "Name Arm" labels for the class dropdown
   const classes = useMemo(() => {
-    const names = students.map(s => s.class?.name ?? s.class).filter(Boolean);
-    return [...new Set(names)].sort();
+    const labels = students
+      .map(s => {
+        const cls = s.class;
+        if (!cls) return null;
+        return cls.arm ? `${cls.name} ${cls.arm}` : cls.name;
+      })
+      .filter(Boolean);
+    return [...new Set(labels)].sort();
   }, [students]);
 
   const filteredStudents = useMemo(() => {
@@ -42,11 +49,14 @@ const Students = () => {
         (s.admissionNo ?? '').toLowerCase().includes(q) ||
         (s.parentPhone ?? s.phone ?? '').includes(q);
 
-      const matchesClass =
-        !classFilter || (s.class?.name ?? s.class) === classFilter;
+      // Build the same label used in the dropdown
+      const classLabel = s.class
+        ? (s.class.arm ? `${s.class.name} ${s.class.arm}` : s.class.name)
+        : '';
+      const matchesClass = !classFilter || classLabel === classFilter;
 
       const matchesGender =
-        !genderFilter || (s.gender ?? '').toLowerCase() === genderFilter.toLowerCase();
+        !genderFilter || (s.gender ?? '') === genderFilter;
 
       return matchesSearch && matchesClass && matchesGender;
     });
@@ -171,7 +181,7 @@ const Students = () => {
                     </div>
                   </td>
                   <td><span className="admission-no">{student.admissionNo}</span></td>
-                  <td><span className="class-tag">{student.class?.name ?? student.class}</span></td>
+                  <td><span className="class-tag">{student.class ? (student.class.arm ? `${student.class.name} ${student.class.arm}` : student.class.name) : '—'}</span></td>
                   <td><span className="gender-text">{student.gender}</span></td>
                   <td><span className="phone-text">{student.parentPhone ?? student.phone}</span></td>
                   <td>

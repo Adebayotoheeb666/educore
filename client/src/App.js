@@ -40,6 +40,7 @@ const BulkImport     = lazy(() => import('./pages/students/BulkImport'));
 
 const Teachers       = lazy(() => import('./pages/teachers/Teachers'));
 const AddTeacher     = lazy(() => import('./pages/teachers/AddTeacher'));
+const Parents        = lazy(() => import('./pages/students/Parents'));
 const EditTeacher    = lazy(() => import('./pages/teachers/EditTeacher'));
 const TeacherDetail  = lazy(() => import('./pages/teachers/TeacherDetail'));
 
@@ -113,6 +114,7 @@ const PaymentCallback = lazy(() => import('./pages/payments/PaymentCallback'));
 const Notifications = lazy(() => import('./pages/notifications/Notifications'));
 const Profile = lazy(() => import('./pages/profile/Profile'));
 const AdminProfileSetup = lazy(() => import('./pages/admin/AdminProfileSetup'));
+const Feedback = lazy(() => import('./pages/feedback/Feedback'));
 
 // ─── Role helpers ────────────────────────────────────────────────────────────
 const ADMIN_ROLES = ['school_owner', 'principal', 'vp_academics', 'vp_admin', 'admin_staff', 'super_admin'];
@@ -144,6 +146,7 @@ const PageSpinner = () => (
 const navConfig = [
   { label: 'Dashboard',    path: '/dashboard',              icon: '🏠', roles: STAFF_ROLES },
   { label: 'Students',     path: '/students',               icon: '👨‍🎓', roles: ADMIN_ROLES },
+  { label: 'Parents',      path: '/parents',                icon: '👪', roles: ADMIN_ROLES },
   { label: 'Teachers',     path: '/teachers',               icon: '👩‍🏫', roles: ADMIN_ROLES },
   { label: 'Classes',      path: '/classes',                icon: '🏫', roles: ADMIN_ROLES },
   { label: 'Subjects',     path: '/subjects',               icon: '📚', roles: ADMIN_ROLES },
@@ -159,6 +162,7 @@ const navConfig = [
   { label: 'Library',      path: '/library',                icon: '📖', roles: [...ADMIN_ROLES, 'librarian'] },
   { label: 'Announcements',path: '/announcements',          icon: '📢', roles: STAFF_ROLES },
   { label: 'Analytics',    path: '/analytics',              icon: '📈', roles: ADMIN_ROLES },
+  { label: 'Feedback',     path: '/feedback',               icon: '💬', roles: STAFF_ROLES },
 ];
 
 const parentNav = [
@@ -182,6 +186,7 @@ const superAdminNav = [
   { label: 'Users',    path: '/admin/users', icon: '👥' },
   { label: 'Blog',     path: '/admin/blog', icon: '📰' },
   { label: 'Payments', path: '/admin/payments', icon: '💳' },
+  { label: 'Feedback', path: '/feedback', icon: '💬' },
 ];
 
 // ─── App Layout ──────────────────────────────────────────────────────────────
@@ -411,6 +416,9 @@ function App() {
             <Route path="/teachers/:id/edit" element={<RoleRoute allowed={ADMIN_ROLES}><EditTeacher /></RoleRoute>} />
             <Route path="/teachers/:id" element={<RoleRoute allowed={ADMIN_ROLES}><TeacherDetail /></RoleRoute>} />
 
+            {/* Parents */}
+            <Route path="/parents" element={<RoleRoute allowed={ADMIN_ROLES}><Parents /></RoleRoute>} />
+
             {/* Classes */}
             <Route path="/classes" element={<RoleRoute allowed={ADMIN_ROLES}><Classes /></RoleRoute>} />
             <Route path="/classes/add" element={<RoleRoute allowed={ADMIN_ROLES}><AddClass /></RoleRoute>} />
@@ -507,6 +515,9 @@ function App() {
 
             {/* Notifications */}
             <Route path="/notifications" element={<Notifications />} />
+
+            {/* Feedback */}
+            <Route path="/feedback" element={<Feedback />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

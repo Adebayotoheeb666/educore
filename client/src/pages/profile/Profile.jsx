@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { setUser } from '../../redux/features/auth/authSlice';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import PasswordInput from '../../components/layout/PasswordInput';
 import './Profile.css';
 
 const Profile = () => {
@@ -147,15 +148,32 @@ const Profile = () => {
               <form className="profile-form-grid" onSubmit={handleChangePassword}>
                  <div className="profile-input-group" style={{ gridColumn: 'span 2' }}>
                    <label>Current Password</label>
-                   <input type="password" placeholder="••••••••••••" value={pwForm.currentPassword} onChange={e => setPwForm({...pwForm, currentPassword: e.target.value})} />
+                   <PasswordInput 
+                     name="currentPassword" 
+                     placeholder="••••••••••••" 
+                     value={pwForm.currentPassword} 
+                     onChange={e => setPwForm({...pwForm, currentPassword: e.target.value})} 
+                   />
                  </div>
                  <div className="profile-input-group">
                    <label>New Password</label>
-                   <input type="password" placeholder="Min. 8 characters" value={pwForm.newPassword} onChange={e => setPwForm({...pwForm, newPassword: e.target.value})} />
+                   <PasswordInput 
+                     name="newPassword" 
+                     placeholder="Min. 8 characters" 
+                     value={pwForm.newPassword} 
+                     onChange={e => setPwForm({...pwForm, newPassword: e.target.value})} 
+                     minLength={8}
+                   />
                  </div>
                  <div className="profile-input-group">
                    <label>Confirm New Password</label>
-                   <input type="password" placeholder="Must match new password" value={pwForm.confirmPassword} onChange={e => setPwForm({...pwForm, confirmPassword: e.target.value})} />
+                   <PasswordInput 
+                     name="confirmPassword" 
+                     placeholder="Must match new password" 
+                     value={pwForm.confirmPassword} 
+                     onChange={e => setPwForm({...pwForm, confirmPassword: e.target.value})} 
+                     minLength={8}
+                   />
                  </div>
               </form>
               <div className="ai-profile-alert">

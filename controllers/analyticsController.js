@@ -232,19 +232,29 @@ const getParentDashboard = async (req, res) => {
     
     const announcements = await require("./announcementController").getLatestAnnouncements(req.school._id);
 
+    let totalOutstandingFees = 0;
+    let totalAttendanceRate = 0;
+    let attendanceCount = 0;
+
     const childrenData = await Promise.all(parent.children.map(async (child) => {
       const results = await Result.find({ student: child._id });
       const avg = results.length > 0 ? Math.round(results[0].subjects.reduce((acc, s) => acc + s.totalScore, 0) / results[0].subjects.length) : 0;
       
-      const unpaidPayments = await Payment.countDocuments({
+      const unpaidPayments = await Payment.find({
         school: req.school._id,
         student: child._id,
         status: { $ne: 'paid' },
         balance: { $gt: 0 },
       });
-      const unpaid = unpaidPayments > 0;
+      
+      const outstandingBalance = unpaidPayments.reduce((acc, p) => acc + (p.balance || 0), 0);
+      const unpaid = outstandingBalance > 0;
+      
+      totalOutstandingFees += outstandingBalance;
 
       const attendance = await studentAttendanceRate(req.school._id, child._id);
+      totalAttendanceRate += attendance;
+      attendanceCount++;
 
       return {
         id: child._id,
@@ -255,12 +265,17 @@ const getParentDashboard = async (req, res) => {
         attendance,
         avg,
         avgTrend: '',
+        outstandingBalance,
         feeStatus: unpaid ? "BALANCE DUE" : "PAID",
         feeClass: unpaid ? "due" : "paid"
       };
     }));
 
+    const overallAttendance = attendanceCount > 0 ? Math.round(totalAttendanceRate / attendanceCount) : 0;
+
     res.status(200).json({
+      totalOutstandingFees,
+      overallAttendance,
       children: childrenData,
       announcements: announcements.slice(0, 3).map(a => ({
         id: a._id,

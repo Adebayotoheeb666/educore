@@ -4,13 +4,14 @@ const Class = require("../models/classModel");
 
 const createStudent = async (req, res) => {
   try {
-    const { firstName, lastName, email, dob, gender, classId, parentPhone, parentEmail, parentId } = req.body;
+    const { firstName, lastName, email, dob, gender, classId, parentPhone, parentEmail, parentId, avatar } = req.body;
 
     if (!firstName || !lastName || !email) {
       return res.status(400).json({ message: "First name, last name, and email are required" });
     }
 
-    const existing = await User.findOne({ email });
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) return res.status(400).json({ message: "Email already registered" });
 
     // Auto-generate admission number: SC-YYYY-XXXX
@@ -25,7 +26,7 @@ const createStudent = async (req, res) => {
       name: `${firstName} ${lastName}`,
       firstName,
       lastName,
-      email,
+      email: normalizedEmail,
       password: defaultPassword,
       role: 'student',
       schoolId: req.school._id,
@@ -34,6 +35,7 @@ const createStudent = async (req, res) => {
       gender: gender || undefined,
       parentPhone: parentPhone || undefined,
       parentId: parentId || undefined,
+      avatar: avatar || undefined,
     });
 
     if (classId) await Class.findByIdAndUpdate(classId, { $addToSet: { students: student._id } });
@@ -55,7 +57,8 @@ const bulkImportStudents = async (req, res) => {
 
     const year = new Date().getFullYear();
     let successful = 0;
-    const errors = [];
+    const errors = [];   // hard failures — row skipped
+    const warnings = []; // soft issues — row still created
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -64,10 +67,10 @@ const bulkImportStudents = async (req, res) => {
       const parts = fullName.split(/\s+/).filter(Boolean);
       const firstName = parts[0];
       const lastName = parts.slice(1).join(' ') || parts[0];
-      const email = String(row.EMAIL || row.email || `${(row.STUDENT_ID || row.student_id || `row${rowNum}`).toString().toLowerCase()}@import.local`).trim();
+      const email = String(row.EMAIL || row.email || `${(row.STUDENT_ID || row.student_id || `row${rowNum}`).toString().toLowerCase()}@import.local`).toLowerCase().trim();
       const parentPhone = String(row.PARENT_PHONE || row.parent_phone || '').trim();
       const gender = String(row.GENDER || row.gender || '').trim();
-      const classLabel = String(row.CLASS_GRADE || row.class_grade || row.Class || '').trim();
+      const classLabel = String(row.CLASS_GRADE || row.class_grade || row.Class || row.CLASS || row.class || row['Class/Grade'] || '').trim();
 
       if (!firstName) {
         errors.push({ row: rowNum, message: 'FULL_NAME is required' });
@@ -82,13 +85,27 @@ const bulkImportStudents = async (req, res) => {
 
       let classDoc = null;
       if (classLabel) {
+        // Strategy 1: exact name match (case-insensitive)
         classDoc = await Class.findOne({
           school: req.school._id,
           name: new RegExp(`^${classLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
         });
+
+        // Strategy 2: match name + arm concatenated (e.g. label "JSS 1A" -> name "JSS 1" arm "A")
         if (!classDoc) {
-          errors.push({ row: rowNum, message: `Class not found: ${classLabel}` });
-          continue;
+          const allClasses = await Class.find({ school: req.school._id });
+          const normalize = (s) => s.replace(/\s+/g, '').toLowerCase();
+          const labelNorm = normalize(classLabel);
+          classDoc = allClasses.find(c => {
+            const full = normalize(`${c.name}${c.arm || ''}`);
+            const nameOnly = normalize(c.name);
+            return full === labelNorm || nameOnly === labelNorm;
+          }) || null;
+        }
+
+        if (!classDoc) {
+          // Soft warning — student still created, just without a class
+          warnings.push({ row: rowNum, message: `Class "${classLabel}" not found — student created without class assignment` });
         }
       }
 
@@ -115,7 +132,7 @@ const bulkImportStudents = async (req, res) => {
       successful += 1;
     }
 
-    res.status(200).json({ successful, created: successful, errors, failed: errors.length });
+    res.status(200).json({ successful, created: successful, errors, warnings, failed: errors.length });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -123,10 +140,47 @@ const bulkImportStudents = async (req, res) => {
 
 const getStudents = async (req, res) => {
   try {
-    const students = await User.find({ schoolId: req.school._id, role: 'student' });
+    const students = await User.aggregate([
+      // 1. Only students in this school
+      { $match: { schoolId: req.school._id, role: 'student' } },
+
+      // 2. Lookup which class each student belongs to
+      {
+        $lookup: {
+          from: 'classes',
+          let: { studentId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$school', req.school._id] },
+                    { $in: ['$$studentId', '$students'] },
+                  ],
+                },
+              },
+            },
+            { $project: { _id: 1, name: 1, arm: 1, level: 1 } },
+          ],
+          as: 'classInfo',
+        },
+      },
+
+      // 3. Flatten the class array into a single object (or null)
+      {
+        $addFields: {
+          class: { $arrayElemAt: ['$classInfo', 0] },
+        },
+      },
+
+      // 4. Drop the intermediate array
+      { $project: { classInfo: 0, password: 0 } },
+    ]);
+
     res.status(200).json(students);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
+
 
 const getStudentById = async (req, res) => {
   try {
@@ -141,7 +195,7 @@ const updateStudent = async (req, res) => {
     const existing = await User.findOne({ _id: req.params.id, schoolId: req.school._id, role: 'student' });
     if (!existing) return res.status(404).json({ message: 'Student not found' });
 
-    const ALLOWED = ['firstName', 'lastName', 'dob', 'gender', 'parentPhone', 'isActive', 'classId'];
+    const ALLOWED = ['firstName', 'lastName', 'dob', 'gender', 'parentPhone', 'isActive', 'classId', 'avatar'];
     const update = {};
     ALLOWED.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
 

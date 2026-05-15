@@ -53,10 +53,10 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+app.use(bodyParser.json({ limit: '10mb' }));
 
 app.use(
   cors({
@@ -99,6 +99,7 @@ const behaviorRoute = require("./routes/behaviorRoute");
 const blogRoute = require("./routes/blogRoute");
 const adminRoute = require("./routes/adminRoute");
 const paymentRoute = require("./routes/paymentRoute");
+const feedbackRoute = require("./routes/feedbackRoute");
 
 app.use("/api/auth", authRoute);
 app.use("/api/school", schoolRoute);
@@ -123,6 +124,7 @@ app.use("/api/behavior", behaviorRoute);
 app.use("/api/blog", blogRoute);
 app.use("/api/admin", adminRoute);
 app.use("/api/payments", paymentRoute);
+app.use("/api/feedback", feedbackRoute);
 
 app.use('/api', (req, res, next) => {
   res.status(404).json({ message: 'API route not found' });

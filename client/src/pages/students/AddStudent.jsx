@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { createStudent } from '../../services/studentService';
 import { getClasses } from '../../services/classService';
+import AvatarUpload from '../../components/layout/AvatarUpload';
 import './Students.css';
 
 const AddStudent = () => {
@@ -18,6 +19,7 @@ const AddStudent = () => {
     classId: '',
     parentPhone: '',
     parentEmail: '',
+    avatar: '',
   });
 
   useEffect(() => {
@@ -69,6 +71,19 @@ const AddStudent = () => {
 
       <div className="form-card-premium">
         <form onSubmit={handleSubmit}>
+
+          {/* Avatar Upload */}
+          <div className="form-section-header">
+            <div className="form-section-title">
+              <span style={{width: '40px', height: '40px', background: '#ede9fa', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: '#6A5ACD'}}>🖼️</span>
+              Profile Photo
+            </div>
+          </div>
+          <AvatarUpload
+            currentAvatar={formData.avatar}
+            name={`${formData.firstName} ${formData.lastName}`}
+            onAvatarChange={(base64) => setFormData(prev => ({ ...prev, avatar: base64 || '' }))}
+          />
 
           {/* Section 1: Student Information */}
           <div className="form-section-header">

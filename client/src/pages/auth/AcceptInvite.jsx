@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { acceptInvite, getInviteDetails } from '../../services/authService';
 import { toast } from 'sonner';
+import PasswordInput from '../../components/layout/PasswordInput';
 import './Auth.css';
 
 const AcceptInvite = () => {
@@ -89,15 +90,12 @@ const AcceptInvite = () => {
 
             <div className="auth-group">
               <label>Create Password</label>
-              <div className="pass-input-wrap">
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  required
-                />
-              </div>
+              <PasswordInput
+                name="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+              />
               <p style={{fontSize: '1.1rem', color: '#64748b', marginTop: '0.5rem', fontStyle: 'italic'}}>Must be at least 8 characters with a symbol.</p>
             </div>
 

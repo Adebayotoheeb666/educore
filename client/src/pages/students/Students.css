@@ -691,6 +691,84 @@
 .ai-formatting-card h4 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.8rem; color: #bae6fd; }
 .ai-formatting-card p { font-size: 1.25rem; color: #f0f9ff; line-height: 1.5; margin: 0; }
 
+/* ─── UI Redesign: Parents & Students Pill ─── */
+.student-pill-premium {
+  display: flex;
+  align-items: center;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 50px;
+  padding: 0.4rem 0.8rem 0.4rem 0.4rem;
+  gap: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.student-pill-premium:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.pill-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.pill-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.btn-unlink {
+  background: #fee2e2;
+  color: #ef4444;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  margin-left: 0.4rem;
+}
+
+.btn-unlink:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-icon-premium {
+  background: #f3f0ff;
+  border: 1px solid #e0e7ff;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-icon-premium:hover {
+  background: #6A5ACD;
+  border-color: #6A5ACD;
+  color: white;
+  transform: translateY(-2px);
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 1200px) {
   .profile-grid-layout { grid-template-columns: 300px 1fr; }

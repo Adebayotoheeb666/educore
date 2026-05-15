@@ -4,7 +4,7 @@ const TEACHER_ROLES = ['class_teacher', 'subject_teacher'];
 
 const createTeacher = async (req, res) => {
   try {
-    const { name, firstName, lastName, email, password, phone, role } = req.body;
+    const { name, firstName, lastName, email, password, phone, role, avatar } = req.body;
     const fullName = name || `${firstName ?? ''} ${lastName ?? ''}`.trim();
 
     if (!fullName || !email || !password) {
@@ -24,6 +24,7 @@ const createTeacher = async (req, res) => {
       phone: phone || undefined,
       role: teacherRole,
       schoolId: req.school._id,
+      avatar: avatar || undefined,
     });
 
     res.status(201).json(teacher);
@@ -50,7 +51,7 @@ const updateTeacher = async (req, res) => {
     const existing = await User.findOne({ _id: req.params.id, schoolId: req.school._id });
     if (!existing) return res.status(404).json({ message: "Teacher not found" });
 
-    const ALLOWED = ['firstName', 'lastName', 'name', 'phone', 'role', 'isActive'];
+    const ALLOWED = ['firstName', 'lastName', 'name', 'phone', 'role', 'isActive', 'avatar'];
     const update = {};
     ALLOWED.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
 

@@ -14,7 +14,8 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: true,
+            required: [true, 'Password is required'],
+            minLength: [8, 'Password must be at least 8 characters long'],
         },
         role: {
             type: String,
@@ -56,11 +57,11 @@ const userSchema = new mongoose.Schema(
         avatar: {
             type: String,
         },
-        parentId: {
+        parents: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            required: false, // For students to link to parent
-        },
+            required: false, // For students to link to multiple parents
+        }],
         children: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',

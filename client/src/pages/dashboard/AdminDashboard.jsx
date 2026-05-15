@@ -115,7 +115,7 @@ const AdminDashboard = ({ user }) => {
           <section className="stats-grid-dashboard stats-grid-dashboard-8">
             <StatCard label="Students" value={stats?.totalStudents} icon="👥" to="/students" />
             <StatCard label="Teachers" value={stats?.totalTeachers} icon="🎓" to="/teachers" />
-            <StatCard label="Parents" value={stats?.totalParents} icon="👪" />
+            <StatCard label="Parents" value={stats?.totalParents} icon="👪" to="/parents" />
             <StatCard label="Classes" value={stats?.totalClasses} icon="🏫" to="/classes" />
             <StatCard
               label="Attendance"

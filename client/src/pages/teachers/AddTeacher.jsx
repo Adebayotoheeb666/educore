@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { createTeacher } from '../../services/teacherService';
+import AvatarUpload from '../../components/layout/AvatarUpload';
 import './Teachers.css';
 
 const ROLE_OPTIONS = [
@@ -18,6 +19,7 @@ const AddTeacher = () => {
     email: '',
     phone: '',
     role: 'subject_teacher',
+    avatar: '',
   });
 
   const handleChange = (e) => {
@@ -42,6 +44,7 @@ const AddTeacher = () => {
       phone: formData.phone,
       role: formData.role,
       password: defaultPassword,
+      avatar: formData.avatar || undefined,
     };
 
     setSubmitting(true);
@@ -75,6 +78,15 @@ const AddTeacher = () => {
         </p>
 
         <form onSubmit={handleSubmit}>
+          {/* Avatar */}
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <AvatarUpload
+              currentAvatar={formData.avatar}
+              name={`${formData.firstName} ${formData.lastName}`}
+              onAvatarChange={(base64) => setFormData(prev => ({ ...prev, avatar: base64 || '' }))}
+            />
+          </div>
+
           <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <div className="form-group-premium">
               <label>First Name *</label>

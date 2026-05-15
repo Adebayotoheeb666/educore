@@ -179,23 +179,43 @@ const BulkImport = () => {
             <div className="import-results-container">
               <div className="results-summary-bar">
                 <h3 style={{fontSize: '2rem', fontWeight: 800}}>Import Results</h3>
-                <div style={{display: 'flex', gap: '1rem'}}>
+                <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
                   <span className="summary-pill success">✓ {results.successful ?? results.created ?? 0} SUCCESSFUL</span>
-                  {(results.errors?.length > 0 || results.failed > 0) && (
-                    <span className="summary-pill error">⚠ {results.errors?.length ?? results.failed} ERRORS FOUND</span>
+                  {results.errors?.length > 0 && (
+                    <span className="summary-pill error">✕ {results.errors.length} FAILED</span>
+                  )}
+                  {results.warnings?.length > 0 && (
+                    <span className="summary-pill" style={{background:'#fef9c3',color:'#854d0e'}}>⚠ {results.warnings.length} WARNINGS</span>
                   )}
                 </div>
               </div>
 
               {results.errors?.length > 0 && (
                 <div className="error-list-import">
+                  <h4 style={{marginBottom:'1rem', color:'#ef4444', fontSize:'1.4rem'}}>Failed Rows (not imported)</h4>
                   {results.errors.map((err, i) => (
                     <div className="error-item-import" key={i}>
                       <div className="error-main-info">
-                        <div className="error-icon-box">⚠</div>
+                        <div className="error-icon-box">✕</div>
                         <div className="error-msg-text">
                           <h5>{err.row ? `Row ${err.row}: ` : ''}{err.title ?? err.message ?? 'Error'}</h5>
                           <p>{err.detail ?? err.description ?? ''}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {results.warnings?.length > 0 && (
+                <div className="error-list-import" style={{marginTop:'1.5rem'}}>
+                  <h4 style={{marginBottom:'1rem', color:'#d97706', fontSize:'1.4rem'}}>Warnings (imported without class)</h4>
+                  {results.warnings.map((w, i) => (
+                    <div className="error-item-import" key={i} style={{borderColor:'#fde68a', background:'#fffbeb'}}>
+                      <div className="error-main-info">
+                        <div className="error-icon-box" style={{background:'#fef3c7', color:'#92400e'}}>⚠</div>
+                        <div className="error-msg-text">
+                          <h5>{w.row ? `Row ${w.row}: ` : ''}{w.message}</h5>
                         </div>
                       </div>
                     </div>
@@ -219,6 +239,7 @@ const BulkImport = () => {
               </div>
             </div>
           )}
+
         </div>
 
       </div>

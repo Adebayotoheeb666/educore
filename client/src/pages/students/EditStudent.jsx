@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getStudentById, updateStudent } from '../../services/studentService';
 import { getClasses } from '../../services/classService';
+import AvatarUpload from '../../components/layout/AvatarUpload';
 import './Students.css';
 
 const EditStudent = () => {
@@ -19,6 +20,7 @@ const EditStudent = () => {
     classId: '',
     parentPhone: '',
     isActive: true,
+    avatar: '',
   });
 
   useEffect(() => {
@@ -32,6 +34,7 @@ const EditStudent = () => {
           classId: student.classId || '',
           parentPhone: student.parentPhone || '',
           isActive: student.isActive ?? true,
+          avatar: student.avatar || '',
         });
         setClasses(cls.classes ?? cls);
       })
@@ -87,6 +90,18 @@ const EditStudent = () => {
 
       <div className="form-card-premium">
         <form onSubmit={handleSubmit}>
+
+          <div className="form-section-header">
+            <div className="form-section-title">
+              <span style={{ width: '40px', height: '40px', background: '#ede9fa', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: '#6A5ACD' }}>🖼️</span>
+              Profile Photo
+            </div>
+          </div>
+          <AvatarUpload
+            currentAvatar={formData.avatar}
+            name={`${formData.firstName} ${formData.lastName}`}
+            onAvatarChange={(base64) => setFormData(prev => ({ ...prev, avatar: base64 || '' }))}
+          />
 
           <div className="form-section-header">
             <div className="form-section-title">

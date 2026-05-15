@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { setUser } from '../../redux/features/auth/authSlice';
 import { getSchoolProfile, updateSchoolProfile, updateSchoolSettings } from '../../services/authService';
+import PasswordInput from '../../components/layout/PasswordInput';
 import './AdminProfileSetup.css';
 
 const AdminProfileSetup = () => {
@@ -390,8 +391,8 @@ const AdminProfileSetup = () => {
                                 <div className="setup-form-grid">
                                     <div className="input-block full-width">
                                         <label>Current Password</label>
-                                        <input 
-                                            type="password"
+                                        <PasswordInput 
+                                            name="currentPassword"
                                             className="premium-input" 
                                             value={passwordForm.currentPassword} 
                                             onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})} 
@@ -399,20 +400,22 @@ const AdminProfileSetup = () => {
                                     </div>
                                     <div className="input-block">
                                         <label>New Password</label>
-                                        <input 
-                                            type="password"
+                                        <PasswordInput 
+                                            name="newPassword"
                                             className="premium-input" 
                                             value={passwordForm.newPassword} 
                                             onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} 
+                                            minLength={8}
                                         />
                                     </div>
                                     <div className="input-block">
                                         <label>Confirm New Password</label>
-                                        <input 
-                                            type="password"
+                                        <PasswordInput 
+                                            name="confirmPassword"
                                             className="premium-input" 
                                             value={passwordForm.confirmPassword} 
                                             onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} 
+                                            minLength={8}
                                         />
                                     </div>
                                 </div>

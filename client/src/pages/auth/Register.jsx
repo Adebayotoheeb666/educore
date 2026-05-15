@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { registerSchool } from '../../services/authService';
 import { toast } from 'sonner';
+import PasswordInput from '../../components/layout/PasswordInput';
 import './Auth.css';
 
 const Register = () => {
@@ -118,13 +119,12 @@ const Register = () => {
 
             <div className="auth-group">
               <label>Password *</label>
-              <input
-                type="password"
+              <PasswordInput
                 name="password"
                 placeholder="Min. 8 characters"
                 value={formData.password}
                 onChange={handleInputChange}
-                required
+                minLength={8}
               />
             </div>
 

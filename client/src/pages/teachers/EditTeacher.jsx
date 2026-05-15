@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getTeacherById, updateTeacher } from '../../services/teacherService';
+import AvatarUpload from '../../components/layout/AvatarUpload';
 import './Teachers.css';
 
 const ROLE_OPTIONS = [
@@ -20,6 +21,7 @@ const EditTeacher = () => {
     phone: '',
     role: 'subject_teacher',
     isActive: true,
+    avatar: '',
   });
 
   useEffect(() => {
@@ -32,6 +34,7 @@ const EditTeacher = () => {
           phone: data.phone || '',
           role: ROLE_OPTIONS.some(o => o.value === data.role) ? data.role : 'subject_teacher',
           isActive: data.isActive ?? true,
+          avatar: data.avatar || '',
         });
       })
       .catch(() => toast.error('Failed to load teacher data'))
@@ -89,6 +92,15 @@ const EditTeacher = () => {
         </p>
 
         <form onSubmit={handleSubmit}>
+          {/* Avatar */}
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <AvatarUpload
+              currentAvatar={formData.avatar}
+              name={`${formData.firstName} ${formData.lastName}`}
+              onAvatarChange={(base64) => setFormData(prev => ({ ...prev, avatar: base64 || '' }))}
+            />
+          </div>
+
           <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <div className="form-group-premium">
               <label>First Name *</label>

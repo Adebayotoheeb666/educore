@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { loginUser } from '../../services/authService';
 import { setUser } from '../../redux/features/auth/authSlice';
 import { toast } from 'sonner';
+import PasswordInput from '../../components/layout/PasswordInput';
 import './Auth.css';
 
 const Login = () => {
@@ -71,13 +72,10 @@ const Login = () => {
                 <label>Password</label>
                 <Link to="/forgot-password" title="reset password" className="auth-link">Forgot password?</Link>
               </div>
-              <input
-                type="password"
+              <PasswordInput
                 name="password"
-                placeholder="••••••••"
                 value={formData.password}
                 onChange={handleInputChange}
-                required
               />
             </div>
 
