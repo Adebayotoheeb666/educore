@@ -1,0 +1,402 @@
+/* ========================================================
+   Blog.css — EduCore AI Knowledge Hub
+   ======================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.blog-wrapper {
+  font-family: 'Inter', sans-serif;
+  color: #111827;
+  background-color: #f9fafb;
+  min-height: 100vh;
+  padding-top: 80px; /* navbar offset */
+}
+
+.blog-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* ─── Header Section ─── */
+.blog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3rem;
+  padding: 2rem 0;
+}
+
+.blog-header-content h1 {
+  font-size: 3.2rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
+}
+
+.blog-header-content p {
+  font-size: 1.6rem;
+  color: #6b7280;
+}
+
+.btn-create-post {
+  background-color: #6A5ACD;
+  color: white;
+  padding: 1.2rem 2.4rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1.5rem;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  transition: background-color 0.3s;
+}
+
+.btn-create-post:hover {
+  background-color: #0a5252;
+}
+
+/* ─── Category Tabs ─── */
+.blog-categories {
+  display: flex;
+  gap: 3rem;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 4rem;
+}
+
+.category-tab {
+  padding: 1rem 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s;
+}
+
+.category-tab:hover {
+  color: #6A5ACD;
+}
+
+.category-tab.active {
+  color: #6A5ACD;
+  font-weight: 600;
+}
+
+.category-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: #6A5ACD;
+}
+
+/* ─── Featured Post Card ─── */
+.featured-post-card {
+  display: flex;
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  margin-bottom: 4rem;
+  min-height: 400px;
+}
+
+.featured-post-image {
+  flex: 1;
+  overflow: hidden;
+}
+
+.featured-post-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.featured-post-content {
+  flex: 1;
+  padding: 4rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.badge-container {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.badge {
+  padding: 0.5rem 1.2rem;
+  border-radius: 50px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-ai {
+  background-color: #f3f0ff;
+  color: #6A5ACD;
+}
+
+.badge-featured {
+  background-color: #f3f0ff;
+  color: #6A5ACD;
+}
+
+.featured-post-content h2 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 1.5rem;
+  line-height: 1.2;
+}
+
+.featured-post-content p {
+  font-size: 1.6rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin-bottom: 3rem;
+}
+
+.post-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.author-info span {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.read-time {
+  font-size: 1.3rem;
+  color: #6b7280;
+}
+
+.read-more {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #6A5ACD;
+  text-decoration: none;
+}
+
+/* ─── Post Grid ─── */
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3rem;
+  margin-bottom: 6rem;
+}
+
+.post-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s;
+}
+
+.post-card:hover {
+  transform: translateY(-5px);
+}
+
+.post-card-image {
+  height: 200px;
+  overflow: hidden;
+  position: relative;
+}
+
+.post-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-card-category {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #374151;
+}
+
+.post-card-content {
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.post-card-content h3 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 1.5rem;
+  line-height: 1.4;
+}
+
+.post-card-content p {
+  font-size: 1.4rem;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 2rem;
+}
+
+.post-card-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1.5rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+.post-date {
+  font-size: 1.2rem;
+  color: #9ca3af;
+}
+
+/* ─── Special Insight Card ─── */
+.insight-card {
+  background-color: #0d1a14;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3rem;
+}
+
+.insight-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.insight-header span {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #6A5ACD;
+}
+
+.insight-card h3 {
+  color: white;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+}
+
+.insight-card p {
+  color: #9ca3af;
+  font-size: 1.4rem;
+  margin-bottom: 3rem;
+}
+
+.btn-insight {
+  background: white;
+  color: #0f172a;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* ─── Pagination ─── */
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4rem 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.pagination-info {
+  font-size: 1.4rem;
+  color: #6b7280;
+}
+
+.pagination-controls {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.page-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  font-size: 1.4rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.page-btn.active {
+  background-color: #6A5ACD;
+  color: white;
+  border-color: #6A5ACD;
+}
+
+.page-btn:hover:not(.active) {
+  border-color: #6A5ACD;
+  color: #6A5ACD;
+}
+
+.page-btn.arrow {
+  font-size: 1.8rem;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 1024px) {
+  .blog-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .featured-post-card {
+    flex-direction: column;
+  }
+  .blog-grid {
+    grid-template-columns: 1fr;
+  }
+  .blog-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2rem;
+  }
+  .blog-categories {
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+}

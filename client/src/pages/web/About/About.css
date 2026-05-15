@@ -1,0 +1,392 @@
+/* ========================================================
+   About.css — EduCore AI About Page
+   ======================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.about-wrapper {
+  font-family: 'Inter', sans-serif;
+  color: #111827;
+  background-color: #fff;
+  min-height: 100vh;
+  padding-top: 80px; /* navbar offset */
+}
+
+.about-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* ─── Hero Section ─── */
+.about-hero {
+  position: relative;
+  height: 520px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  margin-top: -80px; /* pull up under navbar */
+  padding-top: 80px;
+}
+
+.about-hero-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+
+.about-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.7) 100%);
+  z-index: -1;
+}
+
+.mission-badge {
+  display: inline-block;
+  background-color: #6A5ACD;
+  color: white;
+  padding: 0.6rem 1.4rem;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 2.5rem;
+}
+
+.about-hero h1 {
+  font-size: 5.2rem;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 2rem;
+  line-height: 1.1;
+  max-width: 800px;
+}
+
+.about-hero p {
+  font-size: 1.8rem;
+  color: #9ca3af;
+  max-width: 650px;
+  margin-bottom: 4rem;
+  line-height: 1.6;
+}
+
+.hero-btns {
+  display: flex;
+  gap: 2rem;
+}
+
+.btn-about-primary {
+  background-color: #6A5ACD;
+  color: white;
+  padding: 1.4rem 3.5rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1.5rem;
+  text-decoration: none;
+  transition: background-color 0.3s;
+}
+
+.btn-about-outline {
+  background-color: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 1.4rem 3.5rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1.5rem;
+  text-decoration: none;
+  transition: border-color 0.3s;
+}
+
+.btn-about-primary:hover { background-color: #15803d; }
+.btn-about-outline:hover { border-color: white; }
+
+/* ─── Excellence Section ─── */
+.excellence-section {
+  padding: 12rem 0;
+}
+
+.excellence-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8rem;
+  align-items: center;
+}
+
+.excellence-image {
+  position: relative;
+}
+
+.main-img {
+  width: 100%;
+  border-radius: 20px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.1);
+}
+
+.journey-box {
+  position: absolute;
+  bottom: -3rem;
+  right: -3rem;
+  background-color: #dbeafe;
+  padding: 2.5rem;
+  border-radius: 12px;
+  max-width: 240px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+}
+
+.journey-box h4 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #6A5ACD;
+  margin-bottom: 0.8rem;
+}
+
+.journey-box p {
+  font-size: 1.3rem;
+  color: #1e3a8a;
+  line-height: 1.4;
+}
+
+.excellence-content h2 {
+  font-size: 3.6rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 2.5rem;
+}
+
+.excellence-content > p {
+  font-size: 1.6rem;
+  color: #4b5563;
+  line-height: 1.7;
+  margin-bottom: 3.5rem;
+}
+
+.excellence-features {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.excellence-feat {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.feat-icon {
+  width: 36px;
+  height: 36px;
+  background-color: #f3f0ff;
+  color: #6A5ACD;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.6rem;
+}
+
+.feat-text h4 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.4rem;
+}
+
+.feat-text p {
+  font-size: 1.4rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* ─── Stats Section ─── */
+.about-stats {
+  background-color: #f8fafc;
+  padding: 10rem 0;
+  text-align: center;
+}
+
+.stats-header h2 {
+  font-size: 3.6rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 1.5rem;
+}
+
+.stats-header p {
+  font-size: 1.6rem;
+  color: #6b7280;
+  margin-bottom: 6rem;
+}
+
+.about-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2.5rem;
+}
+
+.stat-card {
+  background: white;
+  padding: 3.5rem 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.stat-card-icon {
+  font-size: 2.4rem;
+  color: #6A5ACD;
+}
+
+.stat-card h3 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.stat-card p {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Empower Section ─── */
+.empower-section {
+  padding: 12rem 0;
+}
+
+.empower-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 2.5rem;
+}
+
+.empower-main-card {
+  background-color: #020617;
+  border-radius: 24px;
+  padding: 6rem;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 480px;
+}
+
+.brain-icon {
+  position: absolute;
+  top: 4rem;
+  right: 4rem;
+  font-size: 12rem;
+  opacity: 0.1;
+  color: white;
+}
+
+.empower-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  color: #6A5ACD;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+}
+
+.empower-main-card h2 {
+  font-size: 4rem;
+  font-weight: 800;
+  margin-bottom: 2.5rem;
+  max-width: 500px;
+  line-height: 1.2;
+}
+
+.empower-main-card p {
+  font-size: 1.6rem;
+  color: #9ca3af;
+  line-height: 1.6;
+  max-width: 550px;
+}
+
+.empower-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.side-card {
+  border-radius: 20px;
+  padding: 3rem;
+  flex: 1;
+}
+
+.side-card-blue {
+  background-color: #f3f0ff;
+}
+
+.side-card-green {
+  background-color: #5849b8;
+  color: white;
+}
+
+.side-card h4 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 1.2rem;
+}
+
+.side-card p {
+  font-size: 1.4rem;
+  line-height: 1.5;
+  margin-bottom: 2rem;
+  opacity: 0.8;
+}
+
+.avatars {
+  display: flex;
+  margin-top: 1rem;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background-color: #ccc;
+  margin-left: -0.8rem;
+}
+
+.avatar:first-child { margin-left: 0; }
+
+.learn-more {
+  display: inline-block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: white;
+  text-decoration: underline;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 1024px) {
+  .excellence-grid { grid-template-columns: 1fr; gap: 6rem; }
+  .about-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .empower-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .about-hero h1 { font-size: 3.6rem; }
+  .journey-box { position: static; margin-top: 2rem; max-width: 100%; }
+}

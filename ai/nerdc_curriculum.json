@@ -1,0 +1,134 @@
+{
+  "metadata": {
+    "source": "Nigerian Educational Research and Development Council (NERDC)",
+    "version": "2013-revised",
+    "description": "Nigerian Basic and Senior Secondary curriculum subject-topic mapping"
+  },
+  "primary": {
+    "JSS1": {
+      "English Language": ["Comprehension", "Summary Writing", "Vocabulary Development", "Grammar – Parts of Speech", "Letter Writing", "Essay Writing", "Oral English"],
+      "Mathematics": ["Whole Numbers", "Fractions", "Decimals", "Basic Algebra", "Geometry – Lines and Angles", "Measurement", "Statistics – Data Collection"],
+      "Basic Science": ["Living and Non-living Things", "Plants and Animals", "The Human Body", "Matter", "Energy", "Simple Machines", "Environment and Pollution"],
+      "Social Studies": ["Family and Community", "Culture and Customs", "Government", "Citizenship", "Natural Resources", "Climate and Weather"],
+      "CRS/IRS": ["Creation", "The Family", "Honesty and Integrity", "Prayer", "Fellowship"],
+      "Agricultural Science": ["Introduction to Agriculture", "Soil", "Crop Production", "Animal Production", "Farm Tools"],
+      "Home Economics": ["The Home", "Food and Nutrition", "Clothing", "Health and Hygiene"],
+      "Fine Art": ["Elements of Art", "Drawing", "Painting", "Craft"],
+      "Music": ["Musical Notation", "Rhythm", "Traditional Music", "Instruments"],
+      "Physical and Health Education": ["Physical Fitness", "Track and Field", "Games", "Health Education"],
+      "French": ["Greetings", "Numbers", "Colours", "Family", "Food"],
+      "Computer Studies": ["Introduction to Computers", "Computer Hardware", "Software", "Internet Basics", "Microsoft Word"]
+    },
+    "JSS2": {
+      "English Language": ["Comprehension – Inference", "Formal and Informal Letters", "Descriptive Essay", "Narrative Essay", "Tenses", "Punctuation", "Speech Work – Vowels"],
+      "Mathematics": ["Integers", "Ratios and Proportions", "Percentages", "Algebraic Expressions", "Linear Equations", "Angles – Triangles and Quadrilaterals", "Area and Perimeter"],
+      "Basic Science": ["Cells", "Photosynthesis", "Respiration", "Digestive System", "Reproduction", "Waves", "Electricity"],
+      "Social Studies": ["Population", "Migration", "Trade", "Economic Activities", "Democracy", "National Symbols"],
+      "Agricultural Science": ["Soil Nutrients", "Fertilisers", "Crop Pests and Diseases", "Livestock Management", "Farm Records"],
+      "Computer Studies": ["Spreadsheets", "Databases", "Programming Basics", "Computer Ethics", "E-Learning"]
+    },
+    "JSS3": {
+      "English Language": ["Argumentative Essay", "Report Writing", "Comprehension – Critical Reading", "Figures of Speech", "Conditional Sentences", "Debate"],
+      "Mathematics": ["Quadratic Equations", "Simultaneous Equations", "Graphs", "Pythagoras Theorem", "Trigonometry Introduction", "Statistics – Mean, Median, Mode", "Probability"],
+      "Basic Science": ["Genetics", "Ecology", "Chemical Reactions", "Acids and Bases", "Force and Motion", "Light and Sound"],
+      "Agricultural Science": ["Land Tenure", "Agricultural Credit", "Pest Control", "Fishery", "Poultry"],
+      "Computer Studies": ["Algorithms", "Flowcharts", "HTML Basics", "Networking", "Computer Maintenance"]
+    }
+  },
+  "secondary": {
+    "SS1": {
+      "English Language": ["Comprehension", "Lexis and Structure", "Oral English – Consonants", "Essay Writing – Narrative", "Summary", "Literature in English Introduction"],
+      "Mathematics": ["Number Systems", "Surds", "Logarithms", "Algebraic Fractions", "Linear Inequalities", "Co-ordinate Geometry", "Differentiation Introduction"],
+      "Physics": ["Introduction to Physics", "Measurement and Units", "Scalars and Vectors", "Motion – Kinematics", "Newton's Laws", "Work, Energy and Power", "Waves"],
+      "Chemistry": ["Introduction to Chemistry", "Atomic Structure", "Periodic Table", "Chemical Bonding", "Oxidation and Reduction", "Acids, Bases and Salts", "Mole Concept"],
+      "Biology": ["Cell Biology", "Plant Nutrition", "Animal Nutrition", "Transport in Plants", "Transport in Animals", "Gaseous Exchange", "Excretion"],
+      "Economics": ["Introduction to Economics", "Demand and Supply", "Elasticity", "Production", "Cost and Revenue", "Market Structures"],
+      "Geography": ["Location and Position", "Maps and Scale", "Rocks", "Weathering", "Drainage", "Climate"],
+      "Government": ["Introduction to Government", "Forms of Government", "Political Parties", "Electoral Systems", "Constitution"],
+      "Commerce": ["Introduction to Commerce", "Trade", "Aids to Trade", "Banking", "Insurance"],
+      "Financial Accounting": ["Book-keeping", "Double Entry System", "Ledgers", "Trial Balance", "Trading Account"],
+      "Agricultural Science": ["Genetics and Breeding", "Crop Production – Cereals", "Soil Conservation", "Agricultural Credit and Finance"],
+      "Further Mathematics": ["Sets", "Surds", "Indices", "Quadratics", "Permutation and Combination", "Binomial Theorem"],
+      "Computer Science": ["Number Systems", "Boolean Algebra", "Computer Architecture", "Operating Systems", "Programming – Python/Basic"]
+    },
+    "SS2": {
+      "English Language": ["Oral English – Intonation", "Essay – Expository", "Comprehension – Deductions", "Register", "Figures of Speech – Extended", "Literature – Poetry"],
+      "Mathematics": ["Matrices and Determinants", "Vectors", "Integration", "Trigonometry", "Statistics – Frequency Distribution", "Probability – Advanced", "Progressions"],
+      "Physics": ["Heat and Temperature", "Thermodynamics", "Electrostatics", "Current Electricity", "Magnetism", "Electromagnetic Waves", "Optics"],
+      "Chemistry": ["Chemical Kinetics", "Chemical Equilibrium", "Electrochemistry", "Hydrocarbons", "Functional Groups", "Polymers", "Industrial Chemistry"],
+      "Biology": ["Reproduction in Plants", "Reproduction in Animals", "Genetics and Heredity", "Nervous System", "Sense Organs", "Evolution", "Ecology"],
+      "Economics": ["National Income", "Money and Banking", "Public Finance", "International Trade", "Economic Development"],
+      "Geography": ["Population Geography", "Settlement", "Industry", "Agriculture", "Transport and Communication"],
+      "Government": ["Legislature", "Executive", "Judiciary", "Federalism", "International Relations"],
+      "Further Mathematics": ["Trigonometric Functions", "Differentiation", "Integration", "Differential Equations", "Complex Numbers"],
+      "Computer Science": ["Data Structures", "Object-Oriented Programming", "Database Management", "Networks", "Web Development"]
+    },
+    "SS3": {
+      "English Language": ["WAEC/NECO Exam Practice", "Summary – Advanced", "Comprehension – All Types", "Letter Writing – Official", "Report Writing", "Literature – Drama and Prose"],
+      "Mathematics": ["WAEC/JAMB Revision – Algebra", "WAEC/JAMB Revision – Calculus", "WAEC/JAMB Revision – Statistics", "WAEC/JAMB Revision – Geometry", "Past Questions Analysis"],
+      "Physics": ["Electromagnetic Induction", "Atomic Physics", "Nuclear Physics", "Electronics", "Revision – Mechanics", "WAEC/NECO Practice"],
+      "Chemistry": ["Organic Chemistry – Advanced", "Environmental Chemistry", "Revision – Quantitative", "WAEC/NECO Practice", "JAMB Preparation"],
+      "Biology": ["Variation and Evolution", "Biotechnology", "Pollution and Conservation", "WAEC/NECO Practice", "JAMB Preparation"],
+      "Economics": ["Revision – Micro and Macro", "Nigeria's Economic Problems", "WAEC/NECO Practice"],
+      "Geography": ["Revision – Physical and Human Geography", "Map Reading Practice", "WAEC/NECO Practice"],
+      "Government": ["Nigerian Government Structures", "Regional Integration – ECOWAS, AU", "WAEC/NECO Practice"],
+      "Further Mathematics": ["Statistics – Advanced", "Mechanics", "Revision – All Topics", "WAEC Further Maths Practice"],
+      "Computer Science": ["Software Engineering", "Security", "AI and Machine Learning Introduction", "Revision and Exams"]
+    }
+  },
+  "exam_patterns": {
+    "waec": {
+      "description": "West African Examinations Council format",
+      "structure": { "objective": 50, "theory": 6, "practical": "where applicable" },
+      "duration_minutes": 180
+    },
+    "neco": {
+      "description": "National Examinations Council format",
+      "structure": { "objective": 60, "theory": 5 },
+      "duration_minutes": 180
+    },
+    "jamb": {
+      "description": "Joint Admissions and Matriculation Board (UTME) format",
+      "structure": { "mcq_only": 40 },
+      "duration_minutes": 120
+    },
+    "internal": {
+      "description": "School-based continuous assessment and terminal exam",
+      "structure": { "ca_weight": 30, "exam_weight": 70 },
+      "duration_minutes": 90
+    },
+    "ca": {
+      "description": "Continuous Assessment – class tests and assignments",
+      "structure": { "tests": 2, "assignments": 2, "projects": 1 },
+      "duration_minutes": 40
+    }
+  },
+  "grading_scales": {
+    "nigerian_senior_secondary": {
+      "A1": { "min": 75, "max": 100, "description": "Excellent" },
+      "B2": { "min": 70, "max": 74, "description": "Very Good" },
+      "B3": { "min": 65, "max": 69, "description": "Good" },
+      "C4": { "min": 60, "max": 64, "description": "Credit" },
+      "C5": { "min": 55, "max": 59, "description": "Credit" },
+      "C6": { "min": 50, "max": 54, "description": "Credit" },
+      "D7": { "min": 45, "max": 49, "description": "Pass" },
+      "E8": { "min": 40, "max": 44, "description": "Pass" },
+      "F9": { "min": 0, "max": 39, "description": "Fail" }
+    },
+    "primary": {
+      "A": { "min": 70, "max": 100, "description": "Excellent" },
+      "B": { "min": 60, "max": 69, "description": "Good" },
+      "C": { "min": 50, "max": 59, "description": "Average" },
+      "D": { "min": 40, "max": 49, "description": "Below Average" },
+      "F": { "min": 0, "max": 39, "description": "Fail" }
+    }
+  },
+  "blooms_taxonomy": [
+    "Remembering", "Understanding", "Applying", "Analysing", "Evaluating", "Creating"
+  ],
+  "class_levels": {
+    "primary": ["Primary 1", "Primary 2", "Primary 3", "Primary 4", "Primary 5", "Primary 6"],
+    "junior_secondary": ["JSS1", "JSS2", "JSS3"],
+    "senior_secondary": ["SS1", "SS2", "SS3"]
+  }
+}

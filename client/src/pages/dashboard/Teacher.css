@@ -1,0 +1,118 @@
+/* Teacher Portal — Premium Design */
+
+.teacher-dashboard-container {
+    padding: 3rem 4rem;
+    background: #ffffff;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+}
+
+.teacher-main-layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 3rem;
+}
+
+.teacher-schedule-card {
+    background: white;
+    border-radius: 24px;
+    border: 1px solid var(--card-border-color, #FFD700);
+    padding: 2.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.timeline-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.timeline-item {
+    display: flex;
+    gap: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.timeline-item:last-child { border-bottom: none; }
+
+.timeline-time {
+    width: 80px;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #64748b;
+    text-align: right;
+}
+
+.timeline-content h4 { font-size: 1.1rem; font-weight: 800; color: #0f172a; margin: 0; }
+.timeline-content p { font-size: 0.85rem; color: #94a3b8; font-weight: 700; }
+
+.timeline-dot-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #5849b8;
+    border: 3px solid #ede9fa;
+    z-index: 1;
+}
+
+.timeline-line {
+    flex: 1;
+    width: 2px;
+    background: #f1f5f9;
+}
+
+.btn-teacher-action-card {
+    background: #f8fafc;
+    border: 1px solid var(--card-border-color, #FFD700);
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    text-align: left;
+    margin-bottom: 1.2rem;
+}
+
+.btn-teacher-action-card:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+.teacher-action-icon {
+    width: 44px;
+    height: 44px;
+    background: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.teacher-action-info h5 { font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0; }
+.teacher-action-info p { font-size: 0.8rem; color: #64748b; margin: 0; font-weight: 600; }
+
+.teacher-ai-insight-box {
+    background: #0f172a;
+    color: white;
+    border-radius: 24px;
+    padding: 2rem;
+    margin-top: 2rem;
+    border: 1px solid var(--card-border-color, #FFD700);
+}
+
+.teacher-ai-insight-box h4 { font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.8rem; }
+.teacher-ai-insight-box p { font-size: 0.85rem; opacity: 0.9; line-height: 1.5; margin: 0; }
+
+@media (max-width: 1024px) {
+    .teacher-main-layout { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,188 @@
+/* ========================================================
+   Library.css — EduCore AI Library & Resource Management
+   ======================================================== */
+
+.library-container {
+  padding: 1rem 0;
+}
+
+/* ─── Library Management Grid ─── */
+.library-main-grid {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 4rem;
+}
+
+.add-book-card {
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 24px;
+  padding: 4rem;
+}
+
+/* Inventory Stats Grid */
+.inv-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem;
+  margin-bottom: 3.5rem;
+}
+
+.inv-stat-box {
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 20px;
+  padding: 2.5rem 3rem;
+}
+
+.inv-stat-box h4 { font-size: 1.1rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 1.2rem; }
+.inv-stat-box p { font-size: 3.6rem; font-weight: 800; color: #0f172a; margin: 0; }
+
+.inv-stat-box.green { background: #f3f0ff; border-color: #ede9fa; }
+.inv-stat-box.green p { color: #6A5ACD; }
+.inv-stat-box.red { background: #fef2f2; border-color: #fee2e2; }
+.inv-stat-box.red p { color: #dc2626; }
+
+/* ─── AI Demand Forecast Card ─── */
+.ai-forecast-card {
+  background: white;
+  border: 1.5px solid var(--card-border-color, #FFD700);
+  border-radius: 20px;
+  padding: 3rem;
+  margin-top: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-forecast-card::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 120px; height: 120px;
+  background: #f3f0ff;
+  border-radius: 0 0 0 100%;
+  z-index: 0;
+}
+
+.ai-forecast-content { position: relative; z-index: 1; }
+
+.accuracy-badge {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+/* ─── Inventory Table Styles ─── */
+.book-info-row {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.book-icon-box {
+  width: 48px;
+  height: 60px;
+  background: #f3f0ff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #6A5ACD;
+  border: 1px solid #dbeafe;
+}
+
+.status-label-lib {
+  padding: 0.4rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.status-label-lib.available { background: #ede9fa; color: #2d2460; }
+.status-label-lib.limited { background: #fef3c7; color: #b8860b; }
+.status-label-lib.borrowed { background: #fee2e2; color: #991b1b; }
+
+/* ─── Overdue Suite ─── */
+.overdue-header-premium {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 5rem;
+}
+
+.overdue-alert-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 3rem;
+  background: #f3f0ff;
+  border: 1.5px solid var(--card-border-color, #FFD700);
+  border-radius: 20px;
+  margin-top: 2rem;
+}
+
+.overdue-days-badge {
+  padding: 0.5rem 1.5rem;
+  background: #ef4444;
+  color: white;
+  border-radius: 20px;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+/* ─── Exam List Card (Shared) ─── */
+.exam-list-card {
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 24px;
+  padding: 3.5rem;
+}
+
+/* ─── Navigation Tabs ─── */
+.lib-nav-tabs {
+  display: flex;
+  gap: 4rem;
+  border-bottom: 1px solid var(--card-border-color, #FFD700);
+  margin-bottom: 4.5rem;
+}
+
+.lib-tab {
+  padding: 1.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.lib-tab.active {
+  color: #0f172a;
+}
+
+.lib-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 3px;
+  background: #0f172a;
+  border-radius: 3px 3px 0 0;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 1200px) {
+  .library-main-grid { grid-template-columns: 1fr; }
+  .inv-stats-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 768px) {
+  .inv-stats-grid { grid-template-columns: 1fr; }
+  .lib-nav-tabs { gap: 2rem; overflow-x: auto; }
+}

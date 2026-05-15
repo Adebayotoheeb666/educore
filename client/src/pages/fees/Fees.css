@@ -1,0 +1,167 @@
+/* ========================================================
+   Fees.css — EduCore AI Financial Management
+   ======================================================== */
+
+.fees-container {
+  padding: 1rem 0;
+}
+
+/* ─── Fee Schedules Layout ─── */
+.fee-schedules-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 4rem;
+}
+
+.create-schedule-card {
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 24px;
+  padding: 4rem;
+}
+
+.fee-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  margin-bottom: 1.2rem;
+}
+
+.fee-item-row span { font-size: 1.3rem; font-weight: 700; color: #1e293b; }
+.fee-item-row strong { font-size: 1.4rem; color: #0f172a; }
+
+.total-estimate-box {
+  background: #6A5ACD;
+  color: white;
+  padding: 2.5rem;
+  border-radius: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 3rem 0;
+  border: 1px solid var(--card-border-color, #FFD700);
+}
+
+/* Active Schedule Cards */
+.active-schedule-card {
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 20px;
+  padding: 3rem;
+  margin-bottom: 2.5rem;
+  position: relative;
+}
+
+.active-schedule-card.optional {
+  border-style: dashed;
+  background: #fdfdfd;
+}
+
+.schedule-badge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.curr-session-badge {
+  padding: 0.4rem 1rem;
+  background: #ede9fa;
+  color: #2d2460;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* ─── Fee Collection UI ─── */
+.collection-record-card {
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 24px;
+  padding: 3.5rem;
+  margin-bottom: 4rem;
+}
+
+.payment-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem;
+}
+
+/* AI Collection Insight Card */
+.collection-insight-card {
+  background: #ede9fa;
+  border: 1.5px solid #6A5ACD;
+  border-radius: 16px;
+  padding: 2.5rem;
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+  margin: 3rem 0;
+}
+
+/* ─── Fee Defaulters Suite ─── */
+.defaulters-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3rem;
+  margin-bottom: 4.5rem;
+}
+
+.defaulter-stat-box {
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 20px;
+  padding: 3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.defaulter-stat-box.highlight {
+  border: 2px solid #FFD700;
+  border-left-width: 8px;
+}
+
+.defaulter-val {
+  font-size: 3.2rem;
+  font-weight: 800;
+  color: #b91c1c;
+}
+
+/* ─── General Tables & Badges ─── */
+.status-pill-paid { background: #ede9fa; color: #2d2460; padding: 0.5rem 1.5rem; border-radius: 20px; font-weight: 800; font-size: 1.1rem; }
+.status-pill-partial { background: #fef3c7; color: #b8860b; padding: 0.5rem 1.5rem; border-radius: 20px; font-weight: 800; font-size: 1.1rem; }
+.status-pill-unpaid { background: #fee2e2; color: #991b1b; padding: 0.5rem 1.5rem; border-radius: 20px; font-weight: 800; font-size: 1.1rem; }
+
+/* ─── AI Insights ─── */
+.ai-financial-card {
+  background: #f3f0ff;
+  border: 1.5px solid var(--card-border-color, #FFD700);
+  border-radius: 20px;
+  padding: 3rem;
+  display: flex;
+  gap: 2.5rem;
+  margin-top: 3rem;
+}
+
+.ai-icon-circle {
+  width: 50px;
+  height: 50px;
+  background: #ffedd5;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 1200px) {
+  .fee-schedules-grid, .payment-form-grid, .defaulters-stats-grid { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,16 @@
+# Ignore all files in this directory
+*
+
+# Except this file and .gitkeep
+!.gitignore
+!.gitkeep
+
+
+node_modules/
+build/
+dist/
+.gradle/
+.idea/
+.vscode/
+.env
+*.log

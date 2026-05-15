@@ -1,0 +1,206 @@
+/* Profile Page — Premium Design */
+
+.profile-container-premium {
+    padding: 3rem 4rem;
+    background: #ffffff;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+}
+
+.profile-banner-card {
+    background: white;
+    border-radius: 24px;
+    border: 1px solid #f1f5f9;
+    padding: 3rem;
+    margin-bottom: 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-banner-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: #0f172a;
+    z-index: 0;
+}
+
+.banner-content-left {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-end;
+    gap: 2rem;
+    margin-top: 40px;
+}
+
+.large-avatar-box {
+    width: 100px;
+    height: 100px;
+    border-radius: 20px;
+    background: #5849b8;
+    border: 4px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 800;
+    color: white;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.profile-name-area h2 { font-size: 2.2rem; font-weight: 800; color: #0f172a; margin: 0; }
+.profile-name-area p { font-size: 1rem; color: #64748b; font-weight: 700; margin-bottom: 0.5rem; }
+
+.role-pill {
+    background: #ede9fa;
+    color: #2d2460;
+    padding: 0.2rem 0.8rem;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.banner-content-right {
+    position: relative;
+    z-index: 1;
+    margin-top: 40px;
+}
+
+.btn-save-profile {
+    background: #5849b8;
+    color: white;
+    border: none;
+    padding: 0.8rem 1.8rem;
+    border-radius: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.profile-main-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 3rem;
+}
+
+.profile-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.profile-nav-item {
+    padding: 1.2rem 1.5rem;
+    border-radius: 12px;
+    color: #64748b;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: none;
+    border: none;
+    text-align: left;
+    width: 100%;
+}
+
+.profile-nav-item.active {
+    background: #5849b8;
+    color: white;
+}
+
+.profile-nav-item:hover:not(.active) {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.profile-content-area {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+}
+
+.profile-section-card {
+    background: white;
+    border-radius: 24px;
+    border: 1px solid #f1f5f9;
+    padding: 3rem;
+}
+
+.section-title-premium {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 2.5rem;
+}
+
+.section-title-premium .icon-wrap { color: #5849b8; }
+
+.profile-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
+}
+
+.profile-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.profile-input-group label { font-size: 0.95rem; font-weight: 800; color: #475569; }
+.profile-input-group input {
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0f172a;
+    outline: none;
+}
+
+.profile-input-group input:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
+
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-with-icon .input-icon-fixed {
+    position: absolute;
+    left: 1rem;
+    color: #94a3b8;
+}
+
+.input-with-icon input { padding-left: 3rem; width: 100%; }
+
+.ai-profile-alert {
+    background: #f3f0ff;
+    border-radius: 12px;
+    padding: 1.2rem 1.5rem;
+    display: flex;
+    gap: 1.2rem;
+    align-items: flex-start;
+    margin-top: 2rem;
+}
+
+.ai-profile-alert p { font-size: 0.85rem; line-height: 1.5; color: #6A5ACD; margin: 0; font-weight: 600; }
+
+@media (max-width: 1024px) {
+    .profile-main-layout { grid-template-columns: 1fr; }
+    .profile-form-grid { grid-template-columns: 1fr; }
+}

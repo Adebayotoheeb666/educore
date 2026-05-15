@@ -1,0 +1,220 @@
+/* Student Portal — Premium Design */
+
+.student-dashboard-container {
+    padding: 3rem 4rem;
+    background: #ffffff;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+}
+
+.welcome-header-student {
+    margin-bottom: 3.5rem;
+    position: relative;
+}
+
+.welcome-header-student h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.8rem;
+}
+
+.welcome-header-student p {
+    font-size: 1.1rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.student-class-highlight {
+    color: #5849b8;
+    font-weight: 800;
+}
+
+.ai-snapshot-banner {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #ede9fa;
+    padding: 1.2rem 1.8rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    max-width: 320px;
+}
+
+.ai-snapshot-banner p {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: #2d2460;
+    margin: 0;
+    font-weight: 700;
+}
+
+/* Snapshots Grid */
+.snapshots-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+    margin-bottom: 3.5rem;
+}
+
+.snapshot-card-premium {
+    background: white;
+    border-radius: 20px;
+    padding: 2.5rem;
+    border: 1px solid #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    transition: all 0.3s;
+}
+
+.snapshot-card-premium:hover { border-color: #cbd5e1; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
+
+.snapshot-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.snapshot-icon-wrap {
+    width: 42px;
+    height: 42px;
+    background: #f8fafc;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.snapshot-trend { font-size: 0.8rem; font-weight: 800; color: #6A5ACD; }
+.snapshot-trend.warning { color: #ef4444; }
+
+.snapshot-label { font-size: 0.8rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; }
+.snapshot-val { font-size: 2.4rem; font-weight: 800; color: #0f172a; margin: 0; }
+
+.snapshot-footer-text { font-size: 0.85rem; font-weight: 600; color: #64748b; font-style: italic; }
+.btn-pay-now { color: #5849b8; font-weight: 800; text-decoration: none; font-size: 0.9rem; }
+
+/* Student Main Grid */
+.student-main-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 3rem;
+}
+
+.quick-actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.action-card-modern {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #f1f5f9;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-card-modern:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+.action-icon-square {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.action-icon-square.green { background: #ede9fa; color: #5849b8; }
+.action-icon-square.blue { background: #f3f0ff; color: #6A5ACD; }
+.action-icon-square.amber { background: #f3f0ff; color: #b8860b; }
+
+.action-info h4 { font-size: 1.1rem; font-weight: 800; color: #0f172a; margin: 0; }
+.action-info p { font-size: 0.85rem; color: #64748b; margin: 0; font-weight: 600; }
+
+.student-ann-box {
+    background: white;
+    border-radius: 24px;
+    border: 1px solid #f1f5f9;
+    padding: 2.5rem;
+}
+
+.ann-box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.ann-box-header h3 { font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0; }
+
+.student-ann-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.student-ann-item {
+    padding: 2rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    gap: 2rem;
+}
+
+.student-ann-item:last-child { border-bottom: none; }
+
+.ann-icon-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.ann-icon-circle.green { background: #f3f0ff; color: #6A5ACD; }
+.ann-icon-circle.amber { background: #f3f0ff; color: #b8860b; }
+.ann-icon-circle.blue { background: #f3f0ff; color: #6A5ACD; }
+
+.ann-item-content { flex: 1; }
+
+.ann-item-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+}
+
+.ann-item-top h4 { font-size: 1.1rem; font-weight: 800; color: #0f172a; margin: 0; }
+.ann-time-tag { font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; }
+
+.ann-item-body { font-size: 0.95rem; line-height: 1.6; color: #475569; margin-bottom: 1.2rem; }
+
+.ann-tags-row { display: flex; gap: 0.8rem; }
+.ann-pill {
+    padding: 0.3rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.ann-pill.event { background: #f3f0ff; color: #6A5ACD; }
+.ann-pill.sports { background: #f1f5f9; color: #475569; }
+.ann-pill.academic { background: #f3f0ff; color: #2d2460; }
+.ann-pill.notice { background: #f1f5f9; color: #475569; }
+.ann-pill.exams { background: #fdf2f8; color: #be185d; }
+
+@media (max-width: 1200px) {
+    .snapshots-grid { grid-template-columns: repeat(2, 1fr); }
+    .student-main-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+    .snapshots-grid { grid-template-columns: 1fr; }
+    .ai-snapshot-banner { position: static; max-width: 100%; margin-top: 1.5rem; }
+}

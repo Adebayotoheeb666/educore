@@ -1,0 +1,390 @@
+/* ========================================================
+   Classes.css — EduCore AI Class Management
+   ======================================================== */
+
+.classes-container {
+  padding: 1rem 0;
+}
+
+/* ─── Top Summary Stats ─── */
+.class-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem;
+  margin-bottom: 4rem;
+}
+
+.class-stat-mini-card {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 20px;
+  border: 1px solid var(--card-border-color, #FFD700);
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.class-stat-icon-wrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background-color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.class-stat-text-stack h3 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.05em;
+}
+
+.class-stat-text-stack p {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #6A5ACD;
+  margin: 0;
+}
+
+/* ─── Class Cards Grid ─── */
+.class-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3rem;
+  margin-bottom: 5rem;
+}
+
+.class-card-premium {
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 20px;
+  padding: 3rem;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.class-card-premium:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+}
+
+.class-card-badge {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  background-color: #ede9fa;
+  color: #2d2460;
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.class-code-box {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  background-color: #f3f0ff;
+  color: #6A5ACD;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 2.5rem;
+}
+
+.class-card-premium h2 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: #6A5ACD;
+  margin-bottom: 0.8rem;
+}
+
+.class-card-premium p {
+  font-size: 1.4rem;
+  color: #64748b;
+  margin-bottom: 2.5rem;
+}
+
+.class-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 2rem;
+}
+
+.student-count-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+/* ─── AI Insight Card in Classes ─── */
+.ai-grouping-card {
+  background: white;
+  border: 2px dashed var(--card-border-color, #ede9fa);
+  border-radius: 20px;
+  padding: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-group-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #2d2460;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+}
+
+.ai-group-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #6A5ACD;
+  margin-bottom: 1.5rem;
+}
+
+.ai-group-desc {
+  font-size: 1.3rem;
+  color: #475569;
+  line-height: 1.6;
+  margin-bottom: 2.5rem;
+}
+
+.btn-analytics {
+  padding: 1rem 2.5rem;
+  border-radius: 8px;
+  background-color: #ede9fa;
+  color: #2d2460;
+  border: none;
+  font-size: 1.3rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* ─── Promotional Banner ─── */
+.promo-banner-admin {
+  background-color: #6A5ACD;
+  border-radius: 24px;
+  padding: 6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  color: white;
+}
+
+.promo-content {
+  max-width: 50%;
+  position: relative;
+  z-index: 2;
+}
+
+.promo-content h2 {
+  font-size: 4.2rem;
+  font-weight: 800;
+  margin-bottom: 2.5rem;
+  line-height: 1.2;
+}
+
+.promo-content p {
+  font-size: 1.8rem;
+  color: #bae6fd;
+  line-height: 1.6;
+  margin-bottom: 3.5rem;
+}
+
+.promo-avatars {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #bae6fd;
+}
+
+.avatar-stack-mini {
+  display: flex;
+}
+
+.avatar-stack-mini img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #0c4a6e;
+  margin-left: -10px;
+}
+
+.promo-image-wrap {
+  width: 45%;
+  height: 350px;
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Class Detail Specifics ─── */
+.class-info-card-detail {
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 24px;
+  padding: 3.5rem;
+}
+
+.detail-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-bottom: 4rem;
+}
+
+.detail-info-item label {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 0.8rem;
+}
+
+.detail-info-item p {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #6A5ACD;
+  margin: 0;
+}
+
+.ai-attendance-box {
+  background-color: #f3f0ff;
+  border-left: 4px solid #3b82f6;
+  padding: 2.5rem;
+  border-radius: 12px;
+}
+
+.ai-attendance-box h5 {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #6A5ACD;
+  margin-bottom: 1.2rem;
+}
+
+.ai-attendance-box p {
+  font-size: 1.25rem;
+  color: #1e3a8a;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.subjects-card-detail {
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 24px;
+  padding: 3.5rem;
+}
+
+.subjects-tags-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 4rem;
+}
+
+.subject-tag-pill {
+  padding: 1rem 1.8rem;
+  background-color: #f3f0ff;
+  border: 1px solid #ede9fa;
+  color: #2d2460;
+  border-radius: 10px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.subject-tag-pill.blue { background-color: #f3f0ff; border-color: #dbeafe; color: #6A5ACD; }
+.subject-tag-pill.purple { background-color: #f5f3ff; border-color: #ede9fe; color: #5b21b6; }
+
+/* Roster Table */
+.roster-card {
+  margin-top: 4rem;
+  background: white;
+  border: 1px solid var(--card-border-color, #FFD700);
+  border-radius: 24px;
+  padding: 3.5rem;
+}
+
+.roster-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3.5rem;
+}
+
+.roster-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.roster-table th {
+  text-align: left;
+  padding: 1.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.roster-table td {
+  padding: 2rem 0;
+  border-bottom: 1px solid #f8fafc;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #6A5ACD;
+}
+
+.status-label {
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.status-label.active { background-color: #ede9fa; color: #2d2460; }
+.status-label.absent { background-color: #fee2e2; color: #991b1b; }
+
+/* ─── Responsive ─── */
+@media (max-width: 1100px) {
+  .class-cards-grid { grid-template-columns: 1fr 1fr; }
+  .promo-banner-admin { flex-direction: column; text-align: center; gap: 4rem; }
+  .promo-content { max-width: 100%; }
+  .promo-image-wrap { width: 100%; height: 300px; }
+  .promo-avatars { justify-content: center; }
+}
+
+@media (max-width: 768px) {
+  .class-stats-grid { grid-template-columns: 1fr; }
+  .class-cards-grid { grid-template-columns: 1fr; }
+  .detail-info-grid { grid-template-columns: 1fr; }
+}
