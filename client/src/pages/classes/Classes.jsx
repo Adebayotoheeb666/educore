@@ -135,18 +135,6 @@ const Classes = () => {
           );
         })}
 
-        {/* AI Insight Card */}
-        <div className="ai-grouping-card">
-          <div className="ai-group-header">
-            <span>✨</span> AI Insight
-          </div>
-          <h3 className="ai-group-title">Optimal Grouping</h3>
-          <p className="ai-group-desc">
-            Let AI suggest student arms based on academic balance and performance history.
-          </p>
-          <button className="btn-analytics">Run Analytics</button>
-          <div style={{ position: 'absolute', bottom: '-20px', right: '-20px', fontSize: '10rem', opacity: 0.05 }}>✨</div>
-        </div>
       </div>
 
       {/* Promotional Banner */}

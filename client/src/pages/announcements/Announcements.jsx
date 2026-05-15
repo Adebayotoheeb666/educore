@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { toast } from 'sonner';
+import { getAnnouncements, deleteAnnouncement } from '../../services/announcementService';
 import './Announcements.css';
 
 const Announcements = () => {
@@ -9,21 +10,35 @@ const Announcements = () => {
   const [filter, setFilter] = useState('All Updates');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    axios.get('/api/announcements')
+  const load = () => {
+    setLoading(true);
+    getAnnouncements()
       .then(({ data }) => setAnnouncements(data || []))
-      .catch((err) => {
-          console.error("Failed to fetch announcements:", err);
-          setAnnouncements([]);
+      .catch(() => {
+        toast.error('Failed to load announcements');
+        setAnnouncements([]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this announcement?')) return;
+    try {
+      await deleteAnnouncement(id);
+      setAnnouncements(prev => prev.filter(a => a._id !== id));
+      toast.success('Announcement deleted');
+    } catch {
+      toast.error('Failed to delete announcement');
+    }
+  };
 
   const filteredAnnouncements = announcements.filter(a => {
     const matchesFilter = filter === 'All Updates' || 
                          (filter === 'High Priority' && (a.priority === 'high' || a.priority === 'urgent')) ||
                          (filter === 'Recent' && new Date(a.createdAt) > new Date('2024-10-22')) ||
-                         (filter === 'Drafts' && false); // Drafts logic not implemented in mock
+                         (filter === 'Drafts' && a.priority === 'normal' && !a.sentViaSMS);
     const matchesSearch = a.title.toLowerCase().includes(search.toLowerCase()) || 
                          a.body.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
@@ -92,9 +107,9 @@ const Announcements = () => {
                   <p>{filteredAnnouncements[0].createdBy?.role} • {new Date(filteredAnnouncements[0].createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                 </div>
               </div>
-              <Link to={`/announcements/${filteredAnnouncements[0]._id}`} className="read-notice-link">
-                Read Full Notice <span>→</span>
-              </Link>
+              <button type="button" className="read-notice-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => handleDelete(filteredAnnouncements[0]._id)}>
+                Delete <span>🗑️</span>
+              </button>
             </div>
           </div>
         )}
@@ -120,6 +135,7 @@ const Announcements = () => {
                   <p>{a.createdBy?.role} • {new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                 </div>
               </div>
+              <button type="button" onClick={() => handleDelete(a._id)} style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: 700, cursor: 'pointer', marginTop: '1rem' }}>Delete</button>
             </div>
           </div>
         ))}

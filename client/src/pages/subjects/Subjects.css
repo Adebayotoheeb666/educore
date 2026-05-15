@@ -190,6 +190,181 @@
 @media (max-width: 1200px) {
     .catalog-summary-row { grid-template-columns: repeat(2, 1fr); }
 }
+.subject-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.subject-modal {
+    background: #fff;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.subject-modal-header {
+    position: relative;
+    padding: 2rem 2rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.subject-modal-header h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 0.25rem;
+}
+
+.subject-modal-header p {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin: 0;
+    font-weight: 600;
+}
+
+.subject-modal-close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    background: #f1f5f9;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #64748b;
+}
+
+.subject-modal-section {
+    padding: 1.5rem 2rem;
+}
+
+.subject-modal-section h4 {
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin: 0 0 1rem;
+}
+
+.subject-modal-empty {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.subject-teacher-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.subject-teacher-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.subject-teacher-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+.subject-teacher-list li span {
+    flex: 1;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.subject-teacher-remove {
+    background: #fef2f2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.subject-teacher-remove:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.subject-assign-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.subject-assign-row select {
+    flex: 1;
+    padding: 0.65rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.subject-assign-btn {
+    background: #5849b8;
+    color: #fff;
+    border: none;
+    padding: 0.65rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.subject-assign-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.subject-modal-footer {
+    padding: 1rem 2rem 2rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-assign-teachers {
+    background: #f3f0ff;
+    color: #5849b8;
+    border: 1px solid #ddd6fe;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-assign-teachers:hover {
+    background: #ede9fa;
+}
+
+.teacher-names-preview {
+    font-size: 0.85rem;
+    color: #475569;
+    font-weight: 600;
+    margin-top: 0.35rem;
+}
+
 @media (max-width: 768px) {
     .catalog-summary-row { grid-template-columns: 1fr; }
     .catalog-table-header { flex-direction: column; align-items: flex-start; gap: 1.5rem; }

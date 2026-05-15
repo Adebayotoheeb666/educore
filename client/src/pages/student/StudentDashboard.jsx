@@ -34,10 +34,6 @@ const StudentDashboard = () => {
         <h1>{data.welcomeMessage}</h1>
         <p>You're doing great in <span className="student-class-highlight">{data.currentClass}</span>. Here's your performance snapshot.</p>
         
-        <div className="ai-snapshot-banner">
-           <span style={{ fontSize: '1.2rem' }}>✨</span>
-           <p>Your Biology scores improved by 12% this week. Keep up the momentum!</p>
-        </div>
       </header>
 
       {/* Performance Snapshots */}
@@ -52,28 +48,30 @@ const StudentDashboard = () => {
             <h2 className="snapshot-val">{data.performanceSnapshot.attendance}%</h2>
           </div>
           <div className="perf-bar-bg" style={{ height: '6px' }}>
-            <div className="perf-bar-fill" style={{ width: '92%', background: '#5849b8' }}></div>
+            <div className="perf-bar-fill" style={{ width: `${Math.min(100, data.performanceSnapshot.attendance)}%`, background: '#5849b8' }} />
           </div>
         </div>
 
         <div className="snapshot-card-premium">
           <div className="snapshot-header">
             <div className="snapshot-icon-wrap">📈</div>
-            <span className="snapshot-trend">Top 5%</span>
+            <span className="snapshot-trend">{data.performanceSnapshot.lastTermAvg > 0 ? 'Latest term' : '—'}</span>
           </div>
           <div className="snapshot-content">
             <span className="snapshot-label">Last Term Avg</span>
             <h2 className="snapshot-val">{data.performanceSnapshot.lastTermAvg}%</h2>
           </div>
           <div className="perf-bar-bg" style={{ height: '6px' }}>
-            <div className="perf-bar-fill" style={{ width: '78%', background: '#1e293b' }}></div>
+            <div className="perf-bar-fill" style={{ width: `${Math.min(100, data.performanceSnapshot.lastTermAvg)}%`, background: '#1e293b' }}></div>
           </div>
         </div>
 
         <div className="snapshot-card-premium">
           <div className="snapshot-header">
             <div className="snapshot-icon-wrap">💳</div>
-            <span className="snapshot-trend warning">Due in 5 days</span>
+            <span className={`snapshot-trend ${data.performanceSnapshot.outstandingFees > 0 ? 'warning' : ''}`}>
+              {data.performanceSnapshot.outstandingFees > 0 ? 'Outstanding' : 'Cleared'}
+            </span>
           </div>
           <div className="snapshot-content">
             <span className="snapshot-label">Outstanding Fees</span>
@@ -85,7 +83,7 @@ const StudentDashboard = () => {
         <div className="snapshot-card-premium">
           <div className="snapshot-header">
             <div className="snapshot-icon-wrap">🏆</div>
-            <span className="snapshot-trend">Out of 45</span>
+            <span className="snapshot-trend">{data.performanceSnapshot.positionTrend}</span>
           </div>
           <div className="snapshot-content">
             <span className="snapshot-label">Class Position</span>

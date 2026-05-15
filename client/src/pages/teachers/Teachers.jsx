@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getTeachers, deleteTeacher } from '../../services/teacherService';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import ListPagination from '../../components/pagination/ListPagination';
 import '../students/Students.css';
 import './Teachers.css';
 
@@ -9,6 +11,7 @@ const Teachers = () => {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
@@ -22,6 +25,28 @@ const Teachers = () => {
       .catch(() => toast.error('Failed to load teachers'))
       .finally(() => setLoading(false));
   }, []);
+
+  const filteredTeachers = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return teachers;
+    return teachers.filter((t) => {
+      const name = (t.name ?? '').toLowerCase();
+      const email = (t.email ?? '').toLowerCase();
+      const dept = (t.department ?? t.dept ?? '').toLowerCase();
+      const role = (t.role ?? '').toLowerCase();
+      return name.includes(q) || email.includes(q) || dept.includes(q) || role.includes(q);
+    });
+  }, [teachers, searchQuery]);
+
+  const {
+    paginatedItems: paginatedTeachers,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalItems: filteredCount,
+    rangeStart,
+    rangeEnd,
+  } = useClientPagination(filteredTeachers, 10, [searchQuery]);
 
   const handleDelete = async (teacherId) => {
     setDeletingId(teacherId);
@@ -57,7 +82,12 @@ const Teachers = () => {
       <div className="filter-bar">
         <div className="search-input-wrap">
           <span className="search-icon" style={{position: 'absolute', left: '1.8rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8'}}>🔍</span>
-          <input type="text" placeholder="Search by teacher name, email or department..." />
+          <input
+            type="text"
+            placeholder="Search by teacher name, email or department..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
         <button className="btn-secondary-outline">
           <span>📊</span> Filters
@@ -68,8 +98,10 @@ const Teachers = () => {
       <div className="premium-table-card">
         {loading ? (
           <div style={{padding: '4rem', textAlign: 'center', color: '#64748b'}}>Loading teachers…</div>
-        ) : teachers.length === 0 ? (
-          <div style={{padding: '4rem', textAlign: 'center', color: '#64748b'}}>No teachers found.</div>
+        ) : filteredTeachers.length === 0 ? (
+          <div style={{padding: '4rem', textAlign: 'center', color: '#64748b'}}>
+            {teachers.length === 0 ? 'No teachers found.' : 'No teachers match your search.'}
+          </div>
         ) : (
           <table className="premium-table">
             <thead>
@@ -82,7 +114,7 @@ const Teachers = () => {
               </tr>
             </thead>
             <tbody>
-              {teachers.map(t => (
+              {paginatedTeachers.map(t => (
                 <tr key={t._id ?? t.id}>
                   <td>
                     <div className="student-info-cell">
@@ -135,39 +167,20 @@ const Teachers = () => {
           </table>
         )}
 
-        {!loading && teachers.length > 0 && (
-          <div className="table-footer">
-            <div className="showing-text">Showing {teachers.length} of {total} teachers</div>
-          </div>
+        {!loading && filteredCount > 0 && (
+          <ListPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredCount}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            onPageChange={setCurrentPage}
+            itemLabel="teachers"
+            className="table-footer"
+          />
         )}
       </div>
 
-      {/* AI Administrative Insights */}
-      <div style={{marginTop: '6rem'}}>
-        <h2 style={{fontSize: '2.2rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '1.2rem', marginBottom: '3rem'}}>
-           <span style={{color: '#FFD700'}}>✨</span> AI Administrative Insights
-        </h2>
-        
-        <div className="ai-staff-insights-grid">
-          <div className="ai-staff-insight-card">
-            <h4>Curriculum Coverage</h4>
-            <p>Mathematics department is 15% ahead of the term schedule.</p>
-            <div className="prog-bar-bg" style={{height: '8px', background: '#eff6ff'}}>
-              <div className="prog-bar-fill" style={{width: '75%', background: '#6A5ACD'}}></div>
-            </div>
-          </div>
-          
-          <div className="ai-staff-insight-card blue">
-            <h4>Attendance Trend</h4>
-            <p>98% teacher attendance recorded this week across all levels.</p>
-          </div>
-          
-          <div className="ai-staff-insight-card orange">
-            <h4>Staff Load</h4>
-            <p>3 teachers have been flagged for high workload. Consider redistribution.</p>
-          </div>
-        </div>
-      </div>
 
       <div style={{marginTop: '6rem', borderTop: '1px solid #f1f5f9', paddingTop: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
         <div style={{fontSize: '1.2rem', color: '#64748b'}}>

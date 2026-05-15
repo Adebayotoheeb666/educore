@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { getLessonPlans, deleteLessonPlan } from '../../services/lessonPlanService';
 import './Planning.css';
 
-const getLessonPlans = (params) => axios.get('/api/lesson-plans', { params });
-
 const LessonPlans = () => {
+  const navigate = useNavigate();
   const [view, setView] = useState('list');
   const [lessonPlans, setLessonPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,7 @@ const LessonPlans = () => {
           <button
             className={`btn btn-lg px-4 rounded-pill ${view === 'ai-studio' ? 'btn-indigo' : 'btn-outline-indigo'}`}
             style={{ backgroundColor: view === 'ai-studio' ? '#6A5ACD' : 'transparent', color: view === 'ai-studio' ? 'white' : '#6A5ACD', borderColor: '#6A5ACD' }}
-            onClick={() => setView('ai-studio')}
+            onClick={() => navigate('/lesson-plans/generate')}
           >
             ✨ AI Lesson Studio
           </button>
@@ -134,14 +134,22 @@ const LessonPlans = () => {
                       <div className="meta-item"><span>👤</span> {teacherName}</div>
                     </div>
                     <div className="d-flex gap-2">
-                      <button className="btn btn-light flex-grow-1 fw-bold">View Details</button>
-                      <button className="btn btn-outline-primary fw-bold">Edit</button>
+                      <button type="button" className="btn btn-outline-danger fw-bold" onClick={async () => {
+                        if (!window.confirm('Delete this lesson plan?')) return;
+                        try {
+                          await deleteLessonPlan(plan._id);
+                          toast.success('Deleted');
+                          setLessonPlans(prev => prev.filter(p => p._id !== plan._id));
+                        } catch {
+                          toast.error('Failed to delete');
+                        }
+                      }}>Delete</button>
                     </div>
                   </div>
                 </div>
               );
             })}
-            <div className="lp-card d-flex align-items-center justify-content-center" style={{ borderStyle: 'dashed', backgroundColor: 'transparent' }}>
+            <div className="lp-card d-flex align-items-center justify-content-center" style={{ borderStyle: 'dashed', backgroundColor: 'transparent', cursor: 'pointer' }} onClick={() => navigate('/lesson-plans/generate')} role="button">
               <div className="text-center">
                 <div className="fs-1 text-muted mb-3">+</div>
                 <h4 className="text-muted fw-bold">Create New Plan</h4>

@@ -1,0 +1,16 @@
+.list-pagination-footer {
+  padding: 2rem 2.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  background-color: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.list-pagination-info {
+  font-size: 1.3rem;
+  color: #64748b;
+  font-weight: 600;
+}

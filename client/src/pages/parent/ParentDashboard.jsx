@@ -25,7 +25,7 @@ const ParentDashboard = () => {
     <div className="parent-dashboard-container">
       <header className="ann-page-header">
         <div className="ann-header-left">
-          <h1>Welcome back, Mr. Adeyemi</h1>
+          <h1>Welcome back, {user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Parent'}</h1>
           <p>Monitor your children's academic progress, attendance, and administrative status in real-time.</p>
         </div>
         <button className="btn-new-ann" style={{ background: '#5849b8' }}>
@@ -73,12 +73,6 @@ const ParentDashboard = () => {
             </div>
           ))}
 
-          <div className="ai-parent-insight-box">
-             <h3><span>✨</span> AI Insights</h3>
-             <p>Based on current mock exam data, Olawale is showing exceptional aptitude in STEM subjects. We recommend enrolling him in the upcoming Advanced Robotics workshop.</p>
-             <button className="btn-ai-action">Explore Recommendations</button>
-             <div style={{ position: 'absolute', bottom: 20, right: 20, opacity: 0.1, fontSize: '5rem' }}>⚙️</div>
-          </div>
         </section>
 
         <aside className="parent-sidebar-content">

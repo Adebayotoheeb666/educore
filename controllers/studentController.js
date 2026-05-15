@@ -1,3 +1,4 @@
+const XLSX = require('xlsx');
 const User = require("../models/userModel");
 const Class = require("../models/classModel");
 
@@ -43,7 +44,81 @@ const createStudent = async (req, res) => {
 };
 
 const bulkImportStudents = async (req, res) => {
-  res.status(200).json({ message: "Bulk import successful (stub)" });
+  try {
+    if (!req.file?.buffer) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+    const year = new Date().getFullYear();
+    let successful = 0;
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2;
+      const fullName = String(row.FULL_NAME || row.full_name || row.Name || '').trim();
+      const parts = fullName.split(/\s+/).filter(Boolean);
+      const firstName = parts[0];
+      const lastName = parts.slice(1).join(' ') || parts[0];
+      const email = String(row.EMAIL || row.email || `${(row.STUDENT_ID || row.student_id || `row${rowNum}`).toString().toLowerCase()}@import.local`).trim();
+      const parentPhone = String(row.PARENT_PHONE || row.parent_phone || '').trim();
+      const gender = String(row.GENDER || row.gender || '').trim();
+      const classLabel = String(row.CLASS_GRADE || row.class_grade || row.Class || '').trim();
+
+      if (!firstName) {
+        errors.push({ row: rowNum, message: 'FULL_NAME is required' });
+        continue;
+      }
+
+      const existing = await User.findOne({ email });
+      if (existing) {
+        errors.push({ row: rowNum, message: `Email already exists: ${email}` });
+        continue;
+      }
+
+      let classDoc = null;
+      if (classLabel) {
+        classDoc = await Class.findOne({
+          school: req.school._id,
+          name: new RegExp(`^${classLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+        });
+        if (!classDoc) {
+          errors.push({ row: rowNum, message: `Class not found: ${classLabel}` });
+          continue;
+        }
+      }
+
+      const count = await User.countDocuments({ schoolId: req.school._id, role: 'student' });
+      const admissionNo = String(row.STUDENT_ID || row.student_id || `SC-${year}-${String(count + 1).padStart(4, '0')}`).trim();
+      const defaultPassword = `EduCore@${year}`;
+
+      const student = await User.create({
+        name: fullName || `${firstName} ${lastName}`,
+        firstName,
+        lastName,
+        email,
+        password: defaultPassword,
+        role: 'student',
+        schoolId: req.school._id,
+        admissionNo,
+        gender: gender || undefined,
+        parentPhone: parentPhone || undefined,
+      });
+
+      if (classDoc) {
+        await Class.findByIdAndUpdate(classDoc._id, { $addToSet: { students: student._id } });
+      }
+      successful += 1;
+    }
+
+    res.status(200).json({ successful, created: successful, errors, failed: errors.length });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 const getStudents = async (req, res) => {
@@ -97,11 +172,34 @@ const deleteStudent = async (req, res) => {
 };
 
 const promoteStudents = async (req, res) => {
-  res.status(200).json({ message: "Students promoted" });
+  try {
+    const { fromClassId, toClassId, studentIds } = req.body;
+    if (!fromClassId || !toClassId || !Array.isArray(studentIds) || !studentIds.length) {
+      return res.status(400).json({ message: 'fromClassId, toClassId, and studentIds are required' });
+    }
+
+    await Class.findByIdAndUpdate(fromClassId, { $pull: { students: { $in: studentIds } } });
+    await Class.findByIdAndUpdate(toClassId, { $addToSet: { students: { $each: studentIds } } });
+
+    res.status(200).json({ message: `Promoted ${studentIds.length} student(s)`, count: studentIds.length });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 const getStudentAcademicHistory = async (req, res) => {
-  res.status(200).json([]);
+  try {
+    const Result = require('../models/resultModel');
+    const history = await Result.find({
+      school: req.school._id,
+      student: req.params.id,
+    })
+      .populate('class', 'name arm')
+      .sort({ createdAt: -1 });
+    res.status(200).json(history);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 module.exports = { createStudent, bulkImportStudents, getStudents, getStudentById, updateStudent, deleteStudent, promoteStudents, getStudentAcademicHistory };

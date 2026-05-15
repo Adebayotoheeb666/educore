@@ -1,7 +1,10 @@
 import axios from 'axios';
 
 export const getFeeSchedules = (params) => axios.get('/api/fees', { params });
+export const getFeeSchedule = (id) => axios.get(`/api/fees/${id}`);
 export const createFeeSchedule = (data) => axios.post('/api/fees', data);
+export const updateFeeSchedule = (id, data) => axios.patch(`/api/fees/${id}`, data);
+export const deleteFeeSchedule = (id) => axios.delete(`/api/fees/${id}`);
 export const getFeeStatus = (classId) => axios.get(`/api/fees/status/${classId}`);
 export const recordPayment = (data) => axios.post('/api/fees/payment', data);
 export const getStudentStatement = (studentId) =>

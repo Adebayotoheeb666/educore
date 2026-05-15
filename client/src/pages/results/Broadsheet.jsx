@@ -1,125 +1,126 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { getBroadsheet } from '../../services/resultService';
+import { getClasses } from '../../services/classService';
 import './Results.css';
 import '../teachers/Teachers.css';
 
+const parseBlobError = async (blob) => {
+  try {
+    const text = await blob.text();
+    const json = JSON.parse(text);
+    return json.message || 'Failed to generate broadsheet';
+  } catch {
+    return 'Failed to generate broadsheet';
+  }
+};
+
 const Broadsheet = () => {
+  const [classes, setClasses] = useState([]);
+  const [classId, setClassId] = useState('');
+  const [term, setTerm] = useState('First Term');
+  const [session, setSession] = useState('2024/2025');
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    getClasses()
+      .then(({ data }) => setClasses(data?.classes ?? data ?? []))
+      .catch(() => toast.error('Failed to load classes'));
+  }, []);
+
+  const selectedClass = classes.find((c) => c._id === classId);
+  const classLabel = selectedClass
+    ? `${selectedClass.name}${selectedClass.arm ? ` ${selectedClass.arm}` : ''}`
+    : classId;
+
+  const handleDownload = async (e) => {
+    e.preventDefault();
+    if (!classId) {
+      toast.error('Select a class');
+      return;
+    }
+    setDownloading(true);
+    try {
+      const response = await getBroadsheet(classId, { term, session });
+      const contentType = response.headers['content-type'] || '';
+
+      if (
+        response.data instanceof Blob &&
+        (contentType.includes('spreadsheet') ||
+          contentType.includes('excel') ||
+          contentType.includes('octet-stream'))
+      ) {
+        const safeClass = (classLabel || 'class').replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        const safeTerm = term.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        const url = window.URL.createObjectURL(response.data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `broadsheet-${safeClass}-${safeTerm}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success('Broadsheet downloaded');
+        return;
+      }
+
+      if (response.data?.url) {
+        window.open(response.data.url, '_blank');
+        toast.success('Broadsheet generated');
+        return;
+      }
+
+      toast.success(response.data?.message || 'Broadsheet request submitted');
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data instanceof Blob) {
+        toast.error(await parseBlobError(data));
+      } else {
+        toast.error(err?.response?.data?.message ?? 'Failed to generate broadsheet');
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="results-container">
-      
-      <div style={{marginBottom: '4rem'}}>
-        <h1 style={{fontSize: '3.6rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.8rem'}}>Export Broadsheet</h1>
-        <p style={{fontSize: '1.6rem', color: '#64748b'}}>Generate and download comprehensive class-wide performance reports in Excel format.</p>
-      </div>
+      <h1 style={{ fontSize: '3.6rem', fontWeight: 800, marginBottom: '0.8rem' }}>Export Broadsheet</h1>
+      <p style={{ fontSize: '1.6rem', color: '#64748b', marginBottom: '4rem' }}>
+        Download a class-wide Excel broadsheet with per-subject CA, exam, total, and grade columns.
+      </p>
 
       <div className="broadsheet-grid">
-        {/* Left: Criteria Form */}
         <div className="export-criteria-card">
-           <div style={{display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '4rem'}}>
-              <span style={{fontSize: '2.4rem'}}>📑</span>
-              <h2 style={{fontSize: '2rem', fontWeight: 800}}>Selection Criteria</h2>
-           </div>
-
-           <form>
-              <div className="form-group-premium" style={{marginBottom: '3rem'}}>
-                 <label>Select Class</label>
-                 <select>
-                    <option>Choose a class...</option>
-                    <option>SS3 Science A</option>
-                    <option>SS3 Art B</option>
-                 </select>
+          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '3rem' }}>Selection Criteria</h2>
+          <form onSubmit={handleDownload}>
+            <div className="form-group-premium" style={{ marginBottom: '2rem' }}>
+              <label>Class *</label>
+              <select required value={classId} onChange={e => setClassId(e.target.value)}>
+                <option value="">Choose a class…</option>
+                {classes.map(c => (
+                  <option key={c._id} value={c._id}>{c.name}{c.arm ? ` ${c.arm}` : ''}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
+              <div className="form-group-premium">
+                <label>Term</label>
+                <select value={term} onChange={e => setTerm(e.target.value)}>
+                  <option>First Term</option>
+                  <option>Second Term</option>
+                  <option>Third Term</option>
+                </select>
               </div>
-
-              <div className="form-grid" style={{gridTemplateColumns: '1fr 1fr', gap: '2.5rem', marginBottom: '4rem'}}>
-                 <div className="form-group-premium">
-                    <label>Term</label>
-                    <select><option>First Term</option><option>Second Term</option></select>
-                 </div>
-                 <div className="form-group-premium">
-                    <label>Academic Session</label>
-                    <select><option>2023/2024</option><option>2022/2023</option></select>
-                 </div>
+              <div className="form-group-premium">
+                <label>Session</label>
+                <input type="text" value={session} onChange={e => setSession(e.target.value)} />
               </div>
-
-              <div style={{marginBottom: '5rem'}}>
-                 <h4 style={{fontSize: '1.2rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2.5rem'}}>Export Options</h4>
-                 <div style={{display: 'flex', flexDirection: 'column', gap: '2rem'}}>
-                    <label style={{display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', cursor: 'pointer'}}>
-                       <input type="checkbox" defaultChecked style={{width: '20px', height: '20px'}} />
-                       Include Subject Averages
-                    </label>
-                    <label style={{display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', cursor: 'pointer'}}>
-                       <input type="checkbox" defaultChecked style={{width: '20px', height: '20px'}} />
-                       Include Position in Class
-                    </label>
-                    <label style={{display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', cursor: 'pointer'}}>
-                       <input type="checkbox" style={{width: '20px', height: '20px'}} />
-                       Include Attendance Records
-                    </label>
-                 </div>
-              </div>
-
-              <button type="button" className="btn-primary-green" style={{width: '100%', padding: '2rem', background: '#6A5ACD', borderRadius: '12px', fontSize: '1.6rem', fontWeight: 800}}>
-                 <span>📥</span> Download Broadsheet (Excel)
-              </button>
-              <p style={{textAlign: 'center', fontSize: '1.2rem', color: '#64748b', marginTop: '1.5rem'}}>
-                 File format: .xlsx • Size approx. 2.4MB
-              </p>
-           </form>
+            </div>
+            <button type="submit" disabled={downloading} className="btn-primary-green" style={{ width: '100%', padding: '2rem', background: '#6A5ACD' }}>
+              {downloading ? 'Generating…' : 'Download Broadsheet (Excel)'}
+            </button>
+          </form>
         </div>
-
-        {/* Right: Preview & Recents */}
-        <aside>
-           <div className="smart-prep-tip">
-              <div style={{display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem'}}>
-                 <span style={{fontSize: '2rem'}}>💡</span>
-                 <h4 style={{fontSize: '1.4rem', fontWeight: 800, color: '#b8860b'}}>Smart Prep Tip</h4>
-              </div>
-              <p style={{fontSize: '1.3rem', color: '#475569', lineHeight: 1.6, margin: 0}}>
-                Generating broadsheets for final year classes (SS3) automatically includes the WASSCE preparatory mock scores in a separate tab for easier tracking.
-              </p>
-           </div>
-
-           <div className="export-preview-card">
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem'}}>
-                 <span style={{fontSize: '1.1rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase'}}>Export Preview</span>
-                 <span style={{padding: '0.4rem 0.8rem', background: '#ede9fa', color: '#2d2460', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 800}}>EXCEL LAYOUT</span>
-              </div>
-              <div className="export-preview-img-wrap">
-                 <img 
-                   src="https://images.unsplash.com/photo-1543286386-713bdd548da4?auto=format&fit=crop&q=80&w=1000" 
-                   alt="Excel Preview" 
-                   style={{width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6}}
-                 />
-              </div>
-           </div>
-
-           <div className="recent-exports-list">
-              <h4 style={{fontSize: '1.2rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '2.5rem'}}>Recently Exported</h4>
-              <div className="export-item-mini">
-                 <div style={{display: 'flex', alignItems: 'center', gap: '1.5rem'}}>
-                    <span style={{fontSize: '2rem'}}>📄</span>
-                    <div>
-                       <h5 style={{fontSize: '1.3rem', fontWeight: 800, color: '#1e293b', marginBottom: '0.3rem'}}>SS3_Science_A_Term1.xlsx</h5>
-                       <p style={{fontSize: '1.1rem', color: '#94a3b8'}}>2 mins ago • 1.2 MB</p>
-                    </div>
-                 </div>
-                 <button style={{border: 'none', background: 'none', color: '#2d2460', fontWeight: 800, fontSize: '1.2rem', cursor: 'pointer'}}>Open</button>
-              </div>
-              <div className="export-item-mini">
-                 <div style={{display: 'flex', alignItems: 'center', gap: '1.5rem'}}>
-                    <span style={{fontSize: '2rem'}}>📄</span>
-                    <div>
-                       <h5 style={{fontSize: '1.3rem', fontWeight: 800, color: '#1e293b', marginBottom: '0.3rem'}}>JSS3_General_Term3.xlsx</h5>
-                       <p style={{fontSize: '1.1rem', color: '#94a3b8'}}>Yesterday • 4.5 MB</p>
-                    </div>
-                 </div>
-                 <button style={{border: 'none', background: 'none', color: '#2d2460', fontWeight: 800, fontSize: '1.2rem', cursor: 'pointer'}}>Open</button>
-              </div>
-           </div>
-        </aside>
       </div>
-
     </div>
   );
 };

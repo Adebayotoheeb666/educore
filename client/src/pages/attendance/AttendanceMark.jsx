@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { getAttendanceByDate, markAttendance } from '../../services/attendanceService';
+import { getAttendanceByDate, markAttendance, notifyAbsentParents } from '../../services/attendanceService';
 import { getClasses } from '../../services/classService';
 import './Attendance.css';
 
@@ -14,6 +14,7 @@ const AttendanceMark = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [notifying, setNotifying] = useState(false);
 
   // Load class list on mount
   useEffect(() => {
@@ -68,6 +69,25 @@ const AttendanceMark = () => {
   const handleNoteChange = (id, note) =>
     setStudents(prev => prev.map(s => s._id === id ? { ...s, note } : s));
 
+  const handleNotifyAbsent = async () => {
+    const absent = students.filter(s => s.status === 'absent');
+    if (absent.length === 0) {
+      toast.info('No absent students to notify');
+      return;
+    }
+    setNotifying(true);
+    try {
+      await Promise.all(absent.map(s =>
+        notifyAbsentParents({ studentId: s._id, classId: selectedClass, date: selectedDate })
+      ));
+      toast.success(`Notified parents of ${absent.length} absent student(s)`);
+    } catch {
+      toast.error('Failed to send notifications');
+    } finally {
+      setNotifying(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -120,13 +140,11 @@ const AttendanceMark = () => {
           <div className="btn-offline-mode">
             <span style={{fontSize: '1.4rem'}}>📡</span> Live Sync
           </div>
-          <button className="btn-secondary-outline" style={{padding: '1rem 2.5rem'}}
-            onClick={() => {
-              const id = selectedClass;
-              setSelectedClass('');
-              setTimeout(() => setSelectedClass(id), 50);
-            }}>
-            <span>🔄</span> Refresh
+          <Link to={`/attendance/report?classId=${selectedClass}`} className="btn-secondary-outline" style={{ padding: '1rem 2.5rem', textDecoration: 'none' }}>
+            <span>📊</span> Report
+          </Link>
+          <button type="button" className="btn-secondary-outline" style={{ padding: '1rem 2.5rem' }} onClick={handleNotifyAbsent} disabled={notifying || absentCount === 0}>
+            <span>📩</span> {notifying ? 'Sending…' : 'Notify Parents'}
           </button>
         </div>
       </div>
@@ -243,15 +261,6 @@ const AttendanceMark = () => {
         </div>
       </div>
 
-      {/* Floating AI Insight */}
-      <div style={{position: 'fixed', bottom: '3rem', left: '2rem', width: '220px', background: '#0f172a', borderRadius: '16px', padding: '2rem', color: 'white', zIndex: 110}}>
-        <div style={{display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1.1rem', fontWeight: 800, textTransform: 'uppercase', color: '#FFD700', marginBottom: '1rem'}}>
-          <span>✨</span> AI Insights
-        </div>
-        <p style={{fontSize: '1.1rem', color: '#94a3b8', lineHeight: 1.4}}>
-          View attendance trends for {selectedClassName} performance analysis.
-        </p>
-      </div>
 
     </div>
   );

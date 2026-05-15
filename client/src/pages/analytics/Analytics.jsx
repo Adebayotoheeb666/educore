@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { getSchoolDashboard, getFeeAnalytics, getAttendanceAnalytics } from '../../services/analyticsService';
+import { toast } from 'sonner';
+import { getSchoolDashboard, getFeeAnalytics, getAttendanceAnalytics, generateEMISReport } from '../../services/analyticsService';
 import './Analytics.css';
 
 const Analytics = () => {
@@ -9,6 +10,27 @@ const Analytics = () => {
   const [feeData, setFeeData] = useState(null);
   const [attendanceData, setAttendanceData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const { data } = await generateEMISReport({ term: 'First Term', session: '2024/2025' });
+      if (data instanceof Blob) {
+        const url = window.URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'emis-report.xlsx';
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+      toast.success('Report export requested');
+    } catch {
+      toast.error('Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     Promise.all([getSchoolDashboard(), getFeeAnalytics(), getAttendanceAnalytics()])
@@ -39,8 +61,8 @@ const Analytics = () => {
           <p>Real-time insights for Term 2, 2024 academic cycle.</p>
         </div>
         <div className="ann-header-right">
-           <button className="btn-export">
-             📥 Export Full Report
+           <button type="button" className="btn-export" onClick={handleExport} disabled={exporting}>
+             {exporting ? 'Exporting…' : '📥 Export Full Report'}
            </button>
         </div>
       </header>
@@ -50,7 +72,7 @@ const Analytics = () => {
         <div className="stat-card-modern">
           <div className="stat-card-top">
             <div className="stat-icon-square blue">👨‍🎓</div>
-            <span className="stat-trend-tag up">↝ +12%</span>
+            <span className="stat-trend-tag up">{dashboard?.totalStudents ?? 0} enrolled</span>
           </div>
           <div>
             <span className="stat-label-small">Total Students</span>
@@ -61,7 +83,7 @@ const Analytics = () => {
         <div className="stat-card-modern">
           <div className="stat-card-top">
             <div className="stat-icon-square green">👨‍🏫</div>
-            <span className="stat-trend-tag stable">Stable</span>
+            <span className="stat-trend-tag stable">{dashboard?.totalClasses ?? 0} classes</span>
           </div>
           <div>
             <span className="stat-label-small">Total Teachers</span>
@@ -72,7 +94,7 @@ const Analytics = () => {
         <div className="stat-card-modern">
           <div className="stat-card-top">
             <div className="stat-icon-square amber">✅</div>
-            <span className="stat-trend-tag down">↝ -2%</span>
+            <span className="stat-trend-tag down">{dashboard?.feeDefaulters ?? 0} defaulters</span>
           </div>
           <div>
             <span className="stat-label-small">Avg Attendance</span>
@@ -83,7 +105,7 @@ const Analytics = () => {
         <div className="stat-card-modern">
           <div className="stat-card-top">
             <div className="stat-icon-square indigo">💰</div>
-            <span className="stat-status-tag on-track">On Track</span>
+            <span className="stat-status-tag on-track">{feeData?.percent ?? 0}% collected</span>
           </div>
           <div>
             <span className="stat-label-small">Fees Collected</span>
@@ -191,13 +213,6 @@ const Analytics = () => {
               </div>
             ))}
           </div>
-          <div className="ai-insight-box-small">
-            <span className="ai-spark-icon">✨</span>
-            <div className="ai-insight-text">
-              <h5>AI Insight</h5>
-              <p>JSS 3 is showing a 15% dip in Mathematics. We suggest reviewing the 'Quadratic Equations' module completion rate.</p>
-            </div>
-          </div>
         </div>
 
         {/* Recent Activity */}
@@ -206,34 +221,22 @@ const Analytics = () => {
             <h3>Recent Activity</h3>
           </div>
           <div className="recent-activity-list">
-            <div className="activity-item green">
-              <div className="activity-line"></div>
-              <div className="activity-content">
-                <h5>Fee Paid: Chinelo Obi (SS3) cleared Term 2 tuition.</h5>
-                <p>2 MINUTES AGO</p>
-              </div>
-            </div>
-            <div className="activity-item blue">
-              <div className="activity-line"></div>
-              <div className="activity-content">
-                <h5>New Student: Ahmed Musa registered for JSS1.</h5>
-                <p>15 MINUTES AGO</p>
-              </div>
-            </div>
-            <div className="activity-item red">
-              <div className="activity-line"></div>
-              <div className="activity-content">
-                <h5>Attendance Alert: 12 students marked absent in SS2-B.</h5>
-                <p>1 HOUR AGO</p>
-              </div>
-            </div>
-            <div className="activity-item green">
-              <div className="activity-line"></div>
-              <div className="activity-content">
-                <h5>Results Uploaded: Physics Mid-term grades for SS3.</h5>
-                <p>3 HOURS AGO</p>
-              </div>
-            </div>
+            {(dashboard?.recentAnnouncements || []).length === 0 ? (
+              <p style={{ color: '#64748b', padding: '1rem' }}>No recent announcements.</p>
+            ) : (
+              dashboard.recentAnnouncements.map((ann) => (
+                <div
+                  key={ann.id}
+                  className={`activity-item ${ann.priority === 'urgent' ? 'red' : ann.priority === 'high' ? 'amber' : 'green'}`}
+                >
+                  <div className="activity-line" />
+                  <div className="activity-content">
+                    <h5>{ann.title}</h5>
+                    <p>{ann.time}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

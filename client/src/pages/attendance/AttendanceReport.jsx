@@ -139,16 +139,6 @@ const AttendanceReport = () => {
               </div>
             </div>
 
-            <div className="ai-observation-card" style={{gridColumn: 'span 2'}}>
-               <div className="ai-obs-header">
-                 <div style={{width: '32px', height: '32px', background: '#1e293b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.4rem'}}>✨</div>
-                 AI Observation
-               </div>
-               <p className="ai-obs-text">
-                 {reportData.aiObservation ?? 'No insights available for this class.'}
-               </p>
-               <Link to="#" style={{fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', textDecoration: 'underline'}}>Generate Detailed Insight</Link>
-            </div>
           </div>
 
           {/* Breakdown Table */}
@@ -243,15 +233,6 @@ const AttendanceReport = () => {
              </div>
           </div>
 
-          {/* Floating AI Insight (Bottom Left) */}
-          <div style={{position: 'fixed', bottom: '3rem', left: '2rem', width: '220px', background: '#451a03', borderRadius: '16px', padding: '2rem', color: '#fef3c7', zIndex: 110, border: '1px solid #b8860b'}}>
-             <div style={{display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1.1rem', fontWeight: 800, textTransform: 'uppercase', color: '#FFD700', marginBottom: '1rem'}}>
-               <span>✨</span> AI Insights
-             </div>
-             <p style={{fontSize: '1.1rem', color: '#fde68a', lineHeight: 1.4}}>
-               {reportData.aiInsight ?? 'Analyzing class attendance patterns...'}
-             </p>
-          </div>
         </>
       ) : null}
 

@@ -1,21 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { enterScores, getExamById } from '../../services/examService';
+import { getClassStudents } from '../../services/classService';
 import './Exams.css';
 import '../students/Students.css';
 
 const ScoreEntry = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [students, setStudents] = useState([]);
+  const [scores, setScores] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    toast.success('Scores saved as draft.');
+  useEffect(() => {
+    setLoading(true);
+    getExamById(id)
+      .then(({ data: exam }) => {
+        const classId = exam.class?._id || exam.class;
+        if (!classId) { setStudents([]); return; }
+        return getClassStudents(classId).then(({ data }) => {
+          const list = data.students ?? data ?? [];
+          setStudents(list.map(s => ({
+            _id: s._id,
+            name: s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim(),
+            admissionNo: s.admissionNumber || s.admissionNo,
+          })));
+        });
+      })
+      .catch(() => toast.error('Failed to load students'))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const handleScoreChange = (studentId, value) => {
+    setScores(prev => ({ ...prev, [studentId]: value }));
   };
 
-  const handleSubmit = () => {
-    toast.success('Scores submitted and published to student portals.');
-    navigate('/exams');
+  const submitScores = async () => {
+    setSaving(true);
+    try {
+      const payload = Object.entries(scores).map(([student, score]) => ({ student, score: Number(score) || 0 }));
+      await enterScores(id, payload);
+      toast.success('Scores saved successfully');
+      navigate('/exams');
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? 'Failed to save scores');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const handleSave = () => submitScores();
+  const handleSubmit = () => submitScores();
 
   return (
     <div className="exams-container">
@@ -50,7 +87,7 @@ const ScoreEntry = () => {
                <span>👤</span> Mr. Chinedu Okafor
             </div>
             <div className="score-meta-pill" style={{background: '#f3f0ff', color: '#b8860b'}}>
-               <span>🎓</span> 42 Students Enrolled
+               <span>🎓</span> {students.length} Students Enrolled
             </div>
          </div>
          <div style={{display: 'flex', alignItems: 'center', gap: '2rem', fontSize: '1.2rem', fontWeight: 800}}>
@@ -79,36 +116,17 @@ const ScoreEntry = () => {
               </tr>
             </thead>
             <tbody>
-              {[
-                { name: 'Adebayo Tunde', id: 'EDU/2024/001', ca: 34, ex: 52, total: 86, status: 'EXCELLENT', gender: 'Male • SS3-A', img: 'https://ui-avatars.com/api/?name=Adebayo+Tunde' },
-                { name: 'Chioma Eze', id: 'EDU/2024/015', ca: 28, ex: 35, total: 63, status: 'CREDIT', gender: 'Female • SS3-A', img: 'https://ui-avatars.com/api/?name=Chioma+Eze' },
-                { name: 'Ibrahim Musa', id: 'EDU/2024/042', ca: 12, ex: 22, total: 34, status: 'RISK', gender: 'Male • SS3-B', img: 'https://ui-avatars.com/api/?name=Ibrahim+Musa' },
-              ].map((s, i) => (
-                <tr key={i}>
-                  <td>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '1.5rem'}}>
-                       <img src={s.img} alt="" style={{width: '40px', height: '40px', borderRadius: '50%'}} />
-                       <div className="student-info-mini">
-                          <h4>{s.name}</h4>
-                          <p>{s.gender}</p>
-                       </div>
-                    </div>
+              {loading ? (
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Loading…</td></tr>
+              ) : students.map(s => (
+                <tr key={s._id}>
+                  <td><strong>{s.name}</strong></td>
+                  <td style={{ fontFamily: 'monospace' }}>{s.admissionNo || s._id}</td>
+                  <td colSpan={2}>
+                    <input type="number" className="score-input-mini" min="0" max="100" placeholder="Score" value={scores[s._id] ?? ''} onChange={e => handleScoreChange(s._id, e.target.value)} />
                   </td>
-                  <td style={{fontFamily: 'monospace'}}>{s.id}</td>
-                  <td>
-                    <input type="text" className="score-input-mini" defaultValue={s.ca} />
-                  </td>
-                  <td>
-                    <input type="text" className="score-input-mini" defaultValue={s.ex} />
-                  </td>
-                  <td style={{fontWeight: 800, color: s.status === 'EXCELLENT' ? '#6A5ACD' : (s.status === 'RISK' ? '#dc2626' : '#1e293b')}}>
-                    {s.total}
-                  </td>
-                  <td>
-                    <span className={`status-ribbon ${s.status.toLowerCase()}`}>
-                       {s.status.replace('_', ' ')}
-                    </span>
-                  </td>
+                  <td>{scores[s._id] ?? '—'}</td>
+                  <td>—</td>
                 </tr>
               ))}
             </tbody>

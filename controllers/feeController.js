@@ -40,8 +40,72 @@ const createFeeSchedule = async (req, res) => {
 
 const getFeeSchedules = async (req, res) => {
   try {
-    const fees = await Fee.find({ school: req.school._id }).populate('class', 'name');
+    const fees = await Fee.find({ school: req.school._id }).populate('class', 'name arm');
     res.status(200).json(fees);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getFeeSchedule = async (req, res) => {
+  try {
+    const fee = await Fee.findOne({ _id: req.params.id, school: req.school._id }).populate('class', 'name arm');
+    if (!fee) return res.status(404).json({ message: 'Fee schedule not found' });
+    res.status(200).json(fee);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const updateFeeSchedule = async (req, res) => {
+  try {
+    const { title, session, term, classId, items, totalAmount, dueDate } = req.body;
+    const existing = await Fee.findOne({ _id: req.params.id, school: req.school._id });
+    if (!existing) return res.status(404).json({ message: 'Fee schedule not found' });
+
+    existing.title = title ?? existing.title;
+    existing.session = session ?? existing.session;
+    existing.term = term ?? existing.term;
+    if (classId) existing.class = classId;
+    if (items) existing.items = items;
+    const prevTotal = existing.totalAmount;
+    if (totalAmount != null) existing.totalAmount = totalAmount;
+    if (dueDate) existing.dueDate = dueDate;
+    await existing.save();
+
+    if (totalAmount != null && totalAmount !== prevTotal) {
+      await Payment.updateMany(
+        { fee: existing._id, school: req.school._id, status: 'pending' },
+        { $set: { amountDue: totalAmount, balance: totalAmount } }
+      );
+    }
+
+    const fee = await Fee.findById(existing._id).populate('class', 'name arm');
+    res.status(200).json(fee);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const deleteFeeSchedule = async (req, res) => {
+  try {
+    const fee = await Fee.findOne({ _id: req.params.id, school: req.school._id });
+    if (!fee) return res.status(404).json({ message: 'Fee schedule not found' });
+
+    const hasPayments = await Payment.findOne({
+      fee: fee._id,
+      school: req.school._id,
+      amountPaid: { $gt: 0 },
+    });
+    if (hasPayments) {
+      return res.status(400).json({
+        message: 'Cannot delete a fee schedule that already has recorded payments',
+      });
+    }
+
+    await Payment.deleteMany({ fee: fee._id, school: req.school._id });
+    await fee.deleteOne();
+    res.status(200).json({ message: 'Fee schedule deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -159,9 +223,52 @@ const flutterwaveWebhook = async (req, res) => {
 
 const getStudentFeeStatement = async (req, res) => {
   try {
+    const { studentId } = req.params;
+    const schoolId = req.school._id;
+
+    if (req.user.role === 'parent') {
+      const parent = await User.findById(req.user._id);
+      const allowed = (parent.children || []).some((c) => c.toString() === studentId);
+      if (!allowed) return res.status(403).json({ message: 'Not authorized to view this statement' });
+    } else if (req.user.role === 'student' && req.user._id.toString() !== studentId) {
+      return res.status(403).json({ message: 'Not authorized to view this statement' });
+    }
+
+    const student = await User.findOne({ _id: studentId, schoolId, role: 'student' })
+      .populate('classId', 'name arm');
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    const transactions = await Payment.find({ school: schoolId, student: studentId })
+      .populate('fee', 'title term session dueDate')
+      .sort({ updatedAt: -1 });
+
+    const totalInvoiced = transactions.reduce((s, p) => s + (p.amountDue || 0), 0);
+    const totalPaid = transactions.reduce((s, p) => s + (p.amountPaid || 0), 0);
+    const balance = transactions.reduce((s, p) => s + (p.balance || 0), 0);
+    const lastPayment = transactions.find((p) => p.amountPaid > 0);
+
+    const outstandingDue = transactions
+      .filter((p) => p.balance > 0)
+      .sort((a, b) => new Date(a.fee?.dueDate || 0) - new Date(b.fee?.dueDate || 0))[0];
+
     res.status(200).json({
-      message: "Student fee statement coming soon",
-      statement: []
+      student: {
+        id: student._id,
+        name: student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+        admissionNumber: student.admissionNumber,
+        className: student.classId?.name
+          ? `${student.classId.name}${student.classId.arm ? ` ${student.classId.arm}` : ''}`.trim()
+          : 'N/A',
+      },
+      totalInvoiced,
+      totalPaid,
+      balance,
+      lastPaymentAmount: lastPayment?.amountPaid ?? 0,
+      lastPaymentDate: lastPayment?.updatedAt,
+      outstandingDue: outstandingDue
+        ? { amount: outstandingDue.balance, dueDate: outstandingDue.fee?.dueDate }
+        : null,
+      transactions,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -182,7 +289,8 @@ const getRecentTransactions = async (req, res) => {
 };
 
 module.exports = {
-  createFeeSchedule, getFeeSchedules, getFeeStatus, recordPayment,
+  createFeeSchedule, getFeeSchedules, getFeeSchedule, updateFeeSchedule, deleteFeeSchedule,
+  getFeeStatus, recordPayment,
   initializePaystackPayment, verifyPaystackPayment, paystackWebhook,
   initializeFlutterwavePayment, verifyFlutterwavePayment, flutterwaveWebhook,
   getStudentFeeStatement, getFeeDefaulters, getRecentTransactions

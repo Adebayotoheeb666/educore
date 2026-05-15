@@ -173,6 +173,27 @@
 .stat-item h3 { font-size: 2.2rem; font-weight: 800; color: #1e293b; margin: 0; }
 .stat-item p { font-size: 1.1rem; color: #64748b; font-weight: 600; margin: 0; }
 
+.timetable-cell-editable {
+    cursor: pointer;
+}
+
+.timetable-cell-editable:hover .period-card {
+    outline: 2px dashed #6A5ACD;
+    outline-offset: 2px;
+}
+
+.period-card .edit-hint {
+    display: block;
+    font-size: 0.75rem;
+    color: #6A5ACD;
+    margin-top: 0.5rem;
+    font-weight: 700;
+}
+
+.period-card.editable-empty:hover {
+    background: #f3f0ff;
+}
+
 /* Conflict Panel */
 .conflict-card {
     background: white;

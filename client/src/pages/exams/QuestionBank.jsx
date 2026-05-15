@@ -43,7 +43,7 @@ const QuestionBank = () => {
 
            <div className="form-group-premium" style={{marginBottom: '2.5rem'}}>
               <label>Topic</label>
-              <input type="text" placeholder="e.g. Calculus" defaultValue="Calculus: Derivatives and Integration" />
+              <input type="text" placeholder="e.g. Calculus" />
            </div>
 
            <div className="form-grid" style={{gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2.5rem'}}>

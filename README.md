@@ -366,3 +366,6 @@ This project is proprietary software developed for EduCore AI.
 ---
 
 **Built with ❤️ to transform learning outcomes across Nigeria — one school at a time.**# educore
+
+
+

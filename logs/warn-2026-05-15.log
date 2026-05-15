@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-05-15T13:40:10.075Z",
+  "level": "WARN",
+  "message": "No attendance record found",
+  "classId": "69fcb2f84005bea0681d2540",
+  "date": "2026-05-15"
+}
+
+{
+  "timestamp": "2026-05-15T13:43:33.363Z",
+  "level": "WARN",
+  "message": "No attendance record found",
+  "classId": "69fcb2f84005bea0681d2540",
+  "date": "2026-05-15"
+}
+
+{
+  "timestamp": "2026-05-15T14:23:42.300Z",
+  "level": "WARN",
+  "message": "No attendance record found",
+  "classId": "69fcb2f84005bea0681d2540",
+  "date": "2026-05-15"
+}
+
+{
+  "timestamp": "2026-05-15T14:39:05.561Z",
+  "level": "WARN",
+  "message": "No attendance record found",
+  "classId": "69fcb2f84005bea0681d2540",
+  "date": "2026-05-15"
+}
+
+{
+  "timestamp": "2026-05-15T15:31:06.133Z",
+  "level": "WARN",
+  "message": "No attendance record found",
+  "classId": "69fcb4d4d11fa4b280c4f45f",
+  "date": "2026-05-15"
+}
+

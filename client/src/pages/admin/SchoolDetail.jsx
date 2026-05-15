@@ -1,181 +1,225 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { getSchoolById, updateSchoolAdmin } from '../../services/adminService';
 
 const PLANS = ['free', 'basic', 'standard', 'premium', 'enterprise'];
 
 const SchoolDetail = () => {
   const { id } = useParams();
-  const [school, setSchool]       = useState(null);
-  const [loading, setLoading]     = useState(true);
-  const [updating, setUpdating]   = useState(false);
-  const [plan, setPlan]           = useState('');
-  const [status, setStatus]       = useState('');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [plan, setPlan] = useState('');
+  const [status, setStatus] = useState('active');
 
-  useEffect(() => {
-    axios.get(`/api/admin/schools/${id}`)
-      .then(({ data }) => {
-        setSchool(data?.school || data);
-        setPlan(data?.school?.subscription?.plan || data?.subscription?.plan || 'free');
-        setStatus(data?.school?.status || data?.status || 'active');
+  const load = () => {
+    setLoading(true);
+    getSchoolById(id)
+      .then((res) => {
+        setData(res);
+        setPlan(res.school?.subscription?.plan || 'basic');
+        setStatus(res.school?.status || 'active');
       })
       .catch(() => toast.error('Failed to load school details'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
   }, [id]);
 
   const handleUpdate = async () => {
     setUpdating(true);
     try {
-      await axios.patch(`/api/admin/schools/${id}`, { subscription: { plan }, status });
-      toast.success('School updated successfully');
-      setSchool((prev) => ({ ...prev, subscription: { ...prev?.subscription, plan }, status }));
+      const res = await updateSchoolAdmin(id, { plan, status });
+      setData((prev) => ({ ...prev, school: res.school }));
+      toast.success('School updated');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Update failed');
+      toast.error(err?.response?.data?.message || 'Update failed');
     } finally {
       setUpdating(false);
     }
   };
 
-  if (loading) return (
-    <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-      <div className="spinner-border text-primary" />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center py-5">
+        <div className="spinner-border text-primary" />
+      </div>
+    );
+  }
 
-  if (!school) return (
-    <div style={{ textAlign: 'center', padding: '8rem 2rem' }}>
-      <span style={{ fontSize: '4rem' }}>🏫</span>
-      <p style={{ fontSize: '1.6rem', color: '#64748b', marginTop: '2rem' }}>School not found.</p>
-      <Link to="/admin/schools" style={{ color: '#4f46e5', fontWeight: 700 }}>← Back to Schools</Link>
-    </div>
-  );
+  if (!data?.school) {
+    return (
+      <div style={{ textAlign: 'center', padding: '4rem' }}>
+        <p>School not found.</p>
+        <Link to="/admin/schools">← Back to schools</Link>
+      </div>
+    );
+  }
+
+  const { school, users, services, activity, owner } = data;
+  const activityItems = [
+    ...(activity?.payments || []).map((a) => ({ ...a, kind: 'payment' })),
+    ...(activity?.announcements || []).map((a) => ({ ...a, kind: 'announcement' })),
+  ].sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, 12);
 
   return (
-    <div style={{ padding: '4rem', maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ marginBottom: '3rem' }}>
-        <Link to="/admin/schools" style={{ fontSize: '1.4rem', color: '#64748b', fontWeight: 700, textDecoration: 'none' }}>
-          ← All Schools
-        </Link>
-      </div>
+    <div>
+      <Link to="/admin/schools" style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 700, textDecoration: 'none' }}>
+        ← All Schools
+      </Link>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', margin: '1.5rem 0 2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '3.2rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>{school.name}</h1>
-          <p style={{ fontSize: '1.5rem', color: '#64748b', margin: 0 }}>{school.email}</p>
+          <h2 style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>{school.name}</h2>
+          <p style={{ color: '#64748b', margin: '0.25rem 0 0' }}>{school.email || '—'}</p>
+          {owner && (
+            <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
+              Owner: {owner.name || `${owner.firstName || ''} ${owner.lastName || ''}`.trim()} ({owner.email})
+            </p>
+          )}
         </div>
-        <span style={{
-          padding: '0.6rem 1.8rem',
-          borderRadius: 20,
-          fontWeight: 700,
-          fontSize: '1.4rem',
-          background: school.status === 'active' ? '#ede9fa' : '#fee2e2',
-          color: school.status === 'active' ? '#2d2460' : '#991b1b',
-        }}>
-          {school.status || 'active'}
+        <span
+          style={{
+            padding: '0.4rem 1rem',
+            borderRadius: 20,
+            fontWeight: 700,
+            background: school.status === 'active' ? '#ede9fa' : '#fee2e2',
+            color: school.status === 'active' ? '#2d2460' : '#991b1b',
+          }}
+        >
+          {school.status}
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', marginBottom: '4rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         {[
-          { label: 'Students',  value: school.studentCount ?? '—',  icon: '👨‍🎓' },
-          { label: 'Teachers',  value: school.teacherCount ?? '—',  icon: '👨‍🏫' },
-          { label: 'Classes',   value: school.classCount   ?? '—',  icon: '📚' },
+          { label: 'Students', value: school.studentCount },
+          { label: 'Teachers', value: school.teacherCount },
+          { label: 'Classes', value: school.classCount },
+          { label: 'Staff', value: school.staffCount },
         ].map((s) => (
-          <div key={s.label} style={{ background: '#fff', borderRadius: 14, padding: '2.5rem', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '2rem' }}>
-            <span style={{ fontSize: '2.8rem' }}>{s.icon}</span>
-            <div>
-              <p style={{ fontSize: '1.3rem', color: '#64748b', margin: 0 }}>{s.label}</p>
-              <p style={{ fontSize: '2.4rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>{s.value}</p>
-            </div>
+          <div key={s.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '1.25rem' }}>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>{s.label}</p>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '1.75rem', fontWeight: 800 }}>{s.value ?? 0}</p>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+        <section style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '1.5rem' }}>
+          <h3 style={{ fontWeight: 800, marginBottom: '1rem' }}>Services usage</h3>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {[
+              ['Attendance records', services?.attendanceRecords],
+              ['Exams', services?.exams],
+              ['Results', services?.results],
+              ['Payments', services?.payments],
+              ['Announcements', services?.announcements],
+            ].map(([label, val]) => (
+              <li key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                <span>{label}</span>
+                <strong>{val ?? 0}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-        {/* School Info */}
-        <div style={{ background: '#fff', borderRadius: 16, padding: '3rem', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '2.5rem' }}>School Profile</h3>
-          {[
-            ['Address',       school.address || '—'],
-            ['Phone',         school.phone   || '—'],
-            ['State',         school.state   || '—'],
-            ['LGA',           school.lga     || '—'],
-            ['School Type',   school.type    || '—'],
-            ['Date Joined',   school.createdAt ? new Date(school.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'],
-            ['Current Plan',  school.subscription?.plan || 'free'],
-            ['Plan Expires',  school.subscription?.expiresAt ? new Date(school.subscription.expiresAt).toLocaleDateString('en-NG') : '—'],
-          ].map(([label, val]) => (
-            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '1.2rem 0', borderBottom: '1px solid #f1f5f9' }}>
-              <span style={{ fontSize: '1.4rem', color: '#64748b' }}>{label}</span>
-              <span style={{ fontSize: '1.4rem', fontWeight: 600, color: '#0f172a' }}>{val}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Admin Actions */}
-        <div style={{ background: '#fff', borderRadius: 16, padding: '3rem', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '2.5rem' }}>Admin Actions</h3>
-
-          <div style={{ marginBottom: '2.5rem' }}>
-            <label style={{ display: 'block', fontSize: '1.4rem', fontWeight: 600, color: '#475569', marginBottom: '0.8rem' }}>
-              Subscription Plan
-            </label>
-            <select
-              value={plan}
-              onChange={(e) => setPlan(e.target.value)}
-              style={{ width: '100%', padding: '1.2rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: '1.4rem', outline: 'none' }}
-            >
-              {PLANS.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-            </select>
-          </div>
-
-          <div style={{ marginBottom: '3rem' }}>
-            <label style={{ display: 'block', fontSize: '1.4rem', fontWeight: 600, color: '#475569', marginBottom: '0.8rem' }}>
-              Account Status
-            </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              style={{ width: '100%', padding: '1.2rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: '1.4rem', outline: 'none' }}
-            >
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-              <option value="trial">Trial</option>
-            </select>
-          </div>
-
+        <section style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '1.5rem' }}>
+          <h3 style={{ fontWeight: 800, marginBottom: '1rem' }}>Subscription</h3>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9rem' }}>Plan</label>
+          <select
+            value={plan}
+            onChange={(e) => setPlan(e.target.value)}
+            style={{ width: '100%', padding: '0.65rem', marginBottom: '1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}
+          >
+            {PLANS.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9rem' }}>Account status</label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            style={{ width: '100%', padding: '0.65rem', marginBottom: '1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}
+          >
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="trial">Trial</option>
+          </select>
           <button
+            type="button"
             onClick={handleUpdate}
             disabled={updating}
             style={{
               width: '100%',
-              padding: '1.4rem',
+              padding: '0.75rem',
               background: '#0f172a',
               color: '#fff',
               border: 'none',
-              borderRadius: 12,
+              borderRadius: 10,
               fontWeight: 700,
-              fontSize: '1.5rem',
               cursor: updating ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '1rem',
-              opacity: updating ? 0.7 : 1,
             }}
           >
-            {updating ? <><div className="spinner-border spinner-border-sm" /> Saving...</> : '💾 Save Changes'}
+            {updating ? 'Saving…' : 'Save changes'}
           </button>
-
-          <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f3f0ff', borderRadius: 10, border: '1px solid #fed7aa' }}>
-            <p style={{ fontSize: '1.2rem', color: '#9a3412', margin: 0 }}>
-              ⚠️ Suspending a school will prevent all users from logging in until the account is reactivated.
-            </p>
-          </div>
-        </div>
+          <p style={{ fontSize: '0.8rem', color: '#b45309', marginTop: '1rem' }}>
+            Suspending blocks logins for all users at this school.
+          </p>
+        </section>
       </div>
+
+      <section style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <h3 style={{ fontWeight: 800, marginBottom: '1rem' }}>Recent activity</h3>
+        {activityItems.length === 0 ? (
+          <p style={{ color: '#94a3b8' }}>No recent activity.</p>
+        ) : (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {activityItems.map((item) => (
+              <li key={`${item.kind}-${item.id}`} style={{ padding: '0.65rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#5849b8', textTransform: 'uppercase' }}>
+                  {item.kind}
+                </span>
+                <div style={{ fontWeight: 600 }}>{item.title}</div>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                  {item.at ? new Date(item.at).toLocaleString('en-NG') : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0' }}>
+          <h3 style={{ margin: 0, fontWeight: 800 }}>Users ({users?.length || 0})</h3>
+        </div>
+        <div className="table-responsive">
+          <table className="table table-sm table-hover mb-0">
+            <thead style={{ background: '#f8fafc' }}>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(users || []).map((u) => (
+                <tr key={u.id}>
+                  <td>{u.name}</td>
+                  <td>{u.email}</td>
+                  <td style={{ textTransform: 'capitalize' }}>{u.role?.replace(/_/g, ' ')}</td>
+                  <td>{u.isActive ? 'Active' : 'Inactive'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 };

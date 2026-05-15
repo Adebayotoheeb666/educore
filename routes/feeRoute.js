@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const {
-  createFeeSchedule, getFeeSchedules, getFeeStatus, recordPayment,
+  createFeeSchedule, getFeeSchedules, getFeeSchedule, updateFeeSchedule, deleteFeeSchedule,
+  getFeeStatus, recordPayment,
   initializePaystackPayment, verifyPaystackPayment, paystackWebhook,
   initializeFlutterwavePayment, verifyFlutterwavePayment, flutterwaveWebhook,
   getStudentFeeStatement, getFeeDefaulters, getRecentTransactions
@@ -25,5 +26,8 @@ router.post("/payment/flutterwave", initializeFlutterwavePayment);
 router.get("/statement/:studentId", getStudentFeeStatement);
 router.get("/transactions", requireRole(['bursar','principal']), getRecentTransactions);
 router.get("/defaulters", requireRole(['bursar','principal']), getFeeDefaulters);
+router.get("/:id", getFeeSchedule);
+router.patch("/:id", requireRole(['principal','bursar']), updateFeeSchedule);
+router.delete("/:id", requireRole(['principal','bursar']), deleteFeeSchedule);
 
 module.exports = router;

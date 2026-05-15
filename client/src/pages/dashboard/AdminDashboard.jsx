@@ -8,11 +8,13 @@ const StatCard = ({ label, value, trend, icon, isDanger }) => (
   <div className={`stat-card-premium ${isDanger ? 'danger' : ''}`}>
     <div className="stat-card-header">
       <div className="stat-card-icon-wrap">{icon}</div>
-      {trend && <div className={`stat-trend ${isDanger ? 'danger' : ''}`}>{trend}</div>}
+      {trend != null && trend !== '' && (
+        <div className={`stat-trend ${isDanger ? 'danger' : ''}`}>{trend}</div>
+      )}
     </div>
     <div className="stat-card-body">
       <h5>{label}</h5>
-      <h2>{value || '—'}</h2>
+      <h2>{value ?? '—'}</h2>
     </div>
   </div>
 );
@@ -26,53 +28,29 @@ const AdminDashboard = ({ user }) => {
     getSchool().then(({ data }) => setSchool(data)).catch(() => {});
   }, []);
 
-  const displayName = user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+  const displayName = user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Admin';
+  const curriculumProgress = stats?.curriculumProgress ?? 0;
+  const alerts = stats?.recentAnnouncements ?? [];
 
   return (
     <div className="admin-dashboard-content">
-      
-      {/* Welcome Section */}
       <section className="welcome-section">
-        <h1>Welcome back, {displayName || 'Principal Okonkwo'}</h1>
-        <p>Manage your school ecosystem efficiently. AI insights show that attendance is up by 4% compared to last term.</p>
+        <h1>Welcome back, {displayName}</h1>
+        <p>
+          {school?.name ? `${school.name} dashboard` : 'School dashboard'}
+          {stats?.avgAttendance != null ? ` · Term attendance average ${stats.avgAttendance}%` : ''}
+        </p>
       </section>
 
-      {/* Stats Grid */}
       <section className="stats-grid-dashboard">
-        <StatCard 
-          label="Total Students" 
-          value={stats?.totalStudents} 
-          trend={stats?.studentTrend} 
-          icon="👥" 
-        />
-        <StatCard 
-          label="Total Teachers" 
-          value={stats?.totalTeachers} 
-          trend={stats?.teacherTrend} 
-          icon="🎓" 
-        />
-        <StatCard 
-          label="Classes" 
-          value={stats?.totalClasses} 
-          trend={stats?.classTrend} 
-          icon="📖" 
-        />
-        <StatCard 
-          label="Fee Defaulters" 
-          value={stats?.feeDefaulters} 
-          trend={stats?.feeTrend} 
-          icon="💸" 
-          isDanger={true}
-        />
+        <StatCard label="Total Students" value={stats?.totalStudents} icon="👥" />
+        <StatCard label="Total Teachers" value={stats?.totalTeachers} icon="🎓" />
+        <StatCard label="Classes" value={stats?.totalClasses} icon="📖" />
+        <StatCard label="Fee Defaulters" value={stats?.feeDefaulters} icon="💸" isDanger />
       </section>
 
-      {/* Content Grid */}
       <div className="dashboard-content-grid">
-        
-        {/* Main Column */}
         <div className="main-column">
-          
-          {/* AI Features */}
           <div className="ai-features-card">
             <div className="ai-card-title">
               <span>✨</span> AI Features
@@ -95,20 +73,17 @@ const AdminDashboard = ({ user }) => {
             </div>
           </div>
 
-          {/* Academic Overview */}
           <div className="academic-overview-card">
             <div className="academic-header">
               <div className="academic-title">
                 <h2>Academic Overview</h2>
                 <p>
-                  {school?.settings?.currentTerm ? `${school.settings.currentTerm[0].toUpperCase()}${school.settings.currentTerm.slice(1)} Term` : '—'}
+                  {school?.settings?.currentTerm
+                    ? `${school.settings.currentTerm[0].toUpperCase()}${school.settings.currentTerm.slice(1)} Term`
+                    : '—'}
                   {', '}
                   {school?.settings?.academicSession || '—'} Academic Session
                 </p>
-              </div>
-              <div className="academic-tags">
-                <span className="tag-badge light">WEEK 8</span>
-                <span className="tag-badge green">LIVE TERM</span>
               </div>
             </div>
 
@@ -116,35 +91,47 @@ const AdminDashboard = ({ user }) => {
               <div className="progress-stats">
                 <div className="prog-item">
                   <div className="prog-header">
-                    <span>Curriculum Progress</span>
-                    <span className="prog-percent">78%</span>
+                    <span>Lesson plans approved</span>
+                    <span className="prog-percent">{curriculumProgress}%</span>
                   </div>
                   <div className="prog-bar-bg">
-                    <div className="prog-bar-fill" style={{ width: '78%' }}></div>
+                    <div className="prog-bar-fill" style={{ width: `${curriculumProgress}%` }} />
                   </div>
                 </div>
                 <div className="prog-item">
                   <div className="prog-header">
-                    <span>Attendance (Term Avg)</span>
-                    <span className="prog-percent">{stats?.avgAttendance != null ? `${stats.avgAttendance}%` : '—'}</span>
+                    <span>Attendance (school average)</span>
+                    <span className="prog-percent">
+                      {stats?.avgAttendance != null ? `${stats.avgAttendance}%` : '—'}
+                    </span>
                   </div>
                   <div className="prog-bar-bg">
-                    <div className="prog-bar-fill" style={{ width: stats?.avgAttendance != null ? `${stats.avgAttendance}%` : '0%' }}></div>
+                    <div
+                      className="prog-bar-fill"
+                      style={{ width: stats?.avgAttendance != null ? `${stats.avgAttendance}%` : '0%' }}
+                    />
                   </div>
                 </div>
               </div>
               <div className="academic-chart-side">
-                <div className="chart-placeholder">📊</div>
-                <p className="chart-quote">"High student engagement detected this week"</p>
+                {stats?.classPerformance?.length > 0 ? (
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '1.2rem' }}>
+                    {stats.classPerformance.map((c) => (
+                      <li key={c.className} style={{ marginBottom: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{c.className}</span>
+                        <strong>{c.average}%</strong>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ color: '#64748b', margin: 0 }}>No class performance data yet.</p>
+                )}
               </div>
             </div>
           </div>
-
         </div>
 
-        {/* Side Column */}
         <aside className="side-column">
-          
           <div className="widget-card dark">
             <h3 className="widget-title">Quick Actions</h3>
             <div className="action-list">
@@ -161,48 +148,26 @@ const AdminDashboard = ({ user }) => {
           </div>
 
           <div className="widget-card">
-            <h3 className="widget-title">Critical Alerts</h3>
+            <h3 className="widget-title">Recent announcements</h3>
             <div className="alert-list">
-              <div className="alert-item">
-                <div className="alert-dot"></div>
-                <div className="alert-text">
-                  <h5>Fee Deadline Missed</h5>
-                  <p>SS3 Science fees outstanding for 12 students.</p>
-                  <span className="alert-status">IMMEDIATE ACTION</span>
-                </div>
-              </div>
-              <div className="alert-item">
-                <div className="alert-dot orange"></div>
-                <div className="alert-text">
-                  <h5>Teacher Appraisal Due</h5>
-                  <p>Complete appraisals for Mr. Bello and Ms. Adewale.</p>
-                  <span className="alert-status" style={{color: '#FFD700'}}>TODAY, 4:00 PM</span>
-                </div>
-              </div>
-              <div className="alert-item">
-                <div className="alert-dot green"></div>
-                <div className="alert-text">
-                  <h5>Inventory Check</h5>
-                  <p>Science lab stock report is ready for review.</p>
-                  <span className="alert-status" style={{color: '#6A5ACD'}}>YESTERDAY</span>
-                </div>
-              </div>
+              {alerts.length === 0 ? (
+                <p style={{ color: '#64748b', fontSize: '1.2rem' }}>No announcements yet.</p>
+              ) : (
+                alerts.map((a) => (
+                  <div key={a.id} className="alert-item">
+                    <div className={`alert-dot ${a.priority === 'urgent' ? '' : a.priority === 'high' ? 'orange' : 'green'}`} />
+                    <div className="alert-text">
+                      <h5>{a.title}</h5>
+                      <p>{(a.body || '').slice(0, 120)}{(a.body?.length > 120 ? '…' : '')}</p>
+                      <span className="alert-status">{a.time}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-            <Link to="/notifications" className="view-all-alerts">View All Notifications</Link>
+            <Link to="/announcements" className="view-all-alerts">View all announcements</Link>
           </div>
-
-          <div className="ai-recommendation-card">
-            <div className="recommend-img">
-              <img src="/assets/analytics-chart.png" alt="Rec" />
-            </div>
-            <div className="recommend-text">
-              <h5>AI Recommendation</h5>
-              <p>Schedule a staff meeting for JSS2 Mathematics performance review.</p>
-            </div>
-          </div>
-
         </aside>
-
       </div>
     </div>
   );

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getStudents, deleteStudent } from '../../services/studentService';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import ListPagination from '../../components/pagination/ListPagination';
 import './Students.css';
 
 const Students = () => {
@@ -49,6 +51,16 @@ const Students = () => {
       return matchesSearch && matchesClass && matchesGender;
     });
   }, [students, searchQuery, classFilter, genderFilter]);
+
+  const {
+    paginatedItems: paginatedStudents,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalItems: filteredCount,
+    rangeStart,
+    rangeEnd,
+  } = useClientPagination(filteredStudents, 10, [searchQuery, classFilter, genderFilter]);
 
   const handleDelete = async (studentId) => {
     setDeletingId(studentId);
@@ -145,7 +157,7 @@ const Students = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredStudents.map(student => (
+              {paginatedStudents.map(student => (
                 <tr key={student._id ?? student.id}>
                   <td>
                     <div className="student-info-cell">
@@ -202,13 +214,17 @@ const Students = () => {
           </table>
         )}
 
-        {!loading && filteredStudents.length > 0 && (
-          <div className="table-footer">
-            <div className="showing-text">
-              Showing {filteredStudents.length} of {total.toLocaleString()} students
-              {(searchQuery || classFilter || genderFilter) && ' (filtered)'}
-            </div>
-          </div>
+        {!loading && filteredCount > 0 && (
+          <ListPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredCount}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            onPageChange={setCurrentPage}
+            itemLabel={`students${(searchQuery || classFilter || genderFilter) ? ' (filtered)' : ''}`}
+            className="table-footer"
+          />
         )}
       </div>
 

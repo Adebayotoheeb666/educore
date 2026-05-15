@@ -72,6 +72,8 @@
   font-weight: 500;
   color: #6b7280;
   cursor: pointer;
+  border: none;
+  background: transparent;
   position: relative;
   transition: color 0.3s;
 }

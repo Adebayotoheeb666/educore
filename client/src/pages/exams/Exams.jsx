@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { getExams } from '../../services/examService';
+import { getExams, publishExam } from '../../services/examService';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import ListPagination from '../../components/pagination/ListPagination';
 import './Exams.css';
 import '../students/Students.css';
 
@@ -17,6 +19,16 @@ const Exams = () => {
       .catch(() => toast.error('Failed to load exams'))
       .finally(() => setLoading(false));
   }, []);
+
+  const {
+    paginatedItems: paginatedExams,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalItems,
+    rangeStart,
+    rangeEnd,
+  } = useClientPagination(exams, 10);
 
   return (
     <div className="exams-container">
@@ -45,8 +57,8 @@ const Exams = () => {
               <div className="stat-icon-bg" style={{background: '#eff6ff', color: '#1e40af'}}>📅</div>
            </div>
            <div style={{display: 'flex', alignItems: 'baseline', gap: '1.5rem'}}>
-              <span className="main-num">24</span>
-              <span className="trend-label">+2 this week</span>
+              <span className="main-num">{exams.length}</span>
+              <span className="trend-label">scheduled</span>
            </div>
         </div>
 
@@ -56,19 +68,20 @@ const Exams = () => {
               <div className="stat-icon-bg" style={{background: '#ede9fa', color: '#2d2460'}}>✅</div>
            </div>
            <div style={{display: 'flex', alignItems: 'baseline', gap: '1.5rem'}}>
-              <span className="main-num">18</span>
-              <span className="trend-label" style={{color: '#64748b'}}>85% Completion</span>
+              <span className="main-num">{exams.filter(e => e.status === 'published').length}</span>
+              <span className="trend-label" style={{color: '#64748b'}}>published</span>
            </div>
         </div>
 
-        <div className="exams-stat-card" style={{border: '1px solid #fde68a', background: '#f3f0ff'}}>
+        <div className="exams-stat-card">
            <div className="stat-val-row">
-              <h3 style={{color: '#b8860b'}}>AI Performance Analytics</h3>
-              <div className="stat-icon-bg" style={{background: '#fef3c7', color: '#b8860b'}}>💡</div>
+              <h3>Draft Exams</h3>
+              <div className="stat-icon-bg" style={{background: '#f1f5f9', color: '#64748b'}}>📝</div>
            </div>
-           <p style={{fontSize: '1.2rem', color: '#b8860b', lineHeight: 1.5, fontWeight: 700}}>
-              New Alert: Average math scores are 12% higher in Terminal exams than Mid-terms.
-           </p>
+           <div style={{display: 'flex', alignItems: 'baseline', gap: '1.5rem'}}>
+              <span className="main-num">{exams.filter(e => e.status === 'draft').length}</span>
+              <span className="trend-label" style={{color: '#64748b'}}>draft</span>
+           </div>
         </div>
       </div>
 
@@ -100,7 +113,7 @@ const Exams = () => {
               </tr>
             </thead>
             <tbody>
-              {exams.map(ex => (
+              {paginatedExams.map(ex => (
                 <tr key={ex._id ?? ex.id}>
                   <td>
                     <div style={{display: 'flex', alignItems: 'center', gap: '1.5rem'}}>
@@ -115,7 +128,7 @@ const Exams = () => {
                     </span>
                   </td>
                   <td>{ex.term}</td>
-                  <td>{ex.date ? new Date(ex.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ex.date}</td>
+                  <td>{ex.scheduledDate ? new Date(ex.scheduledDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
                   <td>
                     <div className="status-dot-wrap">
                       <span className={`dot ${ex.status === 'published' ? 'green' : 'gray'}`}></span>
@@ -123,11 +136,14 @@ const Exams = () => {
                     </div>
                   </td>
                   <td>
-                    <button
-                      className="btn-secondary-outline"
-                      style={{padding: '0.8rem 1.5rem', fontSize: '1.1rem', fontWeight: 800}}
-                      onClick={() => navigate(`/exams/${ex._id ?? ex.id}/scores`)}
-                    >Enter Scores</button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button type="button" className="btn-secondary-outline" style={{ padding: '0.8rem 1.5rem', fontSize: '1.1rem', fontWeight: 800 }} onClick={() => navigate(`/exams/${ex._id ?? ex.id}/scores`)}>Scores</button>
+                      {ex.status !== 'published' && (
+                        <button type="button" className="btn-secondary-outline" style={{ padding: '0.8rem 1rem', fontSize: '1rem' }} onClick={async () => {
+                          try { await publishExam(ex._id ?? ex.id); toast.success('Exam published'); setExams(prev => prev.map(e => (e._id === ex._id ? { ...e, status: 'published' } : e))); } catch { toast.error('Publish failed'); }
+                        }}>Publish</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -135,15 +151,17 @@ const Exams = () => {
           </table>
         )}
 
-        <div style={{marginTop: '3.5rem', display: 'flex', justifyContent: 'flex-end'}}>
-           <div className="pagination-wrap">
-              <button className="pag-btn">❮</button>
-              <button className="pag-btn active">1</button>
-              <button className="pag-btn">2</button>
-              <button className="pag-btn">3</button>
-              <button className="pag-btn">❯</button>
-           </div>
-        </div>
+        {!loading && totalItems > 0 && (
+          <ListPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            onPageChange={setCurrentPage}
+            itemLabel="exams"
+          />
+        )}
       </div>
 
       <div style={{marginTop: '6rem', borderTop: '1px solid #f1f5f9', paddingTop: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>

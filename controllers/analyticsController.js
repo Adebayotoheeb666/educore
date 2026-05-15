@@ -3,6 +3,11 @@ const Attendance = require("../models/attendanceModel");
 const Fee = require("../models/feeModel");
 const Result = require("../models/resultModel");
 const Payment = require("../models/paymentModel");
+const Announcement = require("../models/announcementModel");
+const LessonPlan = require("../models/lessonPlanModel");
+const Timetable = require("../models/timetableModel");
+const Submission = require("../models/submissionModel");
+const { studentAttendanceRate, formatRelativeTime } = require("../services/analytics/helpers");
 
 const getSchoolDashboard = async (req, res) => {
   try {
@@ -34,9 +39,10 @@ const getSchoolDashboard = async (req, res) => {
     // Get real class performance from results
     const classPerformance = await Result.aggregate([
       { $match: { school: schoolId } },
+      { $unwind: '$subjects' },
       { $group: {
-          _id: "$class",
-          average: { $avg: "$subjects.totalScore" }
+          _id: '$class',
+          average: { $avg: '$subjects.totalScore' },
       }},
       { $lookup: {
           from: "classes",
@@ -53,16 +59,33 @@ const getSchoolDashboard = async (req, res) => {
       { $sort: { average: -1 } }
     ]);
 
-    res.status(200).json({ 
-      totalStudents, 
-      totalTeachers, 
+    const totalLessonPlans = await LessonPlan.countDocuments({ school: schoolId });
+    const approvedLessonPlans = await LessonPlan.countDocuments({ school: schoolId, status: 'approved' });
+    const curriculumProgress = totalLessonPlans > 0
+      ? Math.round((approvedLessonPlans / totalLessonPlans) * 100)
+      : 0;
+
+    const recentAnnouncements = await Announcement.find({ school: schoolId })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('title body priority createdAt');
+
+    res.status(200).json({
+      totalStudents,
+      totalTeachers,
       totalClasses,
       feeDefaulters: feeDefaulters.length,
-      avgAttendance: Math.round(avgAttendance), 
+      avgAttendance: Math.round(avgAttendance),
       feeCollected,
-      classPerformance: classPerformance.length > 0 ? classPerformance : [
-        { className: 'No Data', average: 0, color: '#94a3b8' }
-      ]
+      curriculumProgress,
+      classPerformance,
+      recentAnnouncements: recentAnnouncements.map((a) => ({
+        id: a._id,
+        title: a.title,
+        body: a.body,
+        priority: a.priority,
+        time: formatRelativeTime(a.createdAt),
+      })),
     });
   } catch (error) { 
     res.status(500).json({ message: error.message }); 
@@ -92,13 +115,20 @@ const getStudentDashboard = async (req, res) => {
 
     // Last term average
     const latestResult = await Result.findOne({ student: userId }).sort({ createdAt: -1 });
-    const lastTermAvg = latestResult?.subjects?.length
-      ? Math.round(latestResult.subjects.reduce((acc, s) => acc + (s.totalScore || 0), 0) / latestResult.subjects.length)
-      : 0;
+    const lastTermAvg = latestResult?.overallPercentage
+      ?? (latestResult?.subjects?.length
+        ? Math.round(latestResult.subjects.reduce((acc, s) => acc + (s.totalScore || 0), 0) / latestResult.subjects.length)
+        : 0);
+
+    const classPosition = latestResult?.positionInClass ?? '—';
 
     // Outstanding fees
-    const fees = await Fee.find({ student: userId, status: { $ne: 'paid' } });
-    const outstandingFees = fees.reduce((acc, f) => acc + ((f.totalAmount || 0) - (f.amountPaid || 0)), 0);
+    const payments = await Payment.find({
+      school: req.school._id,
+      student: userId,
+      status: { $ne: 'paid' },
+    });
+    const outstandingFees = payments.reduce((acc, p) => acc + (p.balance || 0), 0);
 
     res.status(200).json({
       welcomeMessage: `Welcome back, ${displayName}!`,
@@ -108,8 +138,8 @@ const getStudentDashboard = async (req, res) => {
         attendanceTrend: attendanceRate > 80 ? 'On Track' : 'Action Needed',
         lastTermAvg,
         outstandingFees,
-        classPosition: 'Pending',
-        positionTrend: 'Steady progress',
+        classPosition,
+        positionTrend: latestResult?.term ? `${latestResult.term} • ${latestResult.session || ''}`.trim() : 'No results yet',
       },
       announcements: (announcements || []).slice(0, 3).map(a => ({
         id: a._id,
@@ -138,18 +168,25 @@ const getParentDashboard = async (req, res) => {
       const results = await Result.find({ student: child._id });
       const avg = results.length > 0 ? Math.round(results[0].subjects.reduce((acc, s) => acc + s.totalScore, 0) / results[0].subjects.length) : 0;
       
-      const fees = await Fee.find({ student: child._id });
-      const unpaid = fees.some(f => f.status !== 'paid');
+      const unpaidPayments = await Payment.countDocuments({
+        school: req.school._id,
+        student: child._id,
+        status: { $ne: 'paid' },
+        balance: { $gt: 0 },
+      });
+      const unpaid = unpaidPayments > 0;
+
+      const attendance = await studentAttendanceRate(req.school._id, child._id);
 
       return {
         id: child._id,
         name: child.name,
         class: child.classId?.name || "N/A",
         tag: child.classId?.name?.split(' ')[0] || "N/A",
-        avatar: `https://ui-avatars.com/api/?name=${child.firstName}+${child.lastName}&background=random`,
-        attendance: 95, // Placeholder for aggregation
+        avatar: child.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(child.name || 'Student')}&background=6A5ACD&color=fff`,
+        attendance,
         avg,
-        avgTrend: "+0%",
+        avgTrend: '',
         feeStatus: unpaid ? "BALANCE DUE" : "PAID",
         feeClass: unpaid ? "due" : "paid"
       };
@@ -173,30 +210,88 @@ const getParentDashboard = async (req, res) => {
 const getTeacherDashboard = async (req, res) => {
   try {
     const teacherId = req.user._id;
-    const classes = await require("../models/classModel").find({ 
-      $or: [{ teacher: teacherId }, { subjects: { $elemMatch: { teacher: teacherId } } }]
+    const schoolId = req.school._id;
+    const Class = require("../models/classModel");
+    const classes = await Class.find({
+      school: schoolId,
+      $or: [{ classTeacher: teacherId }],
     });
 
     const totalStudents = classes.reduce((acc, c) => acc + (c.students?.length || 0), 0);
-    
-    const submissions = await Result.find({ teacher: teacherId })
-      .populate('student', 'firstName lastName')
-      .populate('subject', 'name')
-      .sort({ createdAt: -1 })
+
+    const classIds = classes.map((c) => c._id);
+    const classResults = classIds.length
+      ? await Result.find({ school: schoolId, class: { $in: classIds } })
+      : [];
+    const avgPerformance = classResults.length
+      ? Math.round(
+          classResults.reduce((sum, r) => sum + (r.overallPercentage || 0), 0) / classResults.length
+        )
+      : 0;
+
+    const attendanceMarked = await Attendance.countDocuments({
+      school: schoolId,
+      takenBy: teacherId,
+    });
+    const attendanceTotal = await Attendance.countDocuments({ school: schoolId });
+    const attendanceLogged = attendanceTotal > 0
+      ? Math.round((attendanceMarked / attendanceTotal) * 100)
+      : 0;
+
+    const todayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][
+      new Date().getDay()
+    ];
+    const timetables = await Timetable.find({ school: schoolId, class: { $in: classIds } })
+      .populate('class', 'name arm')
+      .populate({ path: 'slots.subject', select: 'name' });
+
+    const schedule = [];
+    for (const tt of timetables) {
+      for (const slot of tt.slots || []) {
+        if (slot.day !== todayName || slot.teacher?.toString() !== teacherId.toString()) continue;
+        schedule.push({
+          time: slot.startTime || '—',
+          subject: slot.subject?.name || '—',
+          class: `${tt.class?.name || ''}${tt.class?.arm ? ` ${tt.class.arm}` : ''}`.trim(),
+          room: slot.room || '',
+        });
+      }
+    }
+    schedule.sort((a, b) => String(a.time).localeCompare(String(b.time)));
+
+    const performance = await Result.aggregate([
+      { $match: { school: schoolId, class: { $in: classIds } } },
+      { $group: { _id: '$class', avg: { $avg: '$overallPercentage' } } },
+      { $lookup: { from: 'classes', localField: '_id', foreignField: '_id', as: 'classInfo' } },
+      { $unwind: { path: '$classInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          name: { $concat: ['$classInfo.name', ' ', { $ifNull: ['$classInfo.arm', ''] }] },
+          avg: { $round: ['$avg', 1] },
+        },
+      },
+    ]);
+
+    const recentSubmissions = await Submission.find({ school: schoolId })
+      .populate('student', 'firstName lastName name')
+      .populate({ path: 'exam', populate: { path: 'subject', select: 'name' } })
+      .sort({ updatedAt: -1 })
       .limit(5);
 
-    const formattedSubmissions = submissions.map(s => ({
-      name: `${s.student?.firstName} ${s.student?.lastName}`,
-      subject: s.subject?.name,
-      time: 'Just now' // Simplified time for now
+    const formattedSubmissions = recentSubmissions.map((s) => ({
+      name: s.student?.name || `${s.student?.firstName || ''} ${s.student?.lastName || ''}`.trim(),
+      subject: s.exam?.subject?.name || '—',
+      time: formatRelativeTime(s.updatedAt),
     }));
-    
+
     res.status(200).json({
-      classesToday: classes.length,
+      classesToday: schedule.length,
       totalStudents,
-      avgPerformance: 72, // Aggregate from results of their subjects
-      attendanceLogged: 85,
-      recentSubmissions: formattedSubmissions
+      avgPerformance,
+      attendanceLogged,
+      schedule,
+      performance,
+      recentSubmissions: formattedSubmissions,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -206,34 +301,50 @@ const getTeacherDashboard = async (req, res) => {
 const getStudentResults = async (req, res) => {
   try {
     const studentId = req.params.id;
-    const results = await Result.find({ student: studentId })
-      .populate('subject', 'name')
+    const latestResult = await Result.findOne({ student: studentId, school: req.school._id })
+      .populate({ path: 'subjects.subject', select: 'name' })
+      .populate('class', 'name arm')
       .sort({ createdAt: -1 });
 
-    const student = await User.findById(studentId).populate('class', 'name');
+    const student = await User.findById(studentId);
 
-    const formattedResults = results.map(r => ({
-      subject: r.subject?.name || 'Unknown',
-      ca: r.caScore,
-      exam: r.examScore,
-      total: r.totalScore,
-      grade: r.grade
+    const formattedResults = (latestResult?.subjects || []).map((entry) => ({
+      subject: entry.subject?.name || 'Unknown',
+      ca: entry.caScore,
+      exam: entry.examScore,
+      total: entry.totalScore,
+      grade: entry.grade,
     }));
 
-    // Calculate stats
-    const avg = formattedResults.length > 0 
-      ? (formattedResults.reduce((acc, curr) => acc + curr.total, 0) / formattedResults.length).toFixed(1)
+    const avg = formattedResults.length > 0
+      ? (
+          formattedResults.reduce((acc, curr) => acc + (curr.total || 0), 0) / formattedResults.length
+        ).toFixed(1)
       : 0;
+
+    let position = '—';
+    let totalInClass = 0;
+    if (latestResult?.class) {
+      const classResults = await Result.find({
+        school: req.school._id,
+        class: latestResult.class,
+        term: latestResult.term,
+        session: latestResult.session,
+      }).sort({ overallPercentage: -1 });
+      totalInClass = classResults.length;
+      const idx = classResults.findIndex((r) => r.student.toString() === studentId.toString());
+      if (idx >= 0) position = `${idx + 1}`;
+    }
 
     res.status(200).json({
       results: formattedResults,
       student,
       stats: {
         avg,
-        position: '2nd', // Mocking position for now as it requires complex aggregation
-        totalInClass: 32,
-        standing: avg >= 70 ? 'Distinction' : avg >= 60 ? 'Credit' : 'Pass'
-      }
+        position,
+        totalInClass,
+        standing: avg >= 70 ? 'Distinction' : avg >= 60 ? 'Credit' : 'Pass',
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -243,30 +354,47 @@ const getStudentResults = async (req, res) => {
 const getSubjectPerformance = async (req, res) => {
   try {
     const { term, session, classId } = req.query;
-    // Real aggregation logic would go here
-    // For now, returning formatted data structure matching the UI needs
-    const subjects = await Result.aggregate([
-      { $match: { term, session } },
-      { $group: {
-          _id: "$subject",
-          average: { $avg: "$totalScore" },
-          studentCount: { $sum: 1 }
-      }},
-      { $lookup: { from: 'subjects', localField: '_id', foreignField: '_id', as: 'subInfo' } },
-      { $unwind: '$subInfo' },
-      { $project: {
-          subjectName: '$subInfo.name',
-          average: { $round: ['$average', 1] },
-          studentCount: 1,
-          passRate: { $literal: 85 }, // Placeholder
-          status: { $cond: [{ $gte: ['$average', 50] }, 'Optimal', 'Critical'] }
-      }}
-    ]);
+    const match = { school: req.school._id };
+    if (term) match.term = term;
+    if (session) match.session = session;
+    if (classId) match.class = classId;
 
-    res.status(200).json({ 
-      subjects: subjects.length > 0 ? subjects : [],
-      topStudents: [] // Would require more complex aggregation
-    });
+    const results = await Result.find(match);
+    const subjectMap = new Map();
+
+    for (const result of results) {
+      for (const entry of result.subjects || []) {
+        const id = entry.subject?.toString();
+        if (!id) continue;
+        if (!subjectMap.has(id)) {
+          subjectMap.set(id, { scores: [], name: entry.subject?.name });
+        }
+        subjectMap.get(id).scores.push(entry.totalScore || 0);
+      }
+    }
+
+    const Subject = require('../models/subjectModel');
+    const subjects = await Promise.all(
+      Array.from(subjectMap.entries()).map(async ([id, data]) => {
+        const sub = data.name ? { name: data.name } : await Subject.findById(id).select('name');
+        const average = data.scores.length
+          ? data.scores.reduce((a, b) => a + b, 0) / data.scores.length
+          : 0;
+        const passCount = data.scores.filter((s) => s >= 50).length;
+        const passRate = data.scores.length
+          ? Math.round((passCount / data.scores.length) * 100)
+          : 0;
+        return {
+          subjectName: sub?.name || 'Subject',
+          average: Math.round(average * 10) / 10,
+          studentCount: data.scores.length,
+          passRate,
+          status: average >= 50 ? 'Optimal' : 'Critical',
+        };
+      })
+    );
+
+    res.status(200).json({ subjects, topStudents: [] });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -274,20 +402,28 @@ const getSubjectPerformance = async (req, res) => {
 
 const getAttendanceAnalytics = async (req, res) => {
   try {
-    const data = await Attendance.aggregate([
-      { $unwind: "$records" },
-      { $group: {
-          _id: "$date",
-          present: { $sum: { $cond: [{ $eq: ["$records.status", "present"] }, 1, 0] } },
-          total: { $sum: 1 }
-      }},
-      { $project: {
-          date: "$_id",
-          rate: { $multiply: [{ $divide: ["$present", "$total"] }, 100] }
-      }},
-      { $sort: { date: 1 } }
-    ]);
-    res.status(200).json(data);
+    const schoolId = req.school._id;
+    const since = new Date();
+    since.setDate(since.getDate() - 6);
+
+    const records = await Attendance.find({
+      school: schoolId,
+      date: { $gte: since },
+    }).sort({ date: 1 });
+
+    const weekly = records.map((att) => {
+      const total = (att.records || []).length;
+      const present = (att.records || []).filter(
+        (r) => r.status === 'present' || r.status === 'late'
+      ).length;
+      const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+      return {
+        name: new Date(att.date).toLocaleDateString('en-GB', { weekday: 'short' }),
+        rate,
+      };
+    });
+
+    res.status(200).json({ weekly });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -295,15 +431,27 @@ const getAttendanceAnalytics = async (req, res) => {
 
 const getFeeAnalytics = async (req, res) => {
   try {
-    const data = await Payment.aggregate([
-      { $group: {
-          _id: { $month: "$date" },
-          amount: { $sum: "$amountPaid" }
-      }},
-      { $project: { month: "$_id", amount: 1 } },
-      { $sort: { month: 1 } }
-    ]);
-    res.status(200).json(data);
+    const schoolId = req.school._id;
+    const payments = await Payment.find({ school: schoolId });
+
+    const paid = payments
+      .filter((p) => p.status === 'paid')
+      .reduce((sum, p) => sum + (p.amountPaid || 0), 0);
+    const pending = payments
+      .filter((p) => p.status === 'pending')
+      .reduce((sum, p) => sum + (p.balance || 0), 0);
+    const partial = payments
+      .filter((p) => p.status === 'partial')
+      .reduce((sum, p) => sum + (p.balance || 0), 0);
+    const totalDue = payments.reduce((sum, p) => sum + (p.amountDue || 0), 0);
+    const percent = totalDue > 0 ? Math.round((paid / totalDue) * 100) : 0;
+
+    res.status(200).json({
+      paid,
+      pending: pending + partial,
+      overdue: 0,
+      percent,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -311,16 +459,50 @@ const getFeeAnalytics = async (req, res) => {
 
 const getTeacherEffectiveness = async (req, res) => {
   try {
-    const teachers = await User.find({ role: { $in: ['class_teacher', 'subject_teacher'] } });
-    const data = await Promise.all(teachers.map(async (t) => {
-      return {
-        teacherName: `${t.firstName} ${t.lastName}`,
-        email: t.email,
-        lessonPlanRate: 85, // Mocked metrics
-        attendanceMarked: 18,
-        avgClassScore: 72
-      };
-    }));
+    const schoolId = req.school._id;
+    const teachers = await User.find({
+      schoolId,
+      role: { $in: ['class_teacher', 'subject_teacher'] },
+    });
+
+    const data = await Promise.all(
+      teachers.map(async (t) => {
+        const totalPlans = await LessonPlan.countDocuments({ school: schoolId, teacher: t._id });
+        const approvedPlans = await LessonPlan.countDocuments({
+          school: schoolId,
+          teacher: t._id,
+          status: 'approved',
+        });
+        const lessonPlanRate = totalPlans > 0 ? Math.round((approvedPlans / totalPlans) * 100) : 0;
+        const attendanceMarked = await Attendance.countDocuments({
+          school: schoolId,
+          takenBy: t._id,
+        });
+
+        const classes = await require('../models/classModel').find({
+          school: schoolId,
+          classTeacher: t._id,
+        });
+        const classIds = classes.map((c) => c._id);
+        const results = classIds.length
+          ? await Result.find({ school: schoolId, class: { $in: classIds } })
+          : [];
+        const avgClassScore = results.length
+          ? Math.round(
+              results.reduce((sum, r) => sum + (r.overallPercentage || 0), 0) / results.length
+            )
+          : 0;
+
+        return {
+          teacherName: t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim(),
+          email: t.email,
+          lessonPlanRate,
+          attendanceMarked,
+          avgClassScore,
+        };
+      })
+    );
+
     res.status(200).json({ data });
   } catch (error) {
     res.status(500).json({ message: error.message });

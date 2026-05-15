@@ -22,7 +22,7 @@ const TeacherDashboard = () => {
 
   if (loading) return <div className="teacher-dashboard-container d-flex justify-content-center align-items-center"><div className="spinner-border text-success" /></div>;
 
-  const displayName = user?.name || `${user?.firstName || 'Mrs. Fatima'} ${user?.lastName || 'Yusuf'}`.trim();
+  const displayName = user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Teacher';
 
   const { classesToday, totalStudents, avgPerformance, attendanceLogged, schedule, performance, recentSubmissions } = data;
 
@@ -32,10 +32,6 @@ const TeacherDashboard = () => {
         <h1>Welcome back, {displayName}</h1>
         <p>You have <span className="student-class-highlight">{classesToday} classes</span> scheduled for today. Ready for a productive day?</p>
         
-        <div className="ai-snapshot-banner" style={{ background: '#eff6ff', color: '#1e40af' }}>
-           <span style={{ fontSize: '1.2rem' }}>✨</span>
-           <p style={{ color: '#1e40af' }}>AI suggests reviewing 'Thermodynamics' as 32% of SSS 3-A students struggled in the recent mock.</p>
-        </div>
       </header>
 
       {/* Teacher Snapshots */}
@@ -54,7 +50,7 @@ const TeacherDashboard = () => {
         <div className="snapshot-card-premium">
           <div className="snapshot-header">
             <div className="snapshot-icon-wrap" style={{ background: '#f3f0ff', color: '#6A5ACD' }}>👨‍🎓</div>
-            <span className="snapshot-trend">+12 New</span>
+            <span className="snapshot-trend">{totalStudents > 0 ? `${totalStudents} total` : '—'}</span>
           </div>
           <div className="snapshot-content">
             <span className="snapshot-label">Total Students</span>
@@ -152,14 +148,6 @@ const TeacherDashboard = () => {
                     <h5>AI Lesson Plan</h5>
                     <p>Generate plan for next week</p>
                  </div>
-              </button>
-           </div>
-
-           <div className="teacher-ai-insight-box">
-              <h4><span>✨</span> AI Teaching Assistant</h4>
-              <p>Predictive analysis shows that <b>Chidi Okafor</b> is at risk of falling behind in Physics. Would you like me to generate a personalized study guide for him?</p>
-              <button className="btn-ai-action" style={{ marginTop: '1.5rem', width: '100%', background: '#ede9fa', color: '#2d2460' }}>
-                Generate Study Guide
               </button>
            </div>
 

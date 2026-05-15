@@ -1,181 +1,218 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { toast } from 'sonner';
 import Navbar from '../../../components/web/Navbar';
 import Footer from '../../../components/web/Footer';
+import blogService from '../../../services/blogService';
 import './Blog.css';
 
+const CATEGORIES = [
+  'All Posts',
+  'Company News',
+  'Educational Tips',
+  'AI in Classroom',
+  'Case Studies',
+];
+
+const BLOG_ADMIN_ROLES = ['super_admin', 'school_owner', 'admin_staff'];
+
+const formatDate = (iso) =>
+  iso
+    ? new Date(iso).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
+
 const Blog = () => {
+  const { user } = useSelector((s) => s.auth);
   const [activeCategory, setActiveCategory] = useState('All Posts');
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPosts, setTotalPosts] = useState(0);
 
-  const categories = [
-    'All Posts',
-    'Company News',
-    'Educational Tips',
-    'AI in Classroom',
-    'Case Studies'
-  ];
+  const canManage = user && BLOG_ADMIN_ROLES.includes(user.role);
 
-  const featuredPost = {
-    id: 1,
-    title: 'The Future of Personalized Learning in Nigerian Schools',
-    description: 'Discover how EduCore AI is revolutionizing the classroom experience by tailoring education to every student’s unique pace and style. Our new AI-driven modules are setting a new standard for local education...',
-    image: '/assets/teacher-main.png',
-    author: 'Dr. Amaka Okafor',
-    readTime: '5 min read',
-    badges: ['AI INSIGHTS', 'FEATURED']
-  };
+  const loadPosts = useCallback(() => {
+    setLoading(true);
+    blogService
+      .getPosts({
+        page,
+        limit: 9,
+        category: activeCategory === 'All Posts' ? '' : activeCategory,
+      })
+      .then((data) => {
+        setPosts(data.blogPosts || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalPosts(data.totalPosts || 0);
+      })
+      .catch(() => toast.error('Failed to load blog posts'))
+      .finally(() => setLoading(false));
+  }, [page, activeCategory]);
 
-  const posts = [
-    {
-      id: 2,
-      category: 'COMPANY NEWS',
-      title: 'Expanding our Reach: 50 New Schools Joined EduCore',
-      description: 'Our mission to digitize Nigerian education continues as we welcome 50 more institutions into our ecosystem this quarter...',
-      image: '/assets/analytics-chart.png',
-      date: 'Oct 12, 2024'
-    },
-    {
-      id: 3,
-      category: 'EDUCATIONAL TIPS',
-      title: '10 Tips for Effective Digital Grading and Feedback',
-      description: 'Learn how to use AI-assisted tools to provide meaningful feedback to students without spending hours on manual grading...',
-      image: '/assets/hero.png',
-      date: 'Oct 10, 2024'
-    },
-    {
-      id: 4,
-      isSpecial: true,
-      category: 'AI GENERATED INSIGHT',
-      title: 'Predictive Analytics: Identifying At-Risk Students Early',
-      description: 'Our latest AI update can now predict potential drop-offs with 94% accuracy, allowing for immediate teacher intervention.',
-      btnText: 'Access Full Report'
-    },
-    {
-      id: 5,
-      category: 'CASE STUDIES',
-      title: 'Case Study: Government College Lagos Attendance Surge',
-      description: 'How automated attendance alerts improved student presence by 22% in the first term of implementation...',
-      image: '/assets/teacher-group.png',
-      date: 'Oct 05, 2024'
-    },
-    {
-      id: 6,
-      category: 'AI IN CLASSROOM',
-      title: 'Integrating AI Without Losing the Human Touch',
-      description: 'Best practices for teachers to maintain emotional connection while utilizing AI for administrative and repetitive tasks...',
-      image: '/assets/parent_portal.png',
-      date: 'Sept 28, 2024'
-    }
-  ];
+  useEffect(() => {
+    loadPosts();
+  }, [loadPosts]);
+
+  const featuredPost = useMemo(
+    () => posts.find((p) => p.featured) || posts[0],
+    [posts]
+  );
+
+  const gridPosts = useMemo(
+    () => posts.filter((p) => p._id !== featuredPost?._id),
+    [posts, featuredPost]
+  );
+
+  const pageStart = totalPosts === 0 ? 0 : (page - 1) * 9 + 1;
+  const pageEnd = Math.min(page * 9, totalPosts);
 
   return (
     <div className="blog-wrapper">
       <Navbar />
 
       <div className="blog-container">
-        {/* Header */}
         <header className="blog-header">
           <div className="blog-header-content">
             <h1>Knowledge Hub</h1>
             <p>Updates, insights, and resources from the EduCore AI team.</p>
           </div>
-          <Link to="/blog/create" className="btn-create-post">
-            <span>+</span> Create New Post
-          </Link>
+          {canManage && (
+            <Link to="/dashboard" className="btn-create-post">
+              <span>+</span> Manage from Dashboard
+            </Link>
+          )}
         </header>
 
-        {/* Categories */}
         <nav className="blog-categories">
-          {categories.map((cat) => (
-            <div
+          {CATEGORIES.map((cat) => (
+            <button
               key={cat}
+              type="button"
               className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
-              onClick={() => setActiveCategory(cat)}
+              onClick={() => {
+                setActiveCategory(cat);
+                setPage(1);
+              }}
             >
               {cat}
-            </div>
+            </button>
           ))}
         </nav>
 
-        {/* Featured Post */}
-        <section className="featured-post">
-          <div className="featured-post-card">
-            <div className="featured-post-image">
-              <img src={featuredPost.image} alt={featuredPost.title} />
-            </div>
-            <div className="featured-post-content">
-              <div className="badge-container">
-                {featuredPost.badges.map((badge) => (
-                  <span key={badge} className={`badge ${badge === 'AI INSIGHTS' ? 'badge-ai' : 'badge-featured'}`}>
-                    {badge}
-                  </span>
-                ))}
-              </div>
-              <h2>{featuredPost.title}</h2>
-              <p>{featuredPost.description}</p>
-              <div className="post-footer">
-                <div className="author-info">
-                  <span>{featuredPost.author}</span>
-                  <span className="read-time">• {featuredPost.readTime}</span>
-                </div>
-                <Link to={`/blog/${featuredPost.id}`} className="read-more">
-                  Read More <span>→</span>
-                </Link>
-              </div>
-            </div>
+        {loading ? (
+          <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>
+            <div className="spinner-border text-primary" />
           </div>
-        </section>
-
-        {/* Post Grid */}
-        <section className="blog-grid">
-          {posts.map((post) => (
-            post.isSpecial ? (
-              <div key={post.id} className="post-card insight-card">
-                <div className="insight-header">
-                  <span>{post.category}</span>
-                </div>
-                <h3>{post.title}</h3>
-                <p>{post.description}</p>
-                <Link to={`/blog/${post.id}`} className="btn-insight">
-                  {post.btnText}
-                </Link>
-              </div>
-            ) : (
-              <div key={post.id} className="post-card">
-                <div className="post-card-image">
-                  <img src={post.image} alt={post.title} />
-                  <span className="post-card-category">{post.category}</span>
-                </div>
-                <div className="post-card-content">
-                  <h3>{post.title}</h3>
-                  <p>{post.description}</p>
-                  <div className="post-card-footer">
-                    <span className="post-date">{post.date}</span>
-                    <Link to={`/blog/${post.id}`} className="read-more">
-                      Read More
-                    </Link>
+        ) : posts.length === 0 ? (
+          <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>
+            <p>No posts yet. Run <code>node scripts/seedBlogPosts.js</code> on the server to add sample articles.</p>
+          </div>
+        ) : (
+          <>
+            {featuredPost && (
+              <section className="featured-post">
+                <div className="featured-post-card">
+                  <div className="featured-post-image">
+                    <img
+                      src={featuredPost.coverImage || '/assets/teacher-main.png'}
+                      alt={featuredPost.title}
+                      onError={(e) => { e.target.src = '/assets/hero.png'; }}
+                    />
+                  </div>
+                  <div className="featured-post-content">
+                    <div className="badge-container">
+                      <span className="badge badge-featured">FEATURED</span>
+                      {featuredPost.category && (
+                        <span className="badge badge-ai">{featuredPost.category.toUpperCase()}</span>
+                      )}
+                    </div>
+                    <h2>{featuredPost.title}</h2>
+                    <p>{featuredPost.subtitle || featuredPost.content?.slice(0, 200)}</p>
+                    <div className="post-footer">
+                      <div className="author-info">
+                        <span>{featuredPost.author?.name || 'EduCore Team'}</span>
+                        <span className="read-time">• {featuredPost.readTime || '5 min read'}</span>
+                      </div>
+                      <Link to={`/blog/${featuredPost._id}`} className="read-more">
+                        Read More <span>→</span>
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          ))}
-        </section>
+              </section>
+            )}
 
-        {/* Pagination */}
-        <footer className="pagination">
-          <div className="pagination-info">
-            Showing 1 to 6 of 42 posts
-          </div>
-          <div className="pagination-controls">
-            <button className="page-btn arrow">‹</button>
-            <button className="page-btn active">1</button>
-            <button className="page-btn">2</button>
-            <button className="page-btn">3</button>
-            <span className="pagination-info">...</span>
-            <button className="page-btn">7</button>
-            <button className="page-btn arrow">›</button>
-          </div>
-        </footer>
+            <section className="blog-grid">
+              {gridPosts.map((post) => (
+                <div key={post._id} className="post-card">
+                  <div className="post-card-image">
+                    <img
+                      src={post.coverImage || '/assets/hero.png'}
+                      alt={post.title}
+                      onError={(e) => { e.target.src = '/assets/hero.png'; }}
+                    />
+                    <span className="post-card-category">{(post.category || 'NEWS').toUpperCase()}</span>
+                  </div>
+                  <div className="post-card-content">
+                    <h3>{post.title}</h3>
+                    <p>{post.subtitle || post.content?.slice(0, 120)}</p>
+                    <div className="post-card-footer">
+                      <span className="post-date">{formatDate(post.createdAt)}</span>
+                      <Link to={`/blog/${post._id}`} className="read-more">
+                        Read More
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </section>
+
+            {totalPages > 1 && (
+              <footer className="pagination">
+                <div className="pagination-info">
+                  Showing {pageStart} to {pageEnd} of {totalPosts} posts
+                </div>
+                <div className="pagination-controls">
+                  <button
+                    type="button"
+                    className="page-btn arrow"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    ‹
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+                    .map((n, idx, arr) => {
+                      const prev = arr[idx - 1];
+                      const showEllipsis = prev && n - prev > 1;
+                      return (
+                        <React.Fragment key={n}>
+                          {showEllipsis && <span className="pagination-info">...</span>}
+                          <button
+                            type="button"
+                            className={`page-btn ${page === n ? 'active' : ''}`}
+                            onClick={() => setPage(n)}
+                          >
+                            {n}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                  <button
+                    type="button"
+                    className="page-btn arrow"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    ›
+                  </button>
+                </div>
+              </footer>
+            )}
+          </>
+        )}
       </div>
       <Footer />
     </div>

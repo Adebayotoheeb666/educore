@@ -59,7 +59,7 @@ const GenerateLessonPlan = () => {
     try {
       await saveLessonPlan({ ...generated, subject: form.subject, class: form.classId, topic: form.topic, aiGenerated: true });
       toast.success('Lesson plan saved!');
-      navigate('/dashboard/lesson-plans');
+      navigate('/lesson-plans');
     } catch (error) {
       console.error('Error saving lesson plan:', error);
       const message = error?.message || 'Failed to save lesson plan';

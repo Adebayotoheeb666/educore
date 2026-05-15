@@ -10,7 +10,8 @@ const timetableSchema = new mongoose.Schema({
     startTime: { type: String },
     endTime: { type: String },
     subject: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject' },
-    teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    room: { type: String }
   }],
   aiGenerated: { type: Boolean, default: false },
   status: { type: String, enum: ['draft', 'published'], default: 'draft' }

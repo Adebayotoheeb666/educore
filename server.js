@@ -84,6 +84,8 @@ const analyticsRoute = require("./routes/analyticsRoute");
 const lessonPlanRoute = require("./routes/lessonPlanRoute");
 const timetableRoute = require("./routes/timetableRoute");
 const behaviorRoute = require("./routes/behaviorRoute");
+const blogRoute = require("./routes/blogRoute");
+const adminRoute = require("./routes/adminRoute");
 
 app.use("/api/auth", authRoute);
 app.use("/api/school", schoolRoute);
@@ -105,6 +107,8 @@ app.use("/api/analytics", analyticsRoute);
 app.use("/api/lesson-plans", lessonPlanRoute);
 app.use("/api/timetable", timetableRoute);
 app.use("/api/behavior", behaviorRoute);
+app.use("/api/blog", blogRoute);
+app.use("/api/admin", adminRoute);
 
 app.use('/api', (req, res, next) => {
   res.status(404).json({ message: 'API route not found' });

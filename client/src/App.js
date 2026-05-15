@@ -49,6 +49,8 @@ const EditClass      = lazy(() => import('./pages/classes/EditClass'));
 const ClassDetail    = lazy(() => import('./pages/classes/ClassDetail'));
 
 const Subjects       = lazy(() => import('./pages/subjects/Subjects'));
+const AddSubject     = lazy(() => import('./pages/subjects/AddSubject'));
+const EditSubject    = lazy(() => import('./pages/subjects/EditSubject'));
 
 const AttendanceMark   = lazy(() => import('./pages/attendance/AttendanceMark'));
 const AttendanceReport = lazy(() => import('./pages/attendance/AttendanceReport'));
@@ -97,7 +99,10 @@ const BorrowReturn       = lazy(() => import('./pages/library/BorrowReturn'));
 const PaymentHistory     = lazy(() => import('./pages/fees/PaymentHistory'));
 const TeacherEffectiveness = lazy(() => import('./pages/analytics/TeacherEffectiveness'));
 const EMISReport         = lazy(() => import('./pages/analytics/EMISReport'));
-const SuperAdmin         = lazy(() => import('./pages/admin/SuperAdmin'));
+const SuperAdminLayout   = lazy(() => import('./pages/admin/SuperAdminLayout'));
+const SuperAdminOverview = lazy(() => import('./pages/admin/SuperAdminOverview'));
+const SuperAdminSchools  = lazy(() => import('./pages/admin/SuperAdmin'));
+const SuperAdminUsers    = lazy(() => import('./pages/admin/SuperAdminUsers'));
 const SchoolDetail       = lazy(() => import('./pages/admin/SchoolDetail'));
 
 const Notifications = lazy(() => import('./pages/notifications/Notifications'));
@@ -166,6 +171,12 @@ const studentNav = [
   { label: 'Announcements', path: '/announcements',        icon: '📢' },
 ];
 
+const superAdminNav = [
+  { label: 'Overview', path: '/admin', icon: '📊' },
+  { label: 'Schools',  path: '/admin/schools', icon: '🏫' },
+  { label: 'Users',    path: '/admin/users', icon: '👥' },
+];
+
 // ─── App Layout ──────────────────────────────────────────────────────────────
 const AppLayout = () => {
   const dispatch = useDispatch();
@@ -188,6 +199,7 @@ const AppLayout = () => {
 
   const getNavItems = () => {
     if (!user) return [];
+    if (user.role === 'super_admin') return superAdminNav;
     if (user.role === 'parent') return parentNav;
     if (user.role === 'student') return studentNav;
     return navConfig.filter(n => n.roles.includes(user.role));
@@ -196,11 +208,12 @@ const AppLayout = () => {
   const getPageTitle = () => {
     const isAdmin = user && ADMIN_ROLES.includes(user.role);
     const allNav = [
-      ...navConfig, 
-      ...parentNav, 
-      ...studentNav, 
-      { label: 'Profile', path: isAdmin ? '/profile-setup' : '/profile' }, 
-      { label: 'Notifications', path: '/notifications' }
+      ...navConfig,
+      ...superAdminNav,
+      ...parentNav,
+      ...studentNav,
+      { label: 'Profile', path: isAdmin ? '/profile-setup' : '/profile' },
+      { label: 'Notifications', path: '/notifications' },
     ];
     const match = allNav.find(n => location.pathname === n.path || location.pathname.startsWith(n.path + '/'));
     return match ? match.label : 'Overview';
@@ -217,7 +230,7 @@ const AppLayout = () => {
             <div className="sidebar-logo-icon">🎓</div>
             <div className="sidebar-logo-text">
               <h2>EduCore AI</h2>
-              <p>Admin Portal</p>
+              <p>{user?.role === 'super_admin' ? 'Platform Admin' : 'Admin Portal'}</p>
             </div>
           </div>
           <button 
@@ -247,10 +260,12 @@ const AppLayout = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="btn-ai-insights">
-            <span>✨</span> AI Insights
-          </button>
-          <button className="btn-signout" onClick={handleLogout}>
+          {user?.role !== 'super_admin' && (
+            <button type="button" className="btn-ai-insights">
+              <span>✨</span> AI Insights
+            </button>
+          )}
+          <button type="button" className="btn-signout" onClick={handleLogout}>
             <span className="btn-signout-icon">🚪</span>
             <span>Sign Out</span>
           </button>
@@ -396,6 +411,8 @@ function App() {
 
             {/* Subjects */}
             <Route path="/subjects" element={<RoleRoute allowed={ADMIN_ROLES}><Subjects /></RoleRoute>} />
+            <Route path="/subjects/add" element={<RoleRoute allowed={ADMIN_ROLES}><AddSubject /></RoleRoute>} />
+            <Route path="/subjects/:id/edit" element={<RoleRoute allowed={ADMIN_ROLES}><EditSubject /></RoleRoute>} />
 
             {/* Attendance */}
             <Route path="/attendance" element={<RoleRoute allowed={[...ADMIN_ROLES, ...TEACHER_ROLES]}><AttendanceMark /></RoleRoute>} />
@@ -467,9 +484,13 @@ function App() {
             <Route path="/analytics/teacher-effectiveness" element={<RoleRoute allowed={ADMIN_ROLES}><TeacherEffectiveness /></RoleRoute>} />
             <Route path="/analytics/emis" element={<RoleRoute allowed={ADMIN_ROLES}><EMISReport /></RoleRoute>} />
 
-            {/* Super admin panel */}
-            <Route path="/admin/schools" element={<RoleRoute allowed={['super_admin']}><SuperAdmin /></RoleRoute>} />
-            <Route path="/admin/schools/:id" element={<RoleRoute allowed={['super_admin']}><SchoolDetail /></RoleRoute>} />
+            {/* Super admin console */}
+            <Route path="/admin" element={<RoleRoute allowed={['super_admin']}><SuperAdminLayout /></RoleRoute>}>
+              <Route index element={<SuperAdminOverview />} />
+              <Route path="schools" element={<SuperAdminSchools />} />
+              <Route path="schools/:id" element={<SchoolDetail />} />
+              <Route path="users" element={<SuperAdminUsers />} />
+            </Route>
 
             {/* Notifications */}
             <Route path="/notifications" element={<Notifications />} />

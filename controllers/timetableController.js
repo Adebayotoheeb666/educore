@@ -69,18 +69,35 @@ const generateAITimetable = async (req, res) => {
 const updateTimetableSlot = async (req, res) => {
   try {
     const { id } = req.params;
-    const { slotIndex, slot } = req.body;
+    const { slotIndex, slot, day, startTime } = req.body;
 
     const timetable = await Timetable.findOne({ _id: id, school: req.school._id });
     if (!timetable) return res.status(404).json({ message: 'Timetable not found' });
 
-    if (slotIndex >= 0 && slotIndex < timetable.slots.length) {
-      timetable.slots[slotIndex] = { ...timetable.slots[slotIndex].toObject(), ...slot };
+    let index = typeof slotIndex === 'number' ? slotIndex : -1;
+    if (index < 0 && day && startTime) {
+      index = timetable.slots.findIndex(s => s.day === day && s.startTime === startTime);
+    }
+
+    const payload = { ...slot };
+    if (day) payload.day = day;
+    if (startTime) payload.startTime = startTime;
+
+    if (index >= 0 && index < timetable.slots.length) {
+      const existing = timetable.slots[index].toObject ? timetable.slots[index].toObject() : timetable.slots[index];
+      timetable.slots[index] = { ...existing, ...payload };
+    } else if (day && startTime) {
+      timetable.slots.push(payload);
+    } else {
+      return res.status(400).json({ message: 'slotIndex or day+startTime required' });
     }
 
     const clashes = detectClashes(timetable.slots);
     await timetable.save();
-    res.status(200).json({ timetable, clashes });
+    const populated = await Timetable.findById(timetable._id)
+      .populate('slots.subject', 'name code')
+      .populate('slots.teacher', 'firstName lastName');
+    res.status(200).json({ timetable: populated, clashes });
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 

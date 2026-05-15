@@ -42,9 +42,9 @@ const PaymentHistory = () => {
   const handlePrint = () => window.print();
 
   const transactions = statement?.transactions || [];
-  const totalPaid = transactions.reduce((s, t) => s + (t.amountPaid || 0), 0);
-  const totalDue  = transactions.reduce((s, t) => s + (t.amountDue  || 0), 0);
-  const balance   = totalDue - totalPaid;
+  const totalPaid = statement?.totalPaid ?? transactions.reduce((s, t) => s + (t.amountPaid || 0), 0);
+  const totalDue  = statement?.totalInvoiced ?? transactions.reduce((s, t) => s + (t.amountDue  || 0), 0);
+  const balance   = statement?.balance ?? (totalDue - totalPaid);
 
   return (
     <div className="fees-container">

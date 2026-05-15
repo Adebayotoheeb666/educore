@@ -4,13 +4,21 @@
 
 .library-container {
   padding: 1rem 0;
+  overflow: visible;
 }
 
-/* ─── Library Management Grid ─── */
-.library-main-grid {
-  display: grid;
-  grid-template-columns: 400px 1fr;
-  gap: 4rem;
+/* ─── Standalone inventory (full width) ─── */
+.library-inventory-standalone {
+  width: 100%;
+}
+
+.library-inventory-card {
+  overflow: visible;
+  max-height: none;
+}
+
+.library-add-book-standalone {
+  max-width: 960px;
 }
 
 .add-book-card {
@@ -178,7 +186,6 @@
 
 /* ─── Responsive ─── */
 @media (max-width: 1200px) {
-  .library-main-grid { grid-template-columns: 1fr; }
   .inv-stats-grid { grid-template-columns: 1fr 1fr; }
 }
 

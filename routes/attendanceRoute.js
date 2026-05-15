@@ -8,10 +8,10 @@ const requireSchool = require("../middleWare/requireSchool");
 router.use(protect, requireSchool);
 
 router.post("/", requireRole(['class_teacher','subject_teacher']), markAttendance);
-router.get("/:classId", getAttendanceByDate);
+router.get("/summary", getAttendanceSummary);
 router.get("/student/:id", getStudentAttendance);
 router.get("/report/:classId", getClassAttendanceReport);
-router.get("/summary", getAttendanceSummary);
+router.get("/:classId", getAttendanceByDate);
 router.post("/notify-absent", notifyAbsentParents);
 
 module.exports = router;

@@ -1,137 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { generateAITimetable } from '../../services/timetableService';
+import { getClasses } from '../../services/classService';
 import './Timetable.css';
 
 const GenerateTimetable = () => {
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [progress, setProgress] = useState(0);
+  const navigate = useNavigate();
+  const [classes, setClasses] = useState([]);
+  const [classId, setClassId] = useState('');
+  const [term, setTerm] = useState('First Term');
+  const [isGenerating, setIsGenerating] = useState(false);
 
-    const handleGenerate = () => {
-        setIsGenerating(true);
-        let p = 0;
-        const interval = setInterval(() => {
-            p += 5;
-            setProgress(p);
-            if (p >= 100) {
-                clearInterval(interval);
-                setIsGenerating(false);
-            }
-        }, 150);
-    };
+  useEffect(() => {
+    getClasses()
+      .then(({ data }) => {
+        const list = data?.classes ?? data ?? [];
+        setClasses(list);
+        if (list[0]) setClassId(list[0]._id ?? list[0].id);
+      })
+      .catch(() => toast.error('Failed to load classes'));
+  }, []);
 
-    return (
-        <div className="timetable-container">
-            <header className="timetable-header-premium">
-                <div className="header-left">
-                    <h1 className="display-4 fw-bold text-dark mb-2">AI Timetable Studio</h1>
-                    <p className="lead text-secondary">Constraint-based automated scheduling</p>
-                </div>
-                <div className="header-right">
-                    <button 
-                        className={`btn btn-lg px-5 rounded-pill shadow ${isGenerating ? 'btn-secondary' : 'btn-primary'}`}
-                        onClick={handleGenerate}
-                        disabled={isGenerating}
-                    >
-                        {isGenerating ? 'Optimizing Schedule...' : '✨ Generate Master Timetable'}
-                    </button>
-                </div>
-            </header>
+  const handleGenerate = async () => {
+    if (!classId) {
+      toast.error('Select a class');
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      await generateAITimetable({ classId, term });
+      toast.success('Timetable generated successfully');
+      navigate('/timetable');
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? 'Failed to generate timetable');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
-            <div className="generator-layout">
-                <aside className="config-panel">
-                    <h3 className="fw-bold mb-4">Constraints & Rules</h3>
-                    
-                    <div className="mb-4">
-                        <label className="form-label fw-bold small text-uppercase text-muted">Optimization Priority</label>
-                        <select className="form-select premium-select">
-                            <option>Teacher Satisfaction (No gaps)</option>
-                            <option>Student Performance (Core morning slots)</option>
-                            <option>Room Efficiency (Minimize travel)</option>
-                        </select>
-                    </div>
-
-                    <div className="mb-4">
-                        <label className="form-label fw-bold small text-uppercase text-muted">Daily Period Count</label>
-                        <div className="d-flex align-items-center gap-3">
-                            <input type="range" className="form-range" min="4" max="10" defaultValue="8" />
-                            <span className="fw-bold fs-4">8</span>
-                        </div>
-                    </div>
-
-                    <div className="form-check form-switch mb-3">
-                        <input className="form-check-input" type="checkbox" defaultChecked />
-                        <label className="form-check-label fw-bold">Avoid Teacher Double-Booking</label>
-                    </div>
-
-                    <div className="form-check form-switch mb-3">
-                        <input className="form-check-input" type="checkbox" defaultChecked />
-                        <label className="form-check-label fw-bold">Balance Subject Distribution</label>
-                    </div>
-
-                    <div className="form-check form-switch mb-5">
-                        <input className="form-check-input" type="checkbox" />
-                        <label className="form-check-label fw-bold">Allow Elective Overlaps</label>
-                    </div>
-
-                    <div className="p-4 bg-light rounded-4 border">
-                        <h5 className="fw-bold mb-2">Resource Check</h5>
-                        <ul className="list-unstyled mb-0">
-                            <li className="mb-2">✅ 45 Teachers Available</li>
-                            <li className="mb-2">✅ 32 Classrooms Validated</li>
-                            <li>✅ 4 Labs Configured</li>
-                        </ul>
-                    </div>
-                </aside>
-
-                <main className="generation-preview">
-                    {isGenerating && (
-                        <div className="processing-card">
-                            <div className="d-flex justify-content-between align-items-center mb-4">
-                                <h3 className="fw-bold m-0">AI Optimization in Progress</h3>
-                                <span className="fs-3 fw-bold text-primary">{progress}%</span>
-                            </div>
-                            <p className="text-secondary mb-4">
-                                Analyzing 1,450 possible combinations based on teacher availability and curriculum requirements.
-                            </p>
-                            <div className="progress" style={{ height: '12px', borderRadius: '10px' }}>
-                                <div 
-                                    className="progress-bar progress-bar-striped progress-bar-animated bg-success" 
-                                    role="progressbar" 
-                                    style={{ width: `${progress}%` }}
-                                ></div>
-                            </div>
-
-                            <div className="stats-row">
-                                <div className="stat-item">
-                                    <h3>{Math.floor(progress * 12.5)}</h3>
-                                    <p>Slots Filled</p>
-                                </div>
-                                <div className="stat-item">
-                                    <h3>0</h3>
-                                    <p>Conflicts</p>
-                                </div>
-                                <div className="stat-item">
-                                    <h3>98.2%</h3>
-                                    <p>Efficiency</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="timetable-card opacity-75">
-                        <div className="d-flex justify-content-between align-items-center mb-5">
-                            <h2 className="fw-bold m-0">Master Preview</h2>
-                            <span className="badge bg-soft-info text-info p-2 px-3">DRAFT VERSION</span>
-                        </div>
-                        
-                        <div className="text-center py-5">
-                            <img src="/assets/homepageicons/stats.png" alt="Empty" style={{ width: '120px', opacity: 0.3 }} />
-                            <h3 className="text-muted mt-4">The master preview will appear here<br/>after generation is complete.</h3>
-                        </div>
-                    </div>
-                </main>
-            </div>
+  return (
+    <div className="timetable-container">
+      <header className="timetable-header-premium">
+        <div className="header-left">
+          <h1 className="display-4 fw-bold text-dark mb-2">AI Timetable Studio</h1>
+          <p className="lead text-secondary">Constraint-based automated scheduling</p>
         </div>
-    );
+        <div className="header-right">
+          <button
+            type="button"
+            className={`btn btn-lg px-5 rounded-pill shadow ${isGenerating ? 'btn-secondary' : 'btn-primary'}`}
+            onClick={handleGenerate}
+            disabled={isGenerating}
+          >
+            {isGenerating ? 'Generating…' : '✨ Generate Timetable'}
+          </button>
+        </div>
+      </header>
+
+      <div className="generator-layout">
+        <aside className="config-panel">
+          <h3 className="fw-bold mb-4">Generation Settings</h3>
+          <div className="mb-4">
+            <label className="form-label fw-bold">Class *</label>
+            <select className="form-select premium-select" value={classId} onChange={e => setClassId(e.target.value)}>
+              {classes.map(c => (
+                <option key={c._id ?? c.id} value={c._id ?? c.id}>{c.name}{c.arm ? ` ${c.arm}` : ''}</option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-4">
+            <label className="form-label fw-bold">Term *</label>
+            <select className="form-select premium-select" value={term} onChange={e => setTerm(e.target.value)}>
+              <option>First Term</option>
+              <option>Second Term</option>
+              <option>Third Term</option>
+            </select>
+          </div>
+          <p className="text-secondary small">
+            The AI engine assigns subjects to periods based on class curriculum and teacher availability.
+          </p>
+        </aside>
+        <main className="generation-preview">
+          <div className="timetable-card p-5 text-center">
+            <h3 className="text-muted">Select a class and term, then click Generate.</h3>
+            <p className="text-secondary">View the result on the Timetable page after generation.</p>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
 };
 
 export default GenerateTimetable;
