@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { getStudentStatement } from '../../services/feeService';
+import FlutterwavePayButton from '../../components/payments/FlutterwavePayButton';
 import './Parent.css';
 
 const statusLabel = (status) => {
@@ -106,14 +107,24 @@ const ParentFees = () => {
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#991b1b', margin: 0 }}>Outstanding Balance</h3>
               <p style={{ margin: 0, color: '#991b1b', fontWeight: 600 }}>Please settle the remaining amount for the current term.</p>
             </div>
-            <div className="text-end">
-              <h2 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#991b1b', margin: 0 }}>
-                ₦{statement.balance.toLocaleString()}
-              </h2>
-              {statement.outstandingDue.dueDate && (
-                <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 800, color: '#991b1b' }}>
-                  DUE BY {new Date(statement.outstandingDue.dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase()}
-                </p>
+            <div className="text-end" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
+              <div>
+                <h2 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#991b1b', margin: 0 }}>
+                  ₦{statement.balance.toLocaleString()}
+                </h2>
+                {statement.outstandingDue.dueDate && (
+                  <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 800, color: '#991b1b' }}>
+                    DUE BY {new Date(statement.outstandingDue.dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase()}
+                  </p>
+                )}
+              </div>
+              {statement.outstandingDue.paymentId && (
+                <FlutterwavePayButton
+                  paymentId={statement.outstandingDue.paymentId}
+                  amount={statement.outstandingDue.amount}
+                  label="Pay online with Flutterwave"
+                  style={{ background: '#6A5ACD', color: '#fff', padding: '0.9rem 1.5rem', borderRadius: 12, border: 'none', fontWeight: 800, cursor: 'pointer' }}
+                />
               )}
             </div>
           </div>
@@ -157,12 +168,13 @@ const ParentFees = () => {
                 <th>Paid</th>
                 <th>Balance</th>
                 <th>Status</th>
+                <th>Pay</th>
               </tr>
             </thead>
             <tbody>
               {payments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                     No fee records for this student.
                   </td>
                 </tr>
@@ -178,6 +190,19 @@ const ParentFees = () => {
                       <span className="status-cell-pill" style={{ background: p.status === 'paid' ? '#ede9fa' : '#fef3c7', color: p.status === 'paid' ? '#2d2460' : '#b8860b' }}>
                         {statusLabel(p.status)}
                       </span>
+                    </td>
+                    <td>
+                      {p.balance > 0 ? (
+                        <FlutterwavePayButton
+                          paymentId={p._id}
+                          amount={p.balance}
+                          label="Pay"
+                          className="btn-catalog-action"
+                          style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem', background: '#6A5ACD', color: '#fff', border: 'none', borderRadius: 8 }}
+                        />
+                      ) : (
+                        '—'
+                      )}
                     </td>
                   </tr>
                 ))

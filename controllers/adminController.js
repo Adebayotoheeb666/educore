@@ -6,6 +6,8 @@ const Attendance = require('../models/attendanceModel');
 const Exam = require('../models/examModel');
 const Result = require('../models/resultModel');
 const Class = require('../models/classModel');
+const BlogPost = require('../models/blogModel');
+const { formatRelativeTime } = require('../services/analytics/helpers');
 
 const schoolStatus = (school) => {
   const sub = school.subscription?.status;
@@ -45,57 +47,113 @@ const getPlatformDashboard = async (req, res) => {
       students,
       teachers,
       parents,
+      activeSchools,
+      trialSchools,
+      inactiveSchools,
+      totalClasses,
+      totalExams,
+      totalResults,
+      blogPosts,
       recentPayments,
       recentAnnouncements,
+      allPayments,
+      usersByRole,
+      schoolsByPlan,
     ] = await Promise.all([
       School.countDocuments(),
-      School.find().sort({ createdAt: -1 }).limit(5),
+      School.find().sort({ createdAt: -1 }).limit(6),
       User.countDocuments({ role: { $ne: 'super_admin' } }),
       User.countDocuments({ role: 'student' }),
       User.countDocuments({ role: { $in: ['class_teacher', 'subject_teacher'] } }),
       User.countDocuments({ role: 'parent' }),
-      Payment.find().sort({ updatedAt: -1 }).limit(8).populate('student', 'firstName lastName name').populate('fee', 'title'),
-      Announcement.find().sort({ createdAt: -1 }).limit(8).populate('school', 'name'),
+      School.countDocuments({ 'subscription.status': 'active' }),
+      School.countDocuments({ 'subscription.status': 'trial' }),
+      School.countDocuments({ 'subscription.status': 'inactive' }),
+      Class.countDocuments(),
+      Exam.countDocuments(),
+      Result.countDocuments(),
+      BlogPost.countDocuments(),
+      Payment.find()
+        .sort({ updatedAt: -1 })
+        .limit(8)
+        .populate('student', 'firstName lastName name')
+        .populate('fee', 'title')
+        .populate('school', 'name'),
+      Announcement.find()
+        .sort({ createdAt: -1 })
+        .limit(6)
+        .populate('school', 'name'),
+      Payment.find().select('amountPaid amountDue balance status'),
+      User.aggregate([
+        { $match: { role: { $ne: 'super_admin' } } },
+        { $group: { _id: '$role', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+      School.aggregate([
+        { $group: { _id: '$subscription.plan', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
     ]);
 
-    const activeSchools = await School.countDocuments({
-      'subscription.status': { $in: ['active', 'trial'] },
-    });
-
-    const usersByRole = await User.aggregate([
-      { $match: { role: { $ne: 'super_admin' } } },
-      { $group: { _id: '$role', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-    ]);
+    const totalCollected = allPayments.reduce((sum, p) => sum + (p.amountPaid || 0), 0);
+    const totalOutstanding = allPayments
+      .filter((p) => p.status !== 'paid')
+      .reduce((sum, p) => sum + (p.balance || 0), 0);
+    const totalDue = allPayments.reduce((sum, p) => sum + (p.amountDue || 0), 0);
+    const collectionRate = totalDue > 0 ? Math.round((totalCollected / totalDue) * 100) : 0;
+    const defaulterCount = await Payment.distinct('student', { status: { $ne: 'paid' } });
 
     const enrichedRecent = await Promise.all(schools.map((s) => enrichSchool(s)));
+
+    const studentName = (s) => {
+      if (!s) return 'Student';
+      if (s.name) return s.name;
+      return `${s.firstName || ''} ${s.lastName || ''}`.trim() || 'Student';
+    };
 
     res.status(200).json({
       totals: {
         schools: totalSchools,
         activeSchools,
+        trialSchools,
+        inactiveSchools,
         users: totalUsers,
         students,
         teachers,
         parents,
+        classes: totalClasses,
+        exams: totalExams,
+        results: totalResults,
+        blogPosts,
+        feeDefaulters: defaulterCount.length,
+      },
+      finance: {
+        collected: totalCollected,
+        outstanding: totalOutstanding,
+        collectionRate,
       },
       usersByRole: usersByRole.map((r) => ({ role: r._id, count: r.count })),
+      schoolsByPlan: schoolsByPlan.map((p) => ({
+        plan: p._id || 'basic',
+        count: p.count,
+      })),
       recentSchools: enrichedRecent,
       recentPayments: recentPayments.map((p) => ({
         id: p._id,
         amount: p.amountPaid,
         status: p.status,
-        studentName: p.student?.name || `${p.student?.firstName || ''} ${p.student?.lastName || ''}`.trim(),
+        studentName: studentName(p.student),
         feeTitle: p.fee?.title,
-        schoolId: p.school,
-        at: p.updatedAt,
+        schoolName: p.school?.name || '—',
+        schoolId: p.school?._id || p.school,
+        time: formatRelativeTime(p.updatedAt || p.createdAt),
       })),
       recentAnnouncements: recentAnnouncements.map((a) => ({
         id: a._id,
         title: a.title,
         schoolName: a.school?.name || '—',
         priority: a.priority,
-        at: a.createdAt,
+        time: formatRelativeTime(a.createdAt),
       })),
     });
   } catch (error) {

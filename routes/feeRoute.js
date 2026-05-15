@@ -12,7 +12,7 @@ const requireRole = require("../middleWare/requireRole");
 const requireSchool = require("../middleWare/requireSchool");
 
 router.post("/webhook/paystack", paystackWebhook);
-router.post("/webhook/flutterwave", flutterwaveWebhook);
+// Flutterwave webhooks: POST /api/payments/webhook/flutterwave
 
 router.use(protect, requireSchool);
 
@@ -23,6 +23,7 @@ router.post("/payment", requireRole(['bursar','parent']), recordPayment);
 router.post("/payment/paystack", initializePaystackPayment);
 router.get("/payment/paystack/verify", verifyPaystackPayment);
 router.post("/payment/flutterwave", initializeFlutterwavePayment);
+router.get("/payment/flutterwave/verify", verifyFlutterwavePayment);
 router.get("/statement/:studentId", getStudentFeeStatement);
 router.get("/transactions", requireRole(['bursar','principal']), getRecentTransactions);
 router.get("/defaulters", requireRole(['bursar','principal']), getFeeDefaulters);

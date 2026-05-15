@@ -18,3 +18,22 @@ export const getPlatformUsers = (params) =>
 
 export const updatePlatformUser = (id, data) =>
   axios.patch(`/api/admin/users/${id}`, data).then((r) => r.data);
+
+export const getAdminBlogPosts = (params) =>
+  axios.get('/api/admin/blog', { params }).then((r) => r.data);
+
+export const getAdminBlogPost = (id) =>
+  axios.get(`/api/admin/blog/${id}`).then((r) => r.data);
+
+export const createAdminBlogPost = (formData) =>
+  axios.post('/api/admin/blog', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data);
+
+export const updateAdminBlogPost = (id, formData) =>
+  axios.patch(`/api/admin/blog/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data);
+
+export const deleteAdminBlogPost = (id) =>
+  axios.delete(`/api/admin/blog/${id}`).then((r) => r.data);

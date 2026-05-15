@@ -32,6 +32,18 @@ const allowedOrigins = Array.from(
 
 app.use(compression());
 
+// Flutterwave webhook must use raw JSON body for signature verification
+const { handleFlutterwaveWebhook } = require('./controllers/paymentController');
+app.post(
+  '/api/payments/webhook/flutterwave',
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+  handleFlutterwaveWebhook
+);
+
 // Security headers (NDPR / OWASP)
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -86,6 +98,7 @@ const timetableRoute = require("./routes/timetableRoute");
 const behaviorRoute = require("./routes/behaviorRoute");
 const blogRoute = require("./routes/blogRoute");
 const adminRoute = require("./routes/adminRoute");
+const paymentRoute = require("./routes/paymentRoute");
 
 app.use("/api/auth", authRoute);
 app.use("/api/school", schoolRoute);
@@ -109,6 +122,7 @@ app.use("/api/timetable", timetableRoute);
 app.use("/api/behavior", behaviorRoute);
 app.use("/api/blog", blogRoute);
 app.use("/api/admin", adminRoute);
+app.use("/api/payments", paymentRoute);
 
 app.use('/api', (req, res, next) => {
   res.status(404).json({ message: 'API route not found' });

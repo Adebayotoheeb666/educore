@@ -193,32 +193,39 @@ const paystackWebhook = async (req, res) => {
   res.status(200).send("OK");
 };
 
+const { initializeSchoolFeePayment, verifyAndFulfill } = require('../services/flutterwave/flutterwaveService');
+
 const initializeFlutterwavePayment = async (req, res) => {
   try {
-    res.status(200).json({
-      message: "Flutterwave payment initialization coming soon",
-      link: null,
-      reference: null
+    const { paymentId, amount } = req.body;
+    const result = await initializeSchoolFeePayment({
+      paymentId,
+      amount,
+      user: req.user,
+      school: req.school,
     });
+    res.status(200).json(result);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
 
 const verifyFlutterwavePayment = async (req, res) => {
   try {
+    const txRef = req.query.tx_ref || req.query.reference;
+    if (!txRef) return res.status(400).json({ message: 'tx_ref is required' });
+    const result = await verifyAndFulfill(txRef);
     res.status(200).json({
-      message: "Flutterwave payment verification coming soon",
-      status: "pending"
+      status: result.status,
+      transaction: result.transaction,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
 
 const flutterwaveWebhook = async (req, res) => {
-  console.log("Flutterwave Webhook received");
-  res.status(200).send("OK");
+  res.redirect(307, '/api/payments/webhook/flutterwave');
 };
 
 const getStudentFeeStatement = async (req, res) => {
@@ -266,7 +273,12 @@ const getStudentFeeStatement = async (req, res) => {
       lastPaymentAmount: lastPayment?.amountPaid ?? 0,
       lastPaymentDate: lastPayment?.updatedAt,
       outstandingDue: outstandingDue
-        ? { amount: outstandingDue.balance, dueDate: outstandingDue.fee?.dueDate }
+        ? {
+            paymentId: outstandingDue._id,
+            amount: outstandingDue.balance,
+            dueDate: outstandingDue.fee?.dueDate,
+            feeTitle: outstandingDue.fee?.title,
+          }
         : null,
       transactions,
     });

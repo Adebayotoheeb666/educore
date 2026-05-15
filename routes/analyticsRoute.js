@@ -11,7 +11,7 @@ const requireRole = require("../middleWare/requireRole");
 const requireSchool = require("../middleWare/requireSchool");
 
 router.use(protect, requireSchool);
-router.get("/dashboard", requireRole(['principal','school_owner','super_admin']), getSchoolDashboard);
+router.get("/dashboard", requireRole(['principal','school_owner','vp_academics','vp_admin','admin_staff']), getSchoolDashboard);
 router.get("/student-dashboard", requireRole(['student']), getStudentDashboard);
 router.get("/parent-dashboard", requireRole(['parent']), getParentDashboard);
 router.get("/teacher-dashboard", requireRole(['class_teacher','subject_teacher']), getTeacherDashboard);

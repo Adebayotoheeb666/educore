@@ -77,7 +77,8 @@ const login = async (req, res) => {
         const { email, password } = req.body;
         if (!email || !password) return res.status(400).json({ message: "Please add email and password" });
 
-        const user = await User.findOne({ email });
+        const normalizedEmail = String(email).toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
         if (!user) return res.status(400).json({ message: "Invalid email or password" });
 
         let isMatched = false;

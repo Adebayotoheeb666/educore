@@ -164,3 +164,11 @@
   "count": 0
 }
 
+{
+  "timestamp": "2026-05-15T18:17:42.929Z",
+  "level": "INFO",
+  "message": "Fetching attendance by date",
+  "classId": "69fcb4d4d11fa4b280c4f45f",
+  "date": "2026-05-15"
+}
+

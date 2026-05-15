@@ -24,11 +24,14 @@ const Login = () => {
     }
     setIsLoading(true);
     try {
-      const data = await loginUser(formData);
+      const data = await loginUser({
+        ...formData,
+        email: formData.email.trim().toLowerCase(),
+      });
       if (data) {
         dispatch(setUser(data));
         toast.success('Welcome back!');
-        navigate('/dashboard');
+        navigate(data.role === 'super_admin' ? '/admin' : '/dashboard');
       }
     } catch (error) {
       console.error(error);

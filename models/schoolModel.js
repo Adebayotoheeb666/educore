@@ -53,6 +53,13 @@ const schoolSchema = new mongoose.Schema(
             expiresAt: {
                 type: Date,
             },
+            lastPaidAt: {
+                type: Date,
+            },
+            billingCycle: {
+                type: String,
+                enum: ['monthly', 'yearly'],
+            },
         },
         settings: {
             academicSession: {

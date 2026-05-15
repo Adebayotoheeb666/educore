@@ -38,3 +38,11 @@
   "date": "2026-05-15"
 }
 
+{
+  "timestamp": "2026-05-15T18:17:42.937Z",
+  "level": "WARN",
+  "message": "No attendance record found",
+  "classId": "69fcb4d4d11fa4b280c4f45f",
+  "date": "2026-05-15"
+}
+

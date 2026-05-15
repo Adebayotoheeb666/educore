@@ -78,8 +78,11 @@ const Blog = () => {
             <p>Updates, insights, and resources from the EduCore AI team.</p>
           </div>
           {canManage && (
-            <Link to="/dashboard" className="btn-create-post">
-              <span>+</span> Manage from Dashboard
+            <Link
+              to={user.role === 'super_admin' ? '/admin/blog' : '/dashboard'}
+              className="btn-create-post"
+            >
+              <span>+</span> {user.role === 'super_admin' ? 'Manage posts' : 'Manage from Dashboard'}
             </Link>
           )}
         </header>

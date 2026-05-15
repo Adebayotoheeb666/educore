@@ -146,6 +146,15 @@ const BlogPost = () => {
 
         {canManage && (
           <div className="bp-hero__actions">
+            {user.role === 'super_admin' && (
+              <Link
+                to={`/admin/blog/${id}/edit`}
+                className="bp-action-btn"
+                style={{ textDecoration: 'none', marginRight: '0.5rem' }}
+              >
+                Edit
+              </Link>
+            )}
             <button
               type="button"
               className="bp-action-btn bp-action-btn--delete"

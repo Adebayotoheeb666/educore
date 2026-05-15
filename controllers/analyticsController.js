@@ -7,7 +7,12 @@ const Announcement = require("../models/announcementModel");
 const LessonPlan = require("../models/lessonPlanModel");
 const Timetable = require("../models/timetableModel");
 const Submission = require("../models/submissionModel");
+const Subject = require("../models/subjectModel");
+const BookBorrow = require("../models/bookBorrowModel");
+const Exam = require("../models/examModel");
 const { studentAttendanceRate, formatRelativeTime } = require("../services/analytics/helpers");
+
+const ADMIN_STAFF_ROLES = ['school_owner', 'principal', 'vp_academics', 'vp_admin', 'admin_staff', 'bursar'];
 
 const getSchoolDashboard = async (req, res) => {
   try {
@@ -70,15 +75,78 @@ const getSchoolDashboard = async (req, res) => {
       .limit(5)
       .select('title body priority createdAt');
 
+    const [
+      totalParents,
+      totalSubjects,
+      staffCount,
+      pendingLessonPlans,
+      overdueLibrary,
+      upcomingExams,
+      recentPaymentsRaw,
+    ] = await Promise.all([
+      User.countDocuments({ schoolId, role: 'parent' }),
+      Subject.countDocuments({ school: schoolId }),
+      User.countDocuments({ schoolId, role: { $in: ADMIN_STAFF_ROLES } }),
+      LessonPlan.countDocuments({ school: schoolId, status: 'submitted' }),
+      BookBorrow.countDocuments({
+        school: schoolId,
+        returnedAt: null,
+        dueDate: { $lt: new Date() },
+        status: { $in: ['borrowed', 'overdue'] },
+      }),
+      Exam.countDocuments({
+        school: schoolId,
+        status: 'published',
+        scheduledDate: {
+          $gte: new Date(),
+          $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+      }),
+      Payment.find({ school: schoolId })
+        .sort({ updatedAt: -1 })
+        .limit(5)
+        .populate('student', 'firstName lastName name'),
+    ]);
+
+    const paidTotal = payments
+      .filter((p) => p.status === 'paid')
+      .reduce((sum, p) => sum + (p.amountPaid || 0), 0);
+    const pendingBalance = payments
+      .filter((p) => p.status !== 'paid')
+      .reduce((sum, p) => sum + (p.balance || 0), 0);
+    const totalDue = payments.reduce((sum, p) => sum + (p.amountDue || 0), 0);
+    const collectionRate = totalDue > 0 ? Math.round((paidTotal / totalDue) * 100) : 0;
+
+    const studentName = (s) => {
+      if (!s) return 'Student';
+      if (s.name) return s.name;
+      return `${s.firstName || ''} ${s.lastName || ''}`.trim() || 'Student';
+    };
+
     res.status(200).json({
       totalStudents,
       totalTeachers,
       totalClasses,
+      totalParents,
+      totalSubjects,
+      staffCount,
       feeDefaulters: feeDefaulters.length,
       avgAttendance: Math.round(avgAttendance),
-      feeCollected,
+      feeCollected: feeCollected || paidTotal,
+      feePending: pendingBalance,
+      collectionRate,
       curriculumProgress,
+      pendingLessonPlans,
+      overdueLibrary,
+      upcomingExams,
       classPerformance,
+      recentPayments: recentPaymentsRaw.map((p) => ({
+        id: p._id,
+        studentName: studentName(p.student),
+        amount: p.amountPaid || 0,
+        status: p.status,
+        time: formatRelativeTime(p.updatedAt || p.createdAt),
+      })),
       recentAnnouncements: recentAnnouncements.map((a) => ({
         id: a._id,
         title: a.title,

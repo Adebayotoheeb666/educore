@@ -199,9 +199,68 @@ const canManageBlog = (req, res, next) => {
   next();
 };
 
+const getAdminPosts = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const search = (req.query.search || '').trim();
+    const category = (req.query.category || '').trim();
+    const published = req.query.published;
+
+    const filter = {};
+    if (category && category !== 'All') filter.category = category;
+    if (published === 'true') filter.published = true;
+    if (published === 'false') filter.published = false;
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { subtitle: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const totalPosts = await BlogPost.countDocuments(filter);
+    const blogPosts = await BlogPost.find(filter)
+      .populate('author', 'name firstName lastName email role')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.status(200).json({
+      blogPosts: blogPosts.map((p) => ({
+        ...p.toObject(),
+        author: formatAuthor(p.author),
+        authorEmail: p.author?.email,
+      })),
+      totalPosts,
+      totalPages: Math.ceil(totalPosts / limit) || 1,
+      currentPage: page,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getAdminPost = async (req, res) => {
+  try {
+    const post = await BlogPost.findById(req.params.id).populate(
+      'author',
+      'name firstName lastName avatar role email'
+    );
+    if (!post) return res.status(404).json({ message: 'Blog post not found' });
+
+    const payload = post.toObject();
+    payload.author = formatAuthor(post.author);
+    res.status(200).json(payload);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getPosts,
   getPost,
+  getAdminPosts,
+  getAdminPost,
   createPost,
   updatePost,
   deletePost,

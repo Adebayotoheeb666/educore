@@ -10,6 +10,7 @@
     "seed:nerdc": "node scripts/seedNERDCData.js",
     "seed:comprehensive": "node scripts/seedComprehensiveData.js",
     "seed:validate": "node scripts/validateSeedData.js",
+    "seed:super-admin": "node scripts/seedSuperAdmin.js",
     "test": "JEST_FORCE_EXIT=true jest --setupFilesAfterEnv=./__tests__/setup.js --testEnvironment=node --testPathIgnorePatterns=/client/",
     "test:strict": "JEST_FORCE_EXIT=false jest --setupFilesAfterEnv=./__tests__/setup.js --testEnvironment=node --testPathIgnorePatterns=/client/ --detectOpenHandles",
     "test:watch": "jest --watch --setupFilesAfterEnv=./__tests__/setup.js --testPathIgnorePatterns=/client/",

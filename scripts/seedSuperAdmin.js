@@ -5,13 +5,10 @@
  */
 require('dotenv').config();
 const mongoose = require('mongoose');
-const User = require('../models/userModel');
-
-const email = (process.env.SUPER_ADMIN_EMAIL || 'admin@educore.ng').toLowerCase().trim();
-const password = process.env.SUPER_ADMIN_PASSWORD;
+const { bootstrapSuperAdmin } = require('../services/bootstrapSuperAdmin');
 
 async function run() {
-  if (!password) {
+  if (!process.env.SUPER_ADMIN_PASSWORD) {
     console.error('Set SUPER_ADMIN_PASSWORD in .env or the environment.');
     process.exit(1);
   }
@@ -23,31 +20,7 @@ async function run() {
   }
 
   await mongoose.connect(uri);
-
-  let user = await User.findOne({ email });
-  if (user) {
-    user.role = 'super_admin';
-    user.schoolId = undefined;
-    user.name = user.name || 'Platform Admin';
-    user.firstName = 'Platform';
-    user.lastName = 'Admin';
-    user.isActive = true;
-    user.password = password;
-    await user.save();
-    console.log(`Updated existing user to super_admin: ${email}`);
-  } else {
-    user = await User.create({
-      name: 'Platform Admin',
-      firstName: 'Platform',
-      lastName: 'Admin',
-      email,
-      password,
-      role: 'super_admin',
-      isActive: true,
-    });
-    console.log(`Created super_admin: ${email}`);
-  }
-
+  await bootstrapSuperAdmin();
   await mongoose.disconnect();
 }
 

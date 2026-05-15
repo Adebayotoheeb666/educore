@@ -104,6 +104,11 @@ const SuperAdminOverview = lazy(() => import('./pages/admin/SuperAdminOverview')
 const SuperAdminSchools  = lazy(() => import('./pages/admin/SuperAdmin'));
 const SuperAdminUsers    = lazy(() => import('./pages/admin/SuperAdminUsers'));
 const SchoolDetail       = lazy(() => import('./pages/admin/SchoolDetail'));
+const SuperAdminBlog     = lazy(() => import('./pages/admin/SuperAdminBlog'));
+const SuperAdminBlogForm = lazy(() => import('./pages/admin/SuperAdminBlogForm'));
+const SuperAdminPayments = lazy(() => import('./pages/admin/SuperAdminPayments'));
+const SchoolBilling = lazy(() => import('./pages/billing/SchoolBilling'));
+const PaymentCallback = lazy(() => import('./pages/payments/PaymentCallback'));
 
 const Notifications = lazy(() => import('./pages/notifications/Notifications'));
 const Profile = lazy(() => import('./pages/profile/Profile'));
@@ -175,6 +180,8 @@ const superAdminNav = [
   { label: 'Overview', path: '/admin', icon: '📊' },
   { label: 'Schools',  path: '/admin/schools', icon: '🏫' },
   { label: 'Users',    path: '/admin/users', icon: '👥' },
+  { label: 'Blog',     path: '/admin/blog', icon: '📰' },
+  { label: 'Payments', path: '/admin/payments', icon: '💳' },
 ];
 
 // ─── App Layout ──────────────────────────────────────────────────────────────
@@ -372,6 +379,7 @@ function App() {
           <Route path="/blog/:id" element={<BlogPost />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/payments/callback" element={<PaymentCallback />} />
 
           {/* Auth */}
           <Route path="/login" element={<Login />} />
@@ -438,6 +446,7 @@ function App() {
             <Route path="/fees/schedules" element={<RoleRoute allowed={[...ADMIN_ROLES, 'bursar']}><FeeSchedules /></RoleRoute>} />
             <Route path="/fees/collection" element={<RoleRoute allowed={[...ADMIN_ROLES, 'bursar']}><FeeCollection /></RoleRoute>} />
             <Route path="/fees/defaulters" element={<RoleRoute allowed={[...ADMIN_ROLES, 'bursar']}><FeeDefaulters /></RoleRoute>} />
+            <Route path="/settings/billing" element={<RoleRoute allowed={['school_owner', 'principal']}><SchoolBilling /></RoleRoute>} />
 
             {/* Timetable */}
             <Route path="/timetable" element={<Timetable />} />
@@ -490,6 +499,10 @@ function App() {
               <Route path="schools" element={<SuperAdminSchools />} />
               <Route path="schools/:id" element={<SchoolDetail />} />
               <Route path="users" element={<SuperAdminUsers />} />
+              <Route path="blog" element={<SuperAdminBlog />} />
+              <Route path="blog/new" element={<SuperAdminBlogForm />} />
+              <Route path="blog/:id/edit" element={<SuperAdminBlogForm />} />
+              <Route path="payments" element={<SuperAdminPayments />} />
             </Route>
 
             {/* Notifications */}

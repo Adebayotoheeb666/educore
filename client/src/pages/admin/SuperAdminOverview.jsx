@@ -1,43 +1,54 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getPlatformDashboard } from '../../services/adminService';
+import './SuperAdmin.css';
 
-const StatCard = ({ label, value, icon, accent }) => (
-  <div
-    style={{
-      background: '#fff',
-      borderRadius: 16,
-      padding: '1.75rem',
-      border: '1px solid #e2e8f0',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    }}
-  >
-    <div>
-      <p style={{ fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', margin: 0 }}>
-        {label}
-      </p>
-      <p style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a', margin: '0.35rem 0 0' }}>{value}</p>
+const formatNaira = (n) => `₦${Number(n || 0).toLocaleString()}`;
+
+const ACCENTS = {
+  blue: { bg: '#dbeafe', color: '#1e40af' },
+  purple: { bg: '#ede9fa', color: '#4338ca' },
+  violet: { bg: '#f3e8ff', color: '#6d28d9' },
+  yellow: { bg: '#fef9c3', color: '#854d0e' },
+  green: { bg: '#ecfdf5', color: '#047857' },
+  orange: { bg: '#fff7ed', color: '#c2410c' },
+  slate: { bg: '#f1f5f9', color: '#475569' },
+  red: { bg: '#fee2e2', color: '#991b1b' },
+};
+
+const StatCard = ({ label, value, sub, icon, accent = 'purple', to, variant }) => {
+  const card = (
+    <div className={`sa-stat-card ${variant || ''}`}>
+      <div className="sa-stat-top">
+        <div className="sa-stat-icon" style={{ background: ACCENTS[accent].bg, color: ACCENTS[accent].color }}>
+          {icon}
+        </div>
+      </div>
+      <p className="sa-stat-label">{label}</p>
+      <p className="sa-stat-value">{value ?? '—'}</p>
+      {sub && <p className="sa-stat-sub">{sub}</p>}
     </div>
-    <div
-      style={{
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        background: accent.bg,
-        color: accent.color,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '1.4rem',
-      }}
-    >
-      {icon}
-    </div>
-  </div>
-);
+  );
+  return to ? (
+    <Link to={to} className="sa-stat-card-link">
+      {card}
+    </Link>
+  ) : (
+    card
+  );
+};
+
+const QUICK_ACTIONS = [
+  { to: '/admin/schools', icon: '🏫', label: 'All schools' },
+  { to: '/admin/users', icon: '👥', label: 'All users' },
+  { to: '/admin/blog', icon: '📰', label: 'Blog posts' },
+  { to: '/admin/blog/new', icon: '✏️', label: 'New blog post' },
+  { to: '/admin/payments', icon: '💳', label: 'All payments' },
+  { to: '/register', icon: '➕', label: 'Register school' },
+  { to: '/analytics', icon: '📈', label: 'Analytics' },
+  { to: '/announcements', icon: '📢', label: 'Announcements' },
+];
 
 const SuperAdminOverview = () => {
   const [data, setData] = useState(null);
@@ -50,116 +61,253 @@ const SuperAdminOverview = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const opsAlerts = useMemo(() => {
+    if (!data?.totals) return [];
+    const { totals } = data;
+    return [
+      totals.inactiveSchools > 0 && {
+        key: 'inactive',
+        label: `${totals.inactiveSchools} suspended school${totals.inactiveSchools === 1 ? '' : 's'}`,
+        to: '/admin/schools',
+        tone: 'warn',
+      },
+      totals.trialSchools > 0 && {
+        key: 'trial',
+        label: `${totals.trialSchools} school${totals.trialSchools === 1 ? '' : 's'} on trial`,
+        to: '/admin/schools',
+        tone: 'info',
+      },
+      totals.feeDefaulters > 0 && {
+        key: 'defaulters',
+        label: `${totals.feeDefaulters} students with outstanding fees`,
+        to: '/admin/users',
+        tone: 'warn',
+      },
+    ].filter(Boolean);
+  }, [data]);
+
   if (loading) {
     return (
       <div className="d-flex justify-content-center py-5">
-        <div className="spinner-border text-primary" />
+        <div className="spinner-border text-primary" role="status" />
       </div>
     );
   }
 
   if (!data) return null;
 
-  const { totals, usersByRole, recentSchools, recentPayments, recentAnnouncements } = data;
+  const { totals, finance, usersByRole, schoolsByPlan, recentSchools, recentPayments, recentAnnouncements } = data;
 
   return (
-    <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
-        <StatCard label="Schools" value={totals.schools} icon="🏫" accent={{ bg: '#dbeafe', color: '#1e40af' }} />
-        <StatCard label="Active Schools" value={totals.activeSchools} icon="✅" accent={{ bg: '#ede9fa', color: '#2d2460' }} />
-        <StatCard label="Users" value={totals.users?.toLocaleString()} icon="👥" accent={{ bg: '#f3e8ff', color: '#6d28d9' }} />
-        <StatCard label="Students" value={totals.students?.toLocaleString()} icon="🎓" accent={{ bg: '#fef9c3', color: '#854d0e' }} />
-        <StatCard label="Teachers" value={totals.teachers?.toLocaleString()} icon="👨‍🏫" accent={{ bg: '#ecfdf5', color: '#047857' }} />
-        <StatCard label="Parents" value={totals.parents?.toLocaleString()} icon="👨‍👩‍👧" accent={{ bg: '#fff7ed', color: '#c2410c' }} />
+    <div className="super-admin-page">
+      <div className="sa-welcome-row">
+        <div>
+          <h2>Platform overview</h2>
+          <p>
+            {totals.schools} school{totals.schools === 1 ? '' : 's'} · {totals.users?.toLocaleString()} users across EduCore
+          </p>
+        </div>
+        <div className="sa-header-actions">
+          <Link to="/admin/schools" className="sa-btn-outline">Manage schools</Link>
+          <Link to="/admin/users" className="sa-btn-primary">Manage users</Link>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-        <section style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ margin: 0, fontWeight: 800 }}>Users by role</h3>
-            <Link to="/admin/users" style={{ color: '#5849b8', fontWeight: 700, fontSize: '0.85rem' }}>
-              Manage users →
-            </Link>
-          </div>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {(usersByRole || []).map((r) => (
-              <li
-                key={r.role}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '0.65rem 0',
-                  borderBottom: '1px solid #f1f5f9',
-                  fontSize: '0.95rem',
-                }}
-              >
-                <span style={{ textTransform: 'capitalize' }}>{r.role.replace(/_/g, ' ')}</span>
-                <strong>{r.count}</strong>
-              </li>
-            ))}
-          </ul>
-        </section>
+      <section className="sa-stats-grid">
+        <StatCard label="Total schools" value={totals.schools} icon="🏫" accent="blue" to="/admin/schools" />
+        <StatCard label="Active" value={totals.activeSchools} icon="✅" accent="green" sub={`${totals.trialSchools ?? 0} on trial`} to="/admin/schools" />
+        <StatCard
+          label="Suspended"
+          value={totals.inactiveSchools}
+          icon="⛔"
+          accent="red"
+          variant={totals.inactiveSchools > 0 ? 'danger' : ''}
+          to="/admin/schools"
+        />
+        <StatCard label="Platform users" value={totals.users?.toLocaleString()} icon="👥" accent="violet" to="/admin/users" />
+        <StatCard label="Students" value={totals.students?.toLocaleString()} icon="🎓" accent="yellow" to="/admin/users" />
+        <StatCard label="Teachers" value={totals.teachers?.toLocaleString()} icon="👨‍🏫" accent="green" to="/admin/users" />
+        <StatCard label="Classes" value={totals.classes?.toLocaleString()} icon="📖" accent="slate" />
+        <StatCard
+          label="Fee collection"
+          value={`${finance?.collectionRate ?? 0}%`}
+          sub={formatNaira(finance?.collected)}
+          icon="💳"
+          accent="purple"
+        />
+      </section>
 
-        <section style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ margin: 0, fontWeight: 800 }}>Newest schools</h3>
-            <Link to="/admin/schools" style={{ color: '#5849b8', fontWeight: 700, fontSize: '0.85rem' }}>
-              All schools →
-            </Link>
-          </div>
-          {(recentSchools || []).length === 0 ? (
-            <p style={{ color: '#94a3b8' }}>No schools registered yet.</p>
-          ) : (
-            recentSchools.map((s) => (
-              <Link
-                key={s._id}
-                to={`/admin/schools/${s._id}`}
-                style={{
-                  display: 'block',
-                  padding: '0.75rem 0',
-                  borderBottom: '1px solid #f1f5f9',
-                  textDecoration: 'none',
-                  color: 'inherit',
-                }}
-              >
-                <strong>{s.name}</strong>
-                <span style={{ float: 'right', color: '#64748b', fontSize: '0.85rem' }}>
-                  {s.studentCount ?? 0} students
-                </span>
-              </Link>
-            ))
-          )}
-        </section>
-
-        <section style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '1.5rem' }}>
-          <h3 style={{ margin: '0 0 1rem', fontWeight: 800 }}>Recent payments</h3>
-          {(recentPayments || []).length === 0 ? (
-            <p style={{ color: '#94a3b8' }}>No payment activity yet.</p>
-          ) : (
-            recentPayments.map((p) => (
-              <div key={p.id} style={{ padding: '0.65rem 0', borderBottom: '1px solid #f1f5f9', fontSize: '0.9rem' }}>
-                <div style={{ fontWeight: 700 }}>{p.studentName || 'Student'}</div>
-                <span style={{ color: '#64748b' }}>
-                  {p.feeTitle} · ₦{(p.amount || 0).toLocaleString()} · {p.status}
-                </span>
+      <div className="sa-main-grid">
+        <div className="sa-main-col">
+          {opsAlerts.length > 0 && (
+            <section className="sa-panel">
+              <div className="sa-panel-header">
+                <h3>Needs attention</h3>
               </div>
-            ))
+              <ul className="sa-ops-list">
+                {opsAlerts.map((item) => (
+                  <li key={item.key}>
+                    <Link to={item.to} className={`sa-ops-item sa-ops-${item.tone}`}>
+                      <span>{item.label}</span>
+                      <span>→</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
-        </section>
 
-        <section style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '1.5rem' }}>
-          <h3 style={{ margin: '0 0 1rem', fontWeight: 800 }}>Recent announcements</h3>
-          {(recentAnnouncements || []).length === 0 ? (
-            <p style={{ color: '#94a3b8' }}>No announcements yet.</p>
-          ) : (
-            recentAnnouncements.map((a) => (
-              <div key={a.id} style={{ padding: '0.65rem 0', borderBottom: '1px solid #f1f5f9', fontSize: '0.9rem' }}>
-                <div style={{ fontWeight: 700 }}>{a.title}</div>
-                <span style={{ color: '#64748b' }}>{a.schoolName}</span>
+          <section className="sa-panel">
+            <div className="sa-panel-header">
+              <h3>Platform finance</h3>
+              <Link to="/admin/schools">View schools</Link>
+            </div>
+            <div className="sa-finance-grid">
+              <div className="sa-finance-item">
+                <span>Total collected</span>
+                <strong>{formatNaira(finance?.collected)}</strong>
               </div>
-            ))
-          )}
-        </section>
+              <div className="sa-finance-item">
+                <span>Outstanding</span>
+                <strong className="warn">{formatNaira(finance?.outstanding)}</strong>
+              </div>
+              <div className="sa-finance-item">
+                <span>Collection rate</span>
+                <strong>{finance?.collectionRate ?? 0}%</strong>
+              </div>
+            </div>
+            <div className="sa-plan-pills">
+              {(schoolsByPlan || []).map((p) => (
+                <span key={p.plan} className="sa-plan-pill">
+                  {p.plan}
+                  <strong>{p.count}</strong>
+                </span>
+              ))}
+              {(!schoolsByPlan || schoolsByPlan.length === 0) && (
+                <span className="sa-plan-pill">basic <strong>0</strong></span>
+              )}
+            </div>
+          </section>
+
+          <div className="sa-two-col">
+            <section className="sa-panel">
+              <div className="sa-panel-header">
+                <h3>Users by role</h3>
+                <Link to="/admin/users">Manage →</Link>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {(usersByRole || []).map((r) => (
+                  <li key={r.role} className="sa-list-row" style={{ cursor: 'default' }}>
+                    <span style={{ textTransform: 'capitalize' }}>{r.role.replace(/_/g, ' ')}</span>
+                    <strong>{r.count}</strong>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="sa-panel">
+              <div className="sa-panel-header">
+                <h3>Platform activity</h3>
+              </div>
+              <div className="sa-list-row" style={{ cursor: 'default', borderBottom: '1px solid #f1f5f9' }}>
+                <span>Exams created</span>
+                <strong>{totals.exams ?? 0}</strong>
+              </div>
+              <div className="sa-list-row" style={{ cursor: 'default', borderBottom: '1px solid #f1f5f9' }}>
+                <span>Results recorded</span>
+                <strong>{totals.results ?? 0}</strong>
+              </div>
+              <div className="sa-list-row" style={{ cursor: 'default', borderBottom: '1px solid #f1f5f9' }}>
+                <span>Blog posts</span>
+                <strong>{totals.blogPosts ?? 0}</strong>
+              </div>
+              <div className="sa-list-row" style={{ cursor: 'default' }}>
+                <span>Fee defaulters</span>
+                <strong>{totals.feeDefaulters ?? 0}</strong>
+              </div>
+            </section>
+          </div>
+
+          <div className="sa-two-col">
+            <section className="sa-panel">
+              <div className="sa-panel-header">
+                <h3>Recent payments</h3>
+              </div>
+              {(recentPayments || []).length === 0 ? (
+                <p className="sa-empty">No payment activity yet.</p>
+              ) : (
+                recentPayments.map((p) => (
+                  <div key={p.id} className="sa-list-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <strong>{p.studentName}</strong>
+                      <span>{formatNaira(p.amount)}</span>
+                    </div>
+                    <span className="sa-list-meta">
+                      {p.schoolName} · {p.feeTitle || 'Fee'} · {p.status} · {p.time}
+                    </span>
+                  </div>
+                ))
+              )}
+            </section>
+
+            <section className="sa-panel">
+              <div className="sa-panel-header">
+                <h3>Recent announcements</h3>
+                <Link to="/announcements">View all</Link>
+              </div>
+              {(recentAnnouncements || []).length === 0 ? (
+                <p className="sa-empty">No announcements yet.</p>
+              ) : (
+                recentAnnouncements.map((a) => (
+                  <div key={a.id} className="sa-list-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
+                    <strong>{a.title}</strong>
+                    <span className="sa-list-meta">
+                      {a.schoolName} · {a.priority} · {a.time}
+                    </span>
+                  </div>
+                ))
+              )}
+            </section>
+          </div>
+        </div>
+
+        <aside className="sa-side-col">
+          <section className="sa-panel">
+            <div className="sa-panel-header">
+              <h3>Quick controls</h3>
+            </div>
+            <div className="sa-quick-grid">
+              {QUICK_ACTIONS.map((action) => (
+                <Link key={action.to} to={action.to} className="sa-quick-chip">
+                  <span>{action.icon}</span>
+                  {action.label}
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          <section className="sa-panel">
+            <div className="sa-panel-header">
+              <h3>Newest schools</h3>
+              <Link to="/admin/schools">All →</Link>
+            </div>
+            {(recentSchools || []).length === 0 ? (
+              <p className="sa-empty">No schools registered yet.</p>
+            ) : (
+              recentSchools.map((s) => (
+                <Link key={s._id} to={`/admin/schools/${s._id}`} className="sa-list-row">
+                  <div>
+                    <strong>{s.name}</strong>
+                    <div className="sa-list-meta">
+                      {s.studentCount ?? 0} students · {s.teacherCount ?? 0} teachers
+                    </div>
+                  </div>
+                  <span className={`sa-school-badge ${s.status || 'active'}`}>{s.status || 'active'}</span>
+                </Link>
+              ))
+            )}
+          </section>
+        </aside>
       </div>
     </div>
   );

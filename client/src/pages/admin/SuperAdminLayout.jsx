@@ -4,6 +4,8 @@ const tabs = [
   { label: 'Overview', path: '/admin', end: true },
   { label: 'Schools', path: '/admin/schools' },
   { label: 'Users', path: '/admin/users' },
+  { label: 'Blog', path: '/admin/blog' },
+  { label: 'Payments', path: '/admin/payments' },
 ];
 
 const SuperAdminLayout = () => (
