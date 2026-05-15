@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { getTeachers } from '../../services/teacherService';
+import { getTeachers, deleteTeacher } from '../../services/teacherService';
 import '../students/Students.css';
 import './Teachers.css';
 
@@ -9,6 +9,8 @@ const Teachers = () => {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -21,6 +23,21 @@ const Teachers = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleDelete = async (teacherId) => {
+    setDeletingId(teacherId);
+    try {
+      await deleteTeacher(teacherId);
+      setTeachers(prev => prev.filter(t => (t._id ?? t.id) !== teacherId));
+      setTotal(prev => prev - 1);
+      toast.success('Teacher deleted');
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? 'Failed to delete teacher');
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
+    }
+  };
+
   return (
     <div className="teachers-container">
       
@@ -30,8 +47,8 @@ const Teachers = () => {
           <h1 style={{fontSize: '3.2rem'}}>Teacher Management</h1>
         </div>
         <div className="header-actions">
-           <Link to="/teachers/invite" className="btn-primary-green" style={{background: '#6A5ACD'}}>
-             <span>👤+</span> Invite Teacher
+           <Link to="/teachers/add" className="btn-primary-green" style={{background: '#6A5ACD'}}>
+             <span>👤+</span> Add Teacher
            </Link>
         </div>
       </div>
@@ -84,7 +101,33 @@ const Teachers = () => {
                   </td>
                   <td><span className="phone-text">{t.phone}</span></td>
                   <td>
-                    <Link to={`/teachers/${t._id ?? t.id}`} className="btn-secondary-outline" style={{padding: '0.8rem 2rem', fontSize: '1.2rem'}}>View</Link>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Link to={`/teachers/${t._id ?? t.id}`} className="btn-secondary-outline" style={{ padding: '0.8rem 2rem', fontSize: '1.2rem' }}>View</Link>
+                      {confirmDeleteId === (t._id ?? t.id) ? (
+                        <>
+                          <button
+                            onClick={() => handleDelete(t._id ?? t.id)}
+                            disabled={!!deletingId}
+                            style={{ padding: '0.5rem 1.2rem', borderRadius: '6px', background: '#ef4444', color: '#fff', border: 'none', fontSize: '1.2rem', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            {deletingId === (t._id ?? t.id) ? '…' : 'Confirm'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            style={{ padding: '0.5rem 1.2rem', borderRadius: '6px', background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', fontSize: '1.2rem', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(t._id ?? t.id)}
+                          style={{ padding: '0.5rem 1.2rem', borderRadius: '6px', background: '#fff0f0', color: '#ef4444', border: '1px solid #fecaca', fontSize: '1.2rem', fontWeight: 700, cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
