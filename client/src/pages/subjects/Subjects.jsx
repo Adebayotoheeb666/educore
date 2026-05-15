@@ -7,23 +7,40 @@ import './Subjects.css';
 const Subjects = () => {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios.get('/api/subjects')
-      .then(({ data }) => setSubjects(data || []))
-      .catch(() => {
-          setSubjects([
-              { _id: '1', name: 'Advanced Physics', code: 'PHY-301', category: 'Science', teachers: [{}, {}], icon: '🔬' },
-              { _id: '2', name: 'Creative Arts', code: 'ART-102', category: 'Arts', teachers: [], icon: '🎨' },
-              { _id: '3', name: 'Accounting I', code: 'ACC-201', category: 'Commercial', teachers: [{}], icon: '💵' },
-              { _id: '4', name: 'English Literature', code: 'ENG-101', category: 'General', teachers: [{}, {}], icon: '📖' },
-              { _id: '5', name: 'Computer Science', code: 'CSC-205', category: 'Science', teachers: [], icon: '💻' }
-          ]);
-      })
-      .finally(() => setLoading(false));
+    const fetchSubjects = async () => {
+      try {
+        setLoading(true);
+        const { data } = await axios.get('/api/subjects');
+        setSubjects(data || []);
+        setError(null);
+      } catch (err) {
+        const message = err.response?.data?.message || err.message || 'Failed to load subjects';
+        setError(message);
+        toast.error(message);
+        setSubjects([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSubjects();
   }, []);
 
   if (loading) return <div className="subjects-container d-flex justify-content-center align-items-center"><div className="spinner-border text-success" /></div>;
+
+  if (error) return (
+    <div className="subjects-container">
+      <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>
+        <h3>⚠️ Error Loading Subjects</h3>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#5849b8', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}>
+          Retry
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="subjects-container">
